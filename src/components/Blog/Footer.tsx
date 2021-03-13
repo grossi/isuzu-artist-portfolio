@@ -9,7 +9,7 @@ function Copyright() {
     <Typography variant="body2" color="textSecondary" align="center">
       {'Copyright © '}
       <Link color="inherit" href="https://material-ui.com/">
-        Your Website
+        isuZu all rights reserved.
       </Link>{' '}
       {new Date().getFullYear()}
       {'.'}
@@ -21,7 +21,7 @@ const useStyles = makeStyles((theme) => ({
   footer: {
     backgroundColor: theme.palette.background.paper,
     // marginTop: theme.spacing(8),
-    padding: theme.spacing(6, 0),
+    padding: theme.spacing(2),
   },
 }));
 
@@ -32,12 +32,12 @@ interface FooterProps {
 
 export default function Footer(props: FooterProps) {
   const classes = useStyles();
-  const { description, title } = props;
+  // const { description, title } = props;
 
   return (
     <footer className={classes.footer}>
       <Container maxWidth="lg">
-        <Typography variant="h6" align="center" gutterBottom>
+        {/* <Typography variant="h6" align="center" gutterBottom>
           {title}
         </Typography>
         <Typography
@@ -47,7 +47,7 @@ export default function Footer(props: FooterProps) {
           component="p"
         >
           {description}
-        </Typography>
+        </Typography> */}
         <Copyright />
       </Container>
     </footer>

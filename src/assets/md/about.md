@@ -16,5 +16,3 @@ pixivメールにお願いいたします。
 
  - [ピクシブid=124098](http://www.pixiv.net/member.php?id=124098)
  - [ツイッター=y_isuZu](https://twitter.com/y_isuZu)
-
-![img](http://image.gihyo.co.jp/assets/images/cover/2018/9784774197791.jpg)
