@@ -2,7 +2,9 @@ import * as React from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
-import Link from '@material-ui/core/Link';
+import Container from "@material-ui/core/Container";
+
+// import Link from '@material-ui/core/Link';
 
 const useStyles = makeStyles((theme) => ({
   toolbar: {
@@ -30,20 +32,21 @@ interface HeaderProps {
 
 export default function Header(props: HeaderProps) {
   const classes = useStyles();
-  const { sections, title } = props;
+  const { title } = props;
 
   return (
     <Toolbar component="nav" variant="dense" className={classes.toolbar}>
-      <Typography
-          variant="h2"
-          color="inherit"
-          align="center"
-          noWrap
-          className={classes.toolbarTitle}
-        >
-          {title}
-        </Typography>
-        {sections.map((section) => (
+      <Container maxWidth="lg">
+        <Typography
+            variant="h2"
+            color="inherit"
+            noWrap
+            className={classes.toolbarTitle}
+          >
+            {title}
+          </Typography>
+        </Container>
+        {/* {sections.map((section) => (
           <Link
             color="inherit"
             noWrap
@@ -54,7 +57,7 @@ export default function Header(props: HeaderProps) {
           >
             {section.title}
           </Link>
-        ))}
+        ))} */}
     </Toolbar>
   );
 }

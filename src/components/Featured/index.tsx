@@ -1,6 +1,14 @@
 import * as React from "react";
 import { makeStyles } from "@material-ui/core/styles";
 import Slider from "react-slick";
+import carouselData from 'carousel.json';
+
+const paintings = carouselData.map(image => {
+  return { 
+    src: `${process.env.PUBLIC_URL}/${image.location}`,
+    name: image.name,
+  };
+});
 
 const useStyles = makeStyles((theme) => ({
   mainFeaturedPost: {
@@ -14,38 +22,29 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-interface FeaturedPosts {
-  posts: {
-    description?: string;
-    image: string;
-    imageText?: string;
-    linkText?: string;
-    title: string;
-  }[];
-}
-
-export default function Featured(props: FeaturedPosts) {
+export default function Featured() {
   const classes = useStyles();
-  const { posts } = props;
   const settings = {
     dots: true,
     infinite: true,
     speed: 500,
     slidesToShow: 1,
     slidesToScroll: 1,
+    autoplay: true,
+    pauseOnHover: false,
   };
 
   return (
     <Slider {...settings}>
-      {posts.map((post, index) => (
+      {paintings.map((painting, index) => (
         <div key={index}>
-          <div className={classes.mainFeaturedPost} style={{ backgroundImage: `url(${post.image})`}} />
+          <div className={classes.mainFeaturedPost} style={{ backgroundImage: `url(${painting.src})`}} />
           {/* Increase the priority of the hero background image */}
           {
             <img
               style={{ display: "none" }}
-              src={post.image}
-              alt={post.title}
+              src={painting.src}
+              alt={painting.name}
             />
           }
         </div>
