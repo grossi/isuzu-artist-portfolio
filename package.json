@@ -25,7 +25,9 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "gallery-build": "node ./src/utils/loadImages.js"
+    "push-s3": "aws s3 sync build/ s3://isuzu.work --acl public-read",
+    "build-images": "node ./src/utils/loadImages.js",
+    "deploy": "yarn build-images && yarn build && yarn push-s3"
   },
   "eslintConfig": {
     "extends": [
