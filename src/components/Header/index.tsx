@@ -20,6 +20,16 @@ const useStyles = makeStyles((theme) => ({
     padding: theme.spacing(2),
     flexShrink: 0,
   },
+  container: {
+    [theme.breakpoints.up('lg')]: {
+      paddingRight: theme.spacing(12),
+      paddingLeft: theme.spacing(12)
+    },
+    [theme.breakpoints.up('xl')]: {
+      paddingRight: theme.spacing(16),
+      paddingLeft: theme.spacing(16)
+    },
+  }
 }));
 
 interface HeaderProps {
@@ -36,7 +46,7 @@ export default function Header(props: HeaderProps) {
 
   return (
     <Toolbar component="nav" variant="dense" className={classes.toolbar}>
-      <Container maxWidth="lg">
+      <Container className={classes.container} disableGutters maxWidth="xl">
         <Typography
             variant="h2"
             color="inherit"

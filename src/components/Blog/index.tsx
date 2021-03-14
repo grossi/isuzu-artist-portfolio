@@ -15,6 +15,29 @@ const useStyles = makeStyles((theme) => ({
   mainGrid: {
     marginTop: theme.spacing(3),
   },
+  mainContainer: {
+    marginTop: theme.spacing(3),
+    [theme.breakpoints.up('xs')]: {
+      paddingRight: 0,
+      paddingLeft: 0
+    },
+    [theme.breakpoints.up('sm')]: {
+      paddingRight: theme.spacing(1),
+      paddingLeft: theme.spacing(1)
+    },
+    [theme.breakpoints.up('md')]: {
+      paddingRight: theme.spacing(6),
+      paddingLeft: theme.spacing(6)
+    },
+    [theme.breakpoints.up('lg')]: {
+      paddingRight: theme.spacing(12),
+      paddingLeft: theme.spacing(12)
+    },
+    [theme.breakpoints.up('xl')]: {
+      paddingRight: theme.spacing(16),
+      paddingLeft: theme.spacing(16)
+    },
+  },
 }));
 
 const sections = [
@@ -38,7 +61,7 @@ export default function Blog() {
       <CssBaseline />
       <Header title="isuZu" sections={sections} />
       <Featured />
-      <Container disableGutters maxWidth="lg">
+      <Container maxWidth="xl" className={classes.mainContainer}>
         <main>
           <Grid container spacing={2} className={classes.mainGrid}>
             <Galery />
