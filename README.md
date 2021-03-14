@@ -1,5 +1,7 @@
 # Simple page to showcase isuZu's work
 
+Can be viewed at [http://isuzu.work](http://isuzu.work)
+
 ## Available Scripts
 
 In the project directory, you can run:
