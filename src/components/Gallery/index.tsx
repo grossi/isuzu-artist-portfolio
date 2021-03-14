@@ -12,11 +12,20 @@ const paintings = galleryData.map((image, k) => {
   };
 });
 
+const calculateTargetRowHeight = (containerWidth: number) => {
+  console.log(containerWidth);
+  if (containerWidth>800) {
+    return 700;
+  } else {
+    return 450;
+  }
+}
+
 export default function Gallery() {
 
   return (
     <Grid item xs={12} md={8}>
-      <PhotoGallery targetRowHeight={600} photos={paintings} />
+      <PhotoGallery targetRowHeight={calculateTargetRowHeight} photos={paintings} />
     </Grid>
   );
 }
