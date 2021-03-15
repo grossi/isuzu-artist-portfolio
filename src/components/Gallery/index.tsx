@@ -27,7 +27,6 @@ const paintings = galleryData.map((image, k) => {
 });
 
 const calculateTargetRowHeight = (containerWidth: number) => {
-  console.log(containerWidth);
   if (containerWidth > 800) {
     return 700;
   } else {
