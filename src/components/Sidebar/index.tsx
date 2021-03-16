@@ -4,6 +4,7 @@ import Grid from "@material-ui/core/Grid";
 import Paper from "@material-ui/core/Paper";
 import Typography from "@material-ui/core/Typography";
 import Markdown from "components/Markdown";
+import Link from "@material-ui/core/Link";
 import CardMedia from "@material-ui/core/CardMedia";
 
 const useStyles = makeStyles((theme) => ({
@@ -22,11 +23,18 @@ interface SidebarProps {
   description: string;
   secondaryTitle: string;
   secondaryDescription: string;
+  bookLink: string;
 }
 
 export default function Sidebar(props: SidebarProps) {
   const classes = useStyles();
-  const { title, description, secondaryTitle, secondaryDescription } = props;
+  const {
+    title,
+    description,
+    secondaryTitle,
+    secondaryDescription,
+    bookLink,
+  } = props;
   const [loadedAbout, setLoadedAbout] = React.useState<string>("");
   React.useEffect(() => {
     setLoadedAbout("");
@@ -61,7 +69,12 @@ export default function Sidebar(props: SidebarProps) {
         <Typography variant="h4" gutterBottom>
           {secondaryTitle}
         </Typography>
-        <CardMedia component="img" src={`${process.env.PUBLIC_URL}/isuzubook.jpg`} />
+        <Link href={bookLink}>
+          <CardMedia
+            component="img"
+            src={`${process.env.PUBLIC_URL}/isuzubook.jpg`}
+          />
+        </Link>
         <Markdown>{loadedSecondaryAbout}</Markdown>
       </Paper>
     </Grid>

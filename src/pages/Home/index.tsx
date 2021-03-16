@@ -43,6 +43,7 @@ const sidebar = {
   description: about,
   secondaryTitle: "My BOOK",
   secondaryDescription: about_book,
+  bookLink: "https://www.amazon.co.jp/o/ASIN/4774197793/gihyojp-22",
 };
 
 export default function Home() {
@@ -60,6 +61,7 @@ export default function Home() {
               description={sidebar.description}
               secondaryTitle={sidebar.secondaryTitle}
               secondaryDescription={sidebar.secondaryDescription}
+              bookLink={sidebar.bookLink}
             />
           </Grid>
         </main>
