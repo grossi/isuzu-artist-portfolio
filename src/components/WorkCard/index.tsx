@@ -62,6 +62,14 @@ const calculateTargetRowHeight = (containerWidth: number) => {
   }
 };
 
+const calculateLimitNodeSearch = (containerWidth: number) => {
+  if (containerWidth > 800) {
+    return 10;
+  } else {
+    return 8;
+  }
+};
+
 export default function WorkCard(props: WorkCardProps) {
   const classes = useStyles();
   const [currentImage, setCurrentImage] = React.useState("");
@@ -112,6 +120,7 @@ export default function WorkCard(props: WorkCardProps) {
             onClick={openDialog}
             targetRowHeight={calculateTargetRowHeight}
             photos={work.imageList}
+            limitNodeSearch={calculateLimitNodeSearch}
           />
         </Collapse>
       </Card>

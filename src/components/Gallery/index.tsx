@@ -51,6 +51,7 @@ export default function Gallery() {
           targetRowHeight={calculateTargetRowHeight}
           photos={paintings}
           onClick={openDialog}
+          limitNodeSearch={4}
         />
       </Grid>
       <Dialog
