@@ -16,6 +16,12 @@ const useStyles = makeStyles((theme) => ({
   sidebarSection: {
     marginTop: theme.spacing(3),
   },
+  sidebarGrid: {
+    order: 2,
+    [theme.breakpoints.down('sm')]: {
+      order: 1,
+    },
+  },
 }));
 
 interface SidebarProps {
@@ -58,7 +64,7 @@ export default function Sidebar(props: SidebarProps) {
   }, [secondaryDescription]);
 
   return (
-    <Grid item xs={12} md={4}>
+    <Grid item xs={12} md={4} className={classes.sidebarGrid}>
       <Paper elevation={0} className={classes.sidebarAboutBox}>
         <Typography variant="h6" gutterBottom>
           {title}

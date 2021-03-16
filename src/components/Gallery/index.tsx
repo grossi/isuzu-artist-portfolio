@@ -15,6 +15,12 @@ const useStyles = makeStyles((theme) => ({
     top: theme.spacing(1),
     color: theme.palette.grey[200],
   },
+  galleryGrid: {
+    order: 1,
+    [theme.breakpoints.down('sm')]: {
+      order: 2,
+    },
+  },
 }));
 
 const paintings = galleryData.map((image, k) => {
@@ -46,7 +52,7 @@ export default function Gallery() {
 
   return (
     <React.Fragment>
-      <Grid item xs={12} md={8}>
+      <Grid item xs={12} md={8} className={classes.galleryGrid}>
         <PhotoGallery
           targetRowHeight={calculateTargetRowHeight}
           photos={paintings}
