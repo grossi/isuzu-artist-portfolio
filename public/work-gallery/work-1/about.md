@@ -1,3 +1,3 @@
-# Square Enix
+# SQUARE ENUX
 
-isuZuを反対から読んで「うずし」
+【戦国IXA】

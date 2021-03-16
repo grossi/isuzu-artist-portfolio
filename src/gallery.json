@@ -1,12 +1,5 @@
 [
   {
-    "name": "000_1Year_of_the_Bull_isuZu",
-    "extension": "png",
-    "width": 1920,
-    "height": 1080,
-    "location": "gallery/000_1Year_of_the_Bull_isuZu.png"
-  },
-  {
     "name": "1058432_p0",
     "extension": "jpg",
     "width": 565,
@@ -56,6 +49,13 @@
     "location": "gallery/16877726_p0.jpg"
   },
   {
+    "name": "2017酉年賀状",
+    "extension": "jpg",
+    "width": 800,
+    "height": 540,
+    "location": "gallery/2017酉年賀状.jpg"
+  },
+  {
     "name": "22157721_p0",
     "extension": "jpg",
     "width": 705,
@@ -103,6 +103,13 @@
     "width": 536,
     "height": 740,
     "location": "gallery/4639252_p0.jpg"
+  },
+  {
+    "name": "46Year_of_the_Bull_isuZu",
+    "extension": "png",
+    "width": 1920,
+    "height": 1080,
+    "location": "gallery/46Year_of_the_Bull_isuZu.png"
   },
   {
     "name": "48028175_p0",
@@ -243,5 +250,159 @@
     "width": 1300,
     "height": 920,
     "location": "gallery/9471185_p0.jpg"
+  },
+  {
+    "name": "food1",
+    "extension": "png",
+    "width": 1415,
+    "height": 1010,
+    "location": "gallery/food1.png"
+  },
+  {
+    "name": "food2",
+    "extension": "png",
+    "width": 1415,
+    "height": 1010,
+    "location": "gallery/food2.png"
+  },
+  {
+    "name": "food3",
+    "extension": "png",
+    "width": 1415,
+    "height": 1010,
+    "location": "gallery/food3.png"
+  },
+  {
+    "name": "たち絵",
+    "extension": "jpg",
+    "width": 324,
+    "height": 1158,
+    "location": "gallery/たち絵.jpg"
+  },
+  {
+    "name": "とんぼ04",
+    "extension": "jpg",
+    "width": 636,
+    "height": 900,
+    "location": "gallery/とんぼ04.jpg"
+  },
+  {
+    "name": "ウェービー",
+    "extension": "jpg",
+    "width": 604,
+    "height": 820,
+    "location": "gallery/ウェービー.jpg"
+  },
+  {
+    "name": "キャラ：アリス",
+    "extension": "png",
+    "width": 723,
+    "height": 1023,
+    "location": "gallery/キャラ：アリス.png"
+  },
+  {
+    "name": "キャラ：ヨルダ",
+    "extension": "jpg",
+    "width": 661,
+    "height": 829,
+    "location": "gallery/キャラ：ヨルダ.jpg"
+  },
+  {
+    "name": "キャラ：人形3",
+    "extension": "jpg",
+    "width": 446,
+    "height": 909,
+    "location": "gallery/キャラ：人形3.jpg"
+  },
+  {
+    "name": "キャラ：巫女埴輪",
+    "extension": "jpg",
+    "width": 566,
+    "height": 800,
+    "location": "gallery/キャラ：巫女埴輪.jpg"
+  },
+  {
+    "name": "ケモノメイド",
+    "extension": "jpg",
+    "width": 636,
+    "height": 900,
+    "location": "gallery/ケモノメイド.jpg"
+  },
+  {
+    "name": "ドラクラ_ソーサレス09",
+    "extension": "jpg",
+    "width": 883,
+    "height": 834,
+    "location": "gallery/ドラクラ_ソーサレス09.jpg"
+  },
+  {
+    "name": "塗り絵大会うずし",
+    "extension": "png",
+    "width": 1060,
+    "height": 1500,
+    "location": "gallery/塗り絵大会うずし.png"
+  },
+  {
+    "name": "子年賀状2",
+    "extension": "jpg",
+    "width": 1000,
+    "height": 707,
+    "location": "gallery/子年賀状2.jpg"
+  },
+  {
+    "name": "小_天誅_アヤメ1",
+    "extension": "png",
+    "width": 636,
+    "height": 900,
+    "location": "gallery/小_天誅_アヤメ1.png"
+  },
+  {
+    "name": "影家",
+    "extension": "jpg",
+    "width": 842,
+    "height": 595,
+    "location": "gallery/影家.jpg"
+  },
+  {
+    "name": "星の牧場",
+    "extension": "png",
+    "width": 636,
+    "height": 900,
+    "location": "gallery/星の牧場.png"
+  },
+  {
+    "name": "橘ありす合同本",
+    "extension": "png",
+    "width": 575,
+    "height": 800,
+    "location": "gallery/橘ありす合同本.png"
+  },
+  {
+    "name": "第3刷記念",
+    "extension": "png",
+    "width": 1061,
+    "height": 1500,
+    "location": "gallery/第3刷記念.png"
+  },
+  {
+    "name": "納内レオ1",
+    "extension": "png",
+    "width": 1061,
+    "height": 1500,
+    "location": "gallery/納内レオ1.png"
+  },
+  {
+    "name": "落書き",
+    "extension": "jpg",
+    "width": 566,
+    "height": 800,
+    "location": "gallery/落書き.jpg"
+  },
+  {
+    "name": "褐色少女02",
+    "extension": "png",
+    "width": 636,
+    "height": 900,
+    "location": "gallery/褐色少女02.png"
   }
 ]
