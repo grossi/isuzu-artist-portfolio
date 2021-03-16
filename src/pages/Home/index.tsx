@@ -1,10 +1,7 @@
 import * as React from "react";
 import { makeStyles } from "@material-ui/core/styles";
-import CssBaseline from "@material-ui/core/CssBaseline";
 import Grid from "@material-ui/core/Grid";
 import Container from "@material-ui/core/Container";
-import Footer from "./Footer";
-import Header from "components/Header";
 import Featured from "components/Featured";
 import Sidebar from "components/Sidebar";
 import Galery from 'components/Gallery';
@@ -16,14 +13,15 @@ const useStyles = makeStyles((theme) => ({
     marginTop: theme.spacing(3),
   },
   mainContainer: {
+    minHeight: "100%",
     marginTop: theme.spacing(3),
     [theme.breakpoints.up('xs')]: {
-      paddingRight: 0,
-      paddingLeft: 0
-    },
-    [theme.breakpoints.up('sm')]: {
       paddingRight: theme.spacing(1),
       paddingLeft: theme.spacing(1)
+    },
+    [theme.breakpoints.up('sm')]: {
+      paddingRight: theme.spacing(2),
+      paddingLeft: theme.spacing(2)
     },
     [theme.breakpoints.up('md')]: {
       paddingRight: theme.spacing(6),
@@ -40,26 +38,19 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-const sections = [
-  { title: "Portifolio", url: "#" },
-  { title: "Contact", url: "#" },
-  { title: "Book", url: "#" },
-];
-
 const sidebar = {
   title: "プロフィール",
   description: about,
   secondaryTitle: "My BOOK",
   secondaryDescription: about_book,
+  bookLink: "https://www.amazon.co.jp/o/ASIN/4774197793/gihyojp-22",
 };
 
-export default function Blog() {
+export default function Home() {
   const classes = useStyles();
 
   return (
     <React.Fragment>
-      <CssBaseline />
-      <Header title="isuZu" sections={sections} />
       <Featured />
       <Container maxWidth="xl" className={classes.mainContainer}>
         <main>
@@ -70,14 +61,11 @@ export default function Blog() {
               description={sidebar.description}
               secondaryTitle={sidebar.secondaryTitle}
               secondaryDescription={sidebar.secondaryDescription}
+              bookLink={sidebar.bookLink}
             />
           </Grid>
         </main>
       </Container>
-      <Footer
-        title="isuZu"
-        description="Footer Text"
-      />
     </React.Fragment>
   );
 }

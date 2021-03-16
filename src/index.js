@@ -1,13 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
-import Blog from 'components/Blog';
+import App from 'App';
 import reportWebVitals from './reportWebVitals';
 import 'assets/css/main.css'; 
 
 ReactDOM.render(
   <React.StrictMode>
-    <Blog />
+    <App />
   </React.StrictMode>,
   document.getElementById('root')
 );
