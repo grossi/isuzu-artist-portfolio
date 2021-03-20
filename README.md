@@ -6,6 +6,17 @@ Can be viewed at [http://isuzu.work](http://isuzu.work)
 
 In the project directory, you can run:
 
+### `yarn build-images`
+
+This reads the images inside the `/public` folder to create the json who are used to create the pages.
+
+`public/gallery` -> Main page gallery images
+
+`public/carousel` -> Main page hero carousel images
+
+`public/work-gallery` -> Work page, each folder representing a work card with `about.md` as the description, `banner.png` as the card banner and the rest as the work card gallery.
+
+
 ### `yarn start`
 
 Runs the app in the development mode.\
