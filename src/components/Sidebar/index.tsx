@@ -6,6 +6,7 @@ import Typography from "@material-ui/core/Typography";
 import Markdown from "components/Markdown";
 import Link from "@material-ui/core/Link";
 import CardMedia from "@material-ui/core/CardMedia";
+import Avatar from "@material-ui/core/Avatar";
 
 const useStyles = makeStyles((theme) => ({
   sidebarAboutBox: {
@@ -16,9 +17,16 @@ const useStyles = makeStyles((theme) => ({
   sidebarSection: {
     marginTop: theme.spacing(3),
   },
+  avatarGrid: {
+    marginBottom: theme.spacing(2),
+  },
+  avatar: {
+    width: theme.spacing(7),
+    height: theme.spacing(7),
+  },
   sidebarGrid: {
     order: 2,
-    [theme.breakpoints.down('sm')]: {
+    [theme.breakpoints.down("sm")]: {
       order: 1,
     },
   },
@@ -69,6 +77,14 @@ export default function Sidebar(props: SidebarProps) {
         <Typography variant="h6" gutterBottom>
           {title}
         </Typography>
+        <Grid container direction="row" alignItems="center" spacing={2} className={classes.avatarGrid}>
+          <Grid item>
+            <Avatar className={classes.avatar} alt="isuZu" src={`${process.env.PUBLIC_URL}/isuzu.jpg`} />
+          </Grid>
+          <Grid item>
+            <Typography variant="h4">isuZu</Typography>
+          </Grid>
+        </Grid>
         <Markdown>{loadedAbout}</Markdown>
       </Paper>
       <Paper elevation={0} className={classes.sidebarAboutBox}>
