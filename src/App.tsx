@@ -1,8 +1,8 @@
 import React from "react";
 import { BrowserRouter, Route, Switch } from "react-router-dom";
 import CssBaseline from "@material-ui/core/CssBaseline";
-import Footer from "components/Footer";
-import Header from "components/Header";
+import Footer from "components/organisms/Footer";
+import Header from "components/organisms/Header";
 import Home from "pages/Home";
 import WorkGallery from "pages/Works";
 import WorkHistory from "pages/History";

@@ -2,9 +2,9 @@ import * as React from "react";
 import { makeStyles } from "@material-ui/core/styles";
 import Grid from "@material-ui/core/Grid";
 import Container from "@material-ui/core/Container";
-import Featured from "components/Featured";
-import Sidebar from "components/Sidebar";
-import Galery from 'components/Gallery';
+import Featured from "components/molecules/Featured";
+import Sidebar from "components/organisms/Sidebar";
+import Galery from 'components/organisms/Gallery';
 import about from "assets/md/about.md";
 import about_book from "assets/md/about_book.md";
 
