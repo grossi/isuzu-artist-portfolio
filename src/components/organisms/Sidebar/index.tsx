@@ -7,6 +7,7 @@ import Markdown from "components/molecules/Markdown";
 import Link from "@material-ui/core/Link";
 import CardMedia from "@material-ui/core/CardMedia";
 import Avatar from "@material-ui/core/Avatar";
+import SocialLinks from "components/molecules/SocialLinks";
 
 const useStyles = makeStyles((theme) => ({
   sidebarAboutBox: {
@@ -38,6 +39,11 @@ interface SidebarProps {
   secondaryTitle: string;
   secondaryDescription: string;
   bookLink: string;
+  socialLinks: {
+    twitter: string;
+    pixiv: string;
+    email: string;
+  }
 }
 
 export default function Sidebar(props: SidebarProps) {
@@ -86,6 +92,7 @@ export default function Sidebar(props: SidebarProps) {
           </Grid>
         </Grid>
         <Markdown>{loadedAbout}</Markdown>
+        <SocialLinks socialLinks={props.socialLinks} />
       </Paper>
       <Paper elevation={0} className={classes.sidebarAboutBox}>
         <Typography variant="h4" gutterBottom>
