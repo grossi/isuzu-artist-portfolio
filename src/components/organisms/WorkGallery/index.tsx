@@ -1,5 +1,5 @@
 import * as React from "react";
-import WorkCard from "components/WorkCard";
+import WorkCard from "components/molecules/WorkCard";
 import workGalleryData from "work-gallery.json";
 
 const works = workGalleryData.map((work, k) => {

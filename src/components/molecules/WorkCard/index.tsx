@@ -12,7 +12,7 @@ import Collapse from "@material-ui/core/Collapse";
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore";
 import CloseIcon from "@material-ui/icons/Close";
 
-import Markdown from "components/Markdown";
+import Markdown from "components/molecules/Markdown";
 import PhotoGallery from "react-photo-gallery";
 
 const useStyles = makeStyles((theme) => ({

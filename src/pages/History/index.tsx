@@ -4,7 +4,7 @@ import Grid from "@material-ui/core/Grid";
 import Container from "@material-ui/core/Container";
 import CardMedia from "@material-ui/core/CardMedia";
 import work_history from "assets/md/work_history.md";
-import Markdown from "components/Markdown";
+import Markdown from "components/molecules/Markdown";
 
 const useStyles = makeStyles((theme) => ({
   mainGrid: {
