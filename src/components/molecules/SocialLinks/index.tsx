@@ -12,9 +12,7 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'flex-start',
     color: theme.palette.text.primary,
     paddingLeft: theme.spacing(2),
-    borderBottom: 1,
-    borderBottomColor: theme.palette.grey[300],
-    borderBottomStyle: 'solid',
+    textTransform: 'none',
   },
   icon: {
     height: theme.spacing(2.5),
