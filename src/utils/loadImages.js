@@ -1,21 +1,49 @@
 const fs = require("fs");
 const sizeOf = require('image-size');
+const sharp = require('sharp');
+
+function rescale({ imagePath, width, destinationPath }) {
+  sharp(imagePath).resize({ width }).webp({reductionEffort: 6}).toFile(`${destinationPath}.webp`);
+}
+
+function scaledDimentions({ h, w }) {
+  if( h > w ) {
+    return w > 600 ? 600 : w;
+  }
+  return w > 1100 ? 1100 : w;
+}
 
 /** Generates Gallery json */
 
 const galleryNormalizedPath = require("path").join(__dirname, "../../public/gallery");
 
-const galleryPictures = fs.readdirSync(galleryNormalizedPath).map((file, k) => {
-  const extension = file.split('.')[1];
-  const name = file.split('.')[0];
-  const dimensions = sizeOf(`public/gallery/${file}`);
+if (!fs.existsSync('public/gallery/small')){
+  fs.mkdirSync('public/gallery/small');
+}
 
-  return {
-    name,
-    extension,
-    width: dimensions.width,
-    height: dimensions.height,
-    location: `gallery/${file}`
+const galleryPictures = fs.readdirSync(galleryNormalizedPath).map((file, k) => {
+  let fileStats = fs.statSync(`public/gallery/${file}`);
+  if(!fileStats.isDirectory()) {
+    const extension = file.split('.')[1];
+    const name = file.split('.')[0];
+    const dimensions = sizeOf(`public/gallery/${file}`);
+
+    rescale({
+      imagePath: `public/gallery/${file}`,
+      width: scaledDimentions({ h: dimensions.height, w: dimensions.width }),
+      destinationPath: `public/gallery/small/${name}`
+    });
+
+    return {
+      name,
+      extension,
+      width: dimensions.width,
+      height: dimensions.height,
+      location: `gallery/${file}`,
+      locationSmall: `gallery/small/${name}.webp`,
+    }
+  } else {
+    return {};
   }
 }).filter(picture => (picture.extension === 'jpg' || picture.extension === 'png'));
 
@@ -48,7 +76,7 @@ const workGalleryDirectories = fs.readdirSync(workGalleryNormalizedPath).map((wo
     let fileStats = fs.statSync(filePath);
     let about;
     let banner;
-    if(fileStats.isDirectory) {
+    if(fileStats.isDirectory()) {
       let workList = fs.readdirSync(filePath).map((file, k) => {
         const extension = file.split('.')[1];
         const name = file.split('.')[0];
