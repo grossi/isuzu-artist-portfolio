@@ -25,7 +25,8 @@ const useStyles = makeStyles((theme) => ({
 
 const paintings = galleryData.map((image, k) => {
   return {
-    src: `${process.env.PUBLIC_URL}/${image.location}`,
+    src: `${process.env.PUBLIC_URL}/${image.locationSmall}`,
+    srcBig: `${process.env.PUBLIC_URL}/${image.location}`,
     width: image.width,
     height: image.height,
     name: image.name,
@@ -46,7 +47,7 @@ export default function Gallery() {
   const [viewerIsOpen, setViewerIsOpen] = React.useState(false);
 
   const openDialog = React.useCallback((event, { photo, index }) => {
-    setCurrentImage(photo.src);
+    setCurrentImage(photo.srcBig);
     setViewerIsOpen(true);
   }, []);
 
