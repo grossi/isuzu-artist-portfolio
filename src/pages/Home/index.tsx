@@ -2,9 +2,9 @@ import * as React from "react";
 import { makeStyles } from "@material-ui/core/styles";
 import Grid from "@material-ui/core/Grid";
 import Container from "@material-ui/core/Container";
-import Featured from "components/Featured";
-import Sidebar from "components/Sidebar";
-import Galery from 'components/Gallery';
+import Featured from "components/molecules/Featured";
+import Sidebar from "components/organisms/Sidebar";
+import Galery from 'components/organisms/Gallery';
 import about from "assets/md/about.md";
 import about_book from "assets/md/about_book.md";
 
@@ -44,6 +44,11 @@ const sidebar = {
   secondaryTitle: "My BOOK",
   secondaryDescription: about_book,
   bookLink: "https://www.amazon.co.jp/o/ASIN/4774197793/gihyojp-22",
+  socialLinks: {
+    twitter: 'https://twitter.com/y_isuZu',
+    pixiv: 'http://www.pixiv.net/member.php?id=124098',
+    email: 'mailto:isuzu@bj8.so-net.ne.jp',
+  }
 };
 
 export default function Home() {
@@ -62,6 +67,7 @@ export default function Home() {
               secondaryTitle={sidebar.secondaryTitle}
               secondaryDescription={sidebar.secondaryDescription}
               bookLink={sidebar.bookLink}
+              socialLinks={sidebar.socialLinks}
             />
           </Grid>
         </main>

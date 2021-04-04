@@ -2,7 +2,7 @@ import * as React from "react";
 import { makeStyles } from "@material-ui/core/styles";
 import Grid from "@material-ui/core/Grid";
 import Container from "@material-ui/core/Container";
-import Galery from 'components/WorkGallery';
+import Galery from 'components/organisms/WorkGallery';
 
 const useStyles = makeStyles((theme) => ({
   mainGrid: {
