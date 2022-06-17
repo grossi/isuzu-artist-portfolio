@@ -1,6 +1,7 @@
 
 Check out my book on the basics of drawing characters!
-私が書いた「キャラの描き方」の本です。
+私が書いたキャラの描き方の本です。
+
 
   - [Amazon](https://www.amazon.co.jp/o/ASIN/4297128349/gihyojp-22)
 
