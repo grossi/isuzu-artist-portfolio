@@ -36,9 +36,12 @@ const useStyles = makeStyles((theme) => ({
 interface SidebarProps {
   title: string;
   description: string;
-  secondaryTitle: string;
-  secondaryDescription: string;
+  firstBookHeader: string;
+  firstBookDescription: string;
+  secondBookHeader: string;
+  secondBookDescription: string;
   bookLink: string;
+  book2Link: string;
   socialLinks: {
     twitter: string;
     pixiv: string;
@@ -51,9 +54,12 @@ export default function Sidebar(props: SidebarProps) {
   const {
     title,
     description,
-    secondaryTitle,
-    secondaryDescription,
+    firstBookHeader,
+    firstBookDescription,
+    secondBookHeader,
+    secondBookDescription,
     bookLink,
+    book2Link,
   } = props;
   const [loadedAbout, setLoadedAbout] = React.useState<string>("");
   React.useEffect(() => {
@@ -65,17 +71,29 @@ export default function Sidebar(props: SidebarProps) {
       });
   }, [description]);
   const [
-    loadedSecondaryAbout,
-    setLoadedSecondaryAbout,
+    loadedFirstBookDescription,
+    setLoadedFirstBookDescription,
   ] = React.useState<string>("");
   React.useEffect(() => {
-    setLoadedSecondaryAbout("");
-    fetch(secondaryDescription)
+    setLoadedFirstBookDescription("");
+    fetch(firstBookDescription)
       .then((data) => data.text())
       .then((text) => {
-        setLoadedSecondaryAbout(text);
+        setLoadedFirstBookDescription(text);
       });
-  }, [secondaryDescription]);
+  }, [firstBookDescription]);
+  const [
+    loadedSecondBookDescription,
+    setLoadedSecondBookDescription,
+  ] = React.useState<string>("");
+  React.useEffect(() => {
+    setLoadedSecondBookDescription("");
+    fetch(secondBookDescription)
+      .then((data) => data.text())
+      .then((text) => {
+        setLoadedSecondBookDescription(text);
+      });
+  }, [secondBookDescription]);
 
   return (
     <Grid item xs={12} md={4} className={classes.sidebarGrid}>
@@ -96,7 +114,19 @@ export default function Sidebar(props: SidebarProps) {
       </Paper>
       <Paper elevation={0} className={classes.sidebarAboutBox}>
         <Typography variant="h4" gutterBottom>
-          {secondaryTitle}
+          {secondBookHeader}
+        </Typography>
+        <Link href={book2Link}>
+          <CardMedia
+            component="img"
+            src={`${process.env.PUBLIC_URL}/isuzubook2.jpg`}
+          />
+        </Link>
+        <Markdown>{loadedSecondBookDescription}</Markdown>
+      </Paper>
+      <Paper elevation={0} className={classes.sidebarAboutBox}>
+        <Typography variant="h4" gutterBottom>
+          {firstBookHeader}
         </Typography>
         <Link href={bookLink}>
           <CardMedia
@@ -104,7 +134,7 @@ export default function Sidebar(props: SidebarProps) {
             src={`${process.env.PUBLIC_URL}/isuzubook.jpg`}
           />
         </Link>
-        <Markdown>{loadedSecondaryAbout}</Markdown>
+        <Markdown>{loadedFirstBookDescription}</Markdown>
       </Paper>
     </Grid>
   );

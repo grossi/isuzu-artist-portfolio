@@ -21,7 +21,7 @@ if (!fs.existsSync('public/gallery/small')){
   fs.mkdirSync('public/gallery/small');
 }
 
-const galleryPictures = fs.readdirSync(galleryNormalizedPath).map((file, k) => {
+const galleryPictures = fs.readdirSync(galleryNormalizedPath).sort((a, b) => ('' + a.attr).localeCompare(b.attr, undefined, {numeric: true})).map((file, k) => {
   let fileStats = fs.statSync(`public/gallery/${file}`);
   if(!fileStats.isDirectory()) {
     const extension = file.split('.')[1];
