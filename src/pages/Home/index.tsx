@@ -7,6 +7,7 @@ import Sidebar from "components/organisms/Sidebar";
 import Galery from 'components/organisms/Gallery';
 import about from "assets/md/about.md";
 import about_book from "assets/md/about_book.md";
+import about_book2 from "assets/md/about_book2.md";
 
 const useStyles = makeStyles((theme) => ({
   mainGrid: {
@@ -41,9 +42,12 @@ const useStyles = makeStyles((theme) => ({
 const sidebar = {
   title: "プロフィール",
   description: about,
-  secondaryTitle: "My BOOK",
-  secondaryDescription: about_book,
+  firstBookHeader: "My first book",
+  firstBookDescription: about_book,
+  secondBookHeader: "My new book",
+  secondBookDescription: about_book2,
   bookLink: "https://www.amazon.co.jp/o/ASIN/4774197793/gihyojp-22",
+  book2Link: "https://www.amazon.co.jp/o/ASIN/4297128349/gihyojp-22",
   socialLinks: {
     twitter: 'https://twitter.com/y_isuZu',
     pixiv: 'http://www.pixiv.net/member.php?id=124098',
@@ -64,9 +68,12 @@ export default function Home() {
             <Sidebar
               title={sidebar.title}
               description={sidebar.description}
-              secondaryTitle={sidebar.secondaryTitle}
-              secondaryDescription={sidebar.secondaryDescription}
+              firstBookHeader={sidebar.firstBookHeader}
+              firstBookDescription={sidebar.firstBookDescription}
+              secondBookHeader={sidebar.secondBookHeader}
+              secondBookDescription={sidebar.secondBookDescription}
               bookLink={sidebar.bookLink}
+              book2Link={sidebar.book2Link}
               socialLinks={sidebar.socialLinks}
             />
           </Grid>
