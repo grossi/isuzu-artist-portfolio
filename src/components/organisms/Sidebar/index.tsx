@@ -114,6 +114,16 @@ export default function Sidebar(props: SidebarProps) {
       </Paper>
       <Paper elevation={0} className={classes.sidebarAboutBox}>
         <Typography variant="h4" gutterBottom>
+          {firstBookHeader}
+        </Typography>
+        <Link href={bookLink}>
+          <CardMedia
+            component="img"
+            src={`${process.env.PUBLIC_URL}/isuzubook.webp`}
+          />
+        </Link>
+        <Markdown>{loadedFirstBookDescription}</Markdown>
+        <Typography variant="h4" gutterBottom>
           {secondBookHeader}
         </Typography>
         <Link href={book2Link}>
@@ -123,18 +133,6 @@ export default function Sidebar(props: SidebarProps) {
           />
         </Link>
         <Markdown>{loadedSecondBookDescription}</Markdown>
-      </Paper>
-      <Paper elevation={0} className={classes.sidebarAboutBox}>
-        <Typography variant="h4" gutterBottom>
-          {firstBookHeader}
-        </Typography>
-        <Link href={bookLink}>
-          <CardMedia
-            component="img"
-            src={`${process.env.PUBLIC_URL}/isuzubook.jpg`}
-          />
-        </Link>
-        <Markdown>{loadedFirstBookDescription}</Markdown>
       </Paper>
     </Grid>
   );

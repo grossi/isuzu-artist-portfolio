@@ -1,7 +1,8 @@
 
 Check out my how-to book on digital illustration!
-私が書いたCLIP STUDIO PAINTの解説書です。
 
-  - [Amazon](https://amazon.co.jp/o/ASIN/4774197793/gihyojp-22)
+**[**プロが教える！ CLIP STUDIO PAINT PROの教科書 -増補改訂版- **]**
 
-  - [その他の購入先](https://gihyo.jp/book/2018/978-4-7741-9779-1)
+  - [Amazon](https://www.amazon.co.jp/dp/429713134X)
+
+  - [その他の購入先](https://gihyo.jp/book/2022/978-4-297-13134-0)
