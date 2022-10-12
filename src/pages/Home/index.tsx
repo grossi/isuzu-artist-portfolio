@@ -42,11 +42,11 @@ const useStyles = makeStyles((theme) => ({
 const sidebar = {
   title: "プロフィール",
   description: about,
-  firstBookHeader: "My first book",
+  firstBookHeader: "My books",
   firstBookDescription: about_book,
-  secondBookHeader: "My new book",
+  secondBookHeader: "",
   secondBookDescription: about_book2,
-  bookLink: "https://www.amazon.co.jp/o/ASIN/4774197793/gihyojp-22",
+  bookLink: "https://www.amazon.co.jp/dp/429713134X",
   book2Link: "https://www.amazon.co.jp/o/ASIN/4297128349/gihyojp-22",
   socialLinks: {
     twitter: 'https://twitter.com/y_isuZu',

@@ -54,7 +54,7 @@ export default function Header(props: HeaderProps) {
       >
         {title}
       </Link>
-      {sections.map((section) => (
+      {/* {sections.map((section) => (
         <Link
           color="inherit"
           noWrap
@@ -65,7 +65,7 @@ export default function Header(props: HeaderProps) {
         >
           {section.title}
         </Link>
-      ))}
+      ))} */}
     </Toolbar>
   );
 }
