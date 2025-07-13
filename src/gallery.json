@@ -24,6 +24,14 @@
     "locationSmall": "gallery/small/10002.webp"
   },
   {
+    "name": "100021_2024",
+    "extension": "png",
+    "width": 1500,
+    "height": 1061,
+    "location": "gallery/100021_2024.png",
+    "locationSmall": "gallery/small/100021_2024.webp"
+  },
+  {
     "name": "10003",
     "extension": "jpg",
     "width": 724,
@@ -86,14 +94,6 @@
     "height": 1010,
     "location": "gallery/20053.png",
     "locationSmall": "gallery/small/20053.webp"
-  },
-  {
-    "name": "2024",
-    "extension": "png",
-    "width": 1500,
-    "height": 1061,
-    "location": "gallery/2024.png",
-    "locationSmall": "gallery/small/2024.webp"
   },
   {
     "name": "30004",
