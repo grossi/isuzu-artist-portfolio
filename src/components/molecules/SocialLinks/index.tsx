@@ -1,6 +1,6 @@
 import * as React from "react";
 import { makeStyles } from "@material-ui/core/styles";
-import Grid from "@material-ui/core/Grid";
+import Button from "@material-ui/core/Button";
 import Typography from "@material-ui/core/Typography";
 import Link from "@material-ui/core/Link";
 import { FaTwitter } from "react-icons/fa";
@@ -9,14 +9,19 @@ import { MdEmail } from "react-icons/md";
 
 const useStyles = makeStyles((theme) => ({
   linkGrid: {
-    marginBottom: theme.spacing(1),
+    justifyContent: 'flex-start',
     color: theme.palette.text.primary,
+    paddingLeft: theme.spacing(2),
+    textTransform: 'none',
   },
   icon: {
     height: theme.spacing(2.5),
     width: theme.spacing(2.5),
-    verticalAlign: "middle",
   },
+  linksContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+  }
 }));
 
 interface SocialLinksProps {
@@ -30,61 +35,37 @@ interface SocialLinksProps {
 export default function SocialLinks(props: SocialLinksProps) {
   const classes = useStyles();
   return (
-    <>
-      <Grid
-        container
-        direction="row"
-        alignItems="center"
-        spacing={2}
+    <div className={classes.linksContainer}>
+      <Button
         className={classes.linkGrid}
         component={Link}
         href={props.socialLinks.twitter}
         target="_blank"
         rel="noopener"
+        startIcon={<FaTwitter className={classes.icon} />}
       >
-        <Grid item>
-          <FaTwitter className={classes.icon} />
-        </Grid>
-        <Grid item>
-          <Typography variant="body1">twitter</Typography>
-        </Grid>
-      </Grid>
-      <Grid
-        container
-        direction="row"
-        alignItems="center"
-        spacing={2}
+        <Typography variant="body1">twitter</Typography>
+      </Button>
+      <Button
         className={classes.linkGrid}
         component={Link}
         href={props.socialLinks.pixiv}
         target="_blank"
         rel="noopener"
+        startIcon={<SiPixiv className={classes.icon} />}
       >
-        <Grid item>
-          <SiPixiv className={classes.icon} />
-        </Grid>
-        <Grid item>
-          <Typography variant="body1">pixiv</Typography>
-        </Grid>
-      </Grid>
-      <Grid
-        container
-        direction="row"
-        alignItems="center"
-        spacing={2}
+        <Typography variant="body1">pixiv</Typography>
+      </Button>
+      <Button
         className={classes.linkGrid}
         component={Link}
         href={props.socialLinks.email}
         target="_blank"
         rel="noopener"
+        startIcon={<MdEmail className={classes.icon} />}
       >
-        <Grid item>
-          <MdEmail className={classes.icon} />
-        </Grid>
-        <Grid item>
-          <Typography variant="body1">email</Typography>
-        </Grid>
-      </Grid>
-    </>
+        <Typography variant="body1">email</Typography>
+      </Button>
+    </div>
   );
 }

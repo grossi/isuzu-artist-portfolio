@@ -25,12 +25,12 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "yarn build-images && react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "push-s3": "aws s3 sync build/ s3://isuzu.work --acl public-read",
     "build-images": "node ./src/utils/loadImages.js",
-    "deploy": "yarn build-images && yarn build && yarn push-s3"
+    "deploy": "yarn build && yarn push-s3"
   },
   "eslintConfig": {
     "extends": [
