@@ -40,8 +40,11 @@ interface SidebarProps {
   firstBookDescription: string;
   secondBookHeader: string;
   secondBookDescription: string;
+  thirdBookHeader: string;
+  thirdBookDescription: string;
   bookLink: string;
   book2Link: string;
+  book3Link: string;
   socialLinks: {
     twitter: string;
     pixiv: string;
@@ -58,8 +61,11 @@ export default function Sidebar(props: SidebarProps) {
     firstBookDescription,
     secondBookHeader,
     secondBookDescription,
+    thirdBookHeader,
+    thirdBookDescription,
     bookLink,
     book2Link,
+    book3Link,
   } = props;
   const [loadedAbout, setLoadedAbout] = React.useState<string>("");
   React.useEffect(() => {
@@ -94,6 +100,18 @@ export default function Sidebar(props: SidebarProps) {
         setLoadedSecondBookDescription(text);
       });
   }, [secondBookDescription]);
+  const [
+    loadedThirdBookDescription,
+    setLoadedThirdBookDescription,
+  ] = React.useState<string>("");
+  React.useEffect(() => {
+    setLoadedThirdBookDescription("");
+    fetch(thirdBookDescription)
+      .then((data) => data.text())
+      .then((text) => {
+        setLoadedThirdBookDescription(text);
+      });
+  }, [thirdBookDescription]);
 
   return (
     <Grid item xs={12} md={4} className={classes.sidebarGrid}>
@@ -129,10 +147,20 @@ export default function Sidebar(props: SidebarProps) {
         <Link href={book2Link}>
           <CardMedia
             component="img"
-            src={`${process.env.PUBLIC_URL}/isuzubook2.jpg`}
+            src={`${process.env.PUBLIC_URL}/isuzubook2.webp`}
           />
         </Link>
         <Markdown>{loadedSecondBookDescription}</Markdown>
+        <Typography variant="h4" gutterBottom>
+          {thirdBookHeader}
+        </Typography>
+        <Link href={book3Link}>
+          <CardMedia
+            component="img"
+            src={`${process.env.PUBLIC_URL}/isuzubook3.webp`}
+          />
+        </Link>
+        <Markdown>{loadedThirdBookDescription}</Markdown>
       </Paper>
     </Grid>
   );
