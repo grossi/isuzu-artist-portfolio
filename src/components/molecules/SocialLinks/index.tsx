@@ -1,5 +1,5 @@
 import * as React from "react";
-import { makeStyles } from "@material-ui/core/styles";
+import { makeStyles, darken } from "@material-ui/core/styles";
 import Button from "@material-ui/core/Button";
 import Typography from "@material-ui/core/Typography";
 import Link from "@material-ui/core/Link";
@@ -13,6 +13,10 @@ const useStyles = makeStyles((theme) => ({
     color: theme.palette.text.primary,
     paddingLeft: theme.spacing(2),
     textTransform: 'none',
+    transition: 'background-color 0.3s ease',
+    '&:hover': {
+      backgroundColor: darken(theme.palette.grey[200], 0.2),
+    },
   },
   icon: {
     height: theme.spacing(2.5),
