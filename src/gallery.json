@@ -80,6 +80,22 @@
     "locationSmall": "gallery/small/20053.webp"
   },
   {
+    "name": "2023",
+    "extension": "png",
+    "width": 848,
+    "height": 1200,
+    "location": "gallery/2023.png",
+    "locationSmall": "gallery/small/2023.webp"
+  },
+  {
+    "name": "2024",
+    "extension": "png",
+    "width": 1500,
+    "height": 1061,
+    "location": "gallery/2024.png",
+    "locationSmall": "gallery/small/2024.webp"
+  },
+  {
     "name": "30004",
     "extension": "jpg",
     "width": 1000,

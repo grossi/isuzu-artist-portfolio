@@ -8,6 +8,7 @@ import Galery from 'components/organisms/Gallery';
 import about from "assets/md/about.md";
 import about_book from "assets/md/about_book.md";
 import about_book2 from "assets/md/about_book2.md";
+import about_book3 from "assets/md/about_book3.md";
 
 const useStyles = makeStyles((theme) => ({
   mainGrid: {
@@ -46,11 +47,14 @@ const sidebar = {
   firstBookDescription: about_book,
   secondBookHeader: "",
   secondBookDescription: about_book2,
+  thirdBookHeader: "",
+  thirdBookDescription: about_book3,
   bookLink: "https://www.amazon.co.jp/dp/429713134X",
   book2Link: "https://www.amazon.co.jp/o/ASIN/4297128349/gihyojp-22",
+  book3Link: "https://amazon.co.jp/dp/4297149761",
   socialLinks: {
     twitter: 'https://twitter.com/y_isuZu',
-    pixiv: 'http://www.pixiv.net/member.php?id=124098',
+    pixiv: 'https://www.pixiv.net/member.php?id=124098',
     email: 'mailto:isuzu@bj8.so-net.ne.jp',
   }
 };
@@ -72,8 +76,11 @@ export default function Home() {
               firstBookDescription={sidebar.firstBookDescription}
               secondBookHeader={sidebar.secondBookHeader}
               secondBookDescription={sidebar.secondBookDescription}
+              thirdBookHeader={sidebar.thirdBookHeader}
+              thirdBookDescription={sidebar.thirdBookDescription}
               bookLink={sidebar.bookLink}
               book2Link={sidebar.book2Link}
+              book3Link={sidebar.book3Link}
               socialLinks={sidebar.socialLinks}
             />
           </Grid>
