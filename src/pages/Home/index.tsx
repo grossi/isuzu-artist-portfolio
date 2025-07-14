@@ -64,7 +64,7 @@ export default function Home() {
 
   return (
     <React.Fragment>
-      <Featured />
+      <Featured backgroundSize="contain"/>
       <Container maxWidth="xl" className={classes.mainContainer}>
         <main>
           <Grid container spacing={2} className={classes.mainGrid}>

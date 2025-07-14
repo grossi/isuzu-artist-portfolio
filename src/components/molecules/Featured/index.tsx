@@ -16,13 +16,16 @@ const useStyles = makeStyles((theme) => ({
     position: "relative",
     backgroundColor: theme.palette.grey[800],
     color: theme.palette.common.white,
-    backgroundSize: "cover",
     backgroundRepeat: "no-repeat",
     backgroundPosition: "center",
   },
 }));
 
-export default function Featured() {
+interface FeaturedProps {
+  backgroundSize?: "cover" | "contain" | "auto" | string;
+}
+
+export default function Featured({ backgroundSize = "cover" }: FeaturedProps) {
   const classes = useStyles();
   const settings = {
     dots: true,
@@ -38,7 +41,7 @@ export default function Featured() {
     <Slider {...settings}>
       {paintings.map((painting, index) => (
         <div key={index}>
-          <div className={classes.mainFeaturedPost} style={{ backgroundImage: `url(${painting.src})`}} />
+          <div className={classes.mainFeaturedPost} style={{ backgroundImage: `url(${painting.src})`, backgroundSize }} />
           {/* Increase the priority of the hero background image */}
           {
             <img
