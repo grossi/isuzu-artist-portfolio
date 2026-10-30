@@ -29,9 +29,9 @@ export default function Featured() {
   // Slides whose image may be fetched. Only the first slide loads up front; the
   // next one is fetched once it has loaded, and from then on each slide change
   // fetches the slide after the one coming into view. Once the visitor reaches
-  // for the controls (hovering the arrows or dots, touching, focusing) the rest
-  // are fetched too, so navigating doesn't land on a slide that hasn't started
-  // loading.
+  // for the controls (hovering the arrows or dots, dragging, touching, focusing)
+  // the rest are fetched too, so navigating doesn't land on a slide that hasn't
+  // started loading.
   const [loadedSlides, setLoadedSlides] = React.useState(() => new Set([0]));
   const loadSlides = React.useCallback((...indexes: number[]) => {
     setLoadedSlides((slides) =>
@@ -62,6 +62,7 @@ export default function Featured() {
           loadAllSlides();
         }
       }}
+      onMouseDown={loadAllSlides}
       onTouchStart={loadAllSlides}
       onFocus={loadAllSlides}
     >
