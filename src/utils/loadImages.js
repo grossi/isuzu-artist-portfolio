@@ -3,7 +3,7 @@ const sizeOf = require('image-size');
 const sharp = require('sharp');
 
 function rescale({ imagePath, width, destinationPath }) {
-  sharp(imagePath).resize({ width }).webp({reductionEffort: 6}).toFile(`${destinationPath}.webp`);
+  return sharp(imagePath).resize({ width }).webp({effort: 6}).toFile(`${destinationPath}.webp`);
 }
 
 function scaledDimentions({ h, w }) {
@@ -21,18 +21,21 @@ if (!fs.existsSync('public/gallery/small')){
   fs.mkdirSync('public/gallery/small');
 }
 
-const galleryPictures = fs.readdirSync(galleryNormalizedPath).sort((a, b) => ('' + a.attr).localeCompare(b.attr, undefined, {numeric: true})).map((file, k) => {
+const rescaleJobs = [];
+
+// Plain code-unit (byte) order, e.g. "zzzzz (10)" before "zzzzz (2)": the gallery order is curated against it.
+const galleryPictures = fs.readdirSync(galleryNormalizedPath).sort().map((file, k) => {
   let fileStats = fs.statSync(`public/gallery/${file}`);
   if(!fileStats.isDirectory()) {
     const extension = file.split('.')[1];
     const name = file.split('.')[0];
     const dimensions = sizeOf(`public/gallery/${file}`);
 
-    rescale({
+    rescaleJobs.push(rescale({
       imagePath: `public/gallery/${file}`,
       width: scaledDimentions({ h: dimensions.height, w: dimensions.width }),
       destinationPath: `public/gallery/small/${name}`
-    });
+    }));
 
     return {
       name,
@@ -129,3 +132,8 @@ const workGalleryDirectories = fs.readdirSync(workGalleryNormalizedPath).map((wo
 }).filter(work => (work.name !== undefined));
 
 fs.writeFileSync('./src/work-gallery.json', JSON.stringify(workGalleryDirectories, null, 2), 'utf-8'); 
+
+Promise.all(rescaleJobs).catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
