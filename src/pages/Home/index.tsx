@@ -5,12 +5,17 @@ import Container from "@material-ui/core/Container";
 import Featured from "components/molecules/Featured";
 import Sidebar from "components/organisms/Sidebar";
 import Galery from 'components/organisms/Gallery';
-import about from "assets/md/about.md";
-import about_book from "assets/md/about_book.md";
-import about_book2 from "assets/md/about_book2.md";
-import about_book3 from "assets/md/about_book3.md";
+import aboutJa from "assets/md/about.ja.md";
+import aboutEn from "assets/md/about.en.md";
+import aboutBookJa from "assets/md/about_book.ja.md";
+import aboutBookEn from "assets/md/about_book.en.md";
+import aboutBook2Ja from "assets/md/about_book2.ja.md";
+import aboutBook2En from "assets/md/about_book2.en.md";
+import aboutBook3Ja from "assets/md/about_book3.ja.md";
+import aboutBook3En from "assets/md/about_book3.en.md";
 import { SiX, SiPixiv, SiFiverr } from "react-icons/si";
 import { MdEmail } from "react-icons/md";
+import { Localized, useLanguage } from "i18n/LanguageContext";
 
 const useStyles = makeStyles((theme) => ({
   mainGrid: {
@@ -42,28 +47,36 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-const sidebar = {
-  title: "プロフィール",
-  description: about,
-  firstBookHeader: "My books",
-  firstBookDescription: about_book,
-  secondBookHeader: "",
-  secondBookDescription: about_book2,
-  thirdBookHeader: "",
-  thirdBookDescription: about_book3,
-  bookLink: "https://www.amazon.co.jp/dp/429713134X",
-  book2Link: "https://www.amazon.co.jp/o/ASIN/4297128349/gihyojp-22",
-  book3Link: "https://amazon.co.jp/dp/4297149761",
-  socialLinks: [
-    { label: "X", href: "https://x.com/y_isuZu", Icon: SiX },
-    { label: "pixiv", href: "https://www.pixiv.net/member.php?id=124098", Icon: SiPixiv },
-    { label: "Fiverr", href: "https://www.fiverr.com/y_isuzu", Icon: SiFiverr },
-    { label: "email", href: "mailto:isuzu@bj8.so-net.ne.jp", Icon: MdEmail },
-  ],
-};
+const about: Localized<string> = { ja: aboutJa, en: aboutEn };
+
+const books: Array<{ link: string; image: string; description: Localized<string> }> = [
+  {
+    link: "https://www.amazon.co.jp/dp/429713134X",
+    image: `${process.env.PUBLIC_URL}/isuzubook.webp`,
+    description: { ja: aboutBookJa, en: aboutBookEn },
+  },
+  {
+    link: "https://www.amazon.co.jp/o/ASIN/4297128349/gihyojp-22",
+    image: `${process.env.PUBLIC_URL}/isuzubook2.webp`,
+    description: { ja: aboutBook2Ja, en: aboutBook2En },
+  },
+  {
+    link: "https://amazon.co.jp/dp/4297149761",
+    image: `${process.env.PUBLIC_URL}/isuzubook3.webp`,
+    description: { ja: aboutBook3Ja, en: aboutBook3En },
+  },
+];
 
 export default function Home() {
   const classes = useStyles();
+  const { lang, t } = useLanguage();
+
+  const socialLinks = [
+    { label: "X", href: "https://x.com/y_isuZu", Icon: SiX },
+    { label: "pixiv", href: "https://www.pixiv.net/member.php?id=124098", Icon: SiPixiv },
+    { label: "Fiverr", href: "https://www.fiverr.com/y_isuzu", Icon: SiFiverr },
+    { label: t("social.email"), href: "mailto:isuzu@bj8.so-net.ne.jp", Icon: MdEmail },
+  ];
 
   return (
     <React.Fragment>
@@ -73,18 +86,14 @@ export default function Home() {
           <Grid container spacing={2} className={classes.mainGrid}>
             <Galery />
             <Sidebar
-              title={sidebar.title}
-              description={sidebar.description}
-              firstBookHeader={sidebar.firstBookHeader}
-              firstBookDescription={sidebar.firstBookDescription}
-              secondBookHeader={sidebar.secondBookHeader}
-              secondBookDescription={sidebar.secondBookDescription}
-              thirdBookHeader={sidebar.thirdBookHeader}
-              thirdBookDescription={sidebar.thirdBookDescription}
-              bookLink={sidebar.bookLink}
-              book2Link={sidebar.book2Link}
-              book3Link={sidebar.book3Link}
-              socialLinks={sidebar.socialLinks}
+              title={t("home.profile")}
+              description={about[lang]}
+              booksHeader={t("home.books")}
+              books={books.map((book) => ({
+                ...book,
+                description: book.description[lang],
+              }))}
+              socialLinks={socialLinks}
             />
           </Grid>
         </main>
