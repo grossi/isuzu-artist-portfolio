@@ -1,5 +1,5 @@
 
-Check out my how-to book on digital illustration!
+私が書いたデジタルイラストのハウツー本です。
 
 **[**プロが教える！ CLIP STUDIO PAINT PROの教科書 -増補改訂版- **]**
 

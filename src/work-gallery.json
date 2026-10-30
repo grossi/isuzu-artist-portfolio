@@ -2,9 +2,8 @@
   {
     "name": "work-1",
     "about": {
-      "name": "about",
-      "extension": "md",
-      "location": "work-gallery/work-1/about.md"
+      "en": "work-gallery/work-1/about.en.md",
+      "ja": "work-gallery/work-1/about.ja.md"
     },
     "banner": {
       "name": "banner",
@@ -61,9 +60,8 @@
   {
     "name": "work-2",
     "about": {
-      "name": "about",
-      "extension": "md",
-      "location": "work-gallery/work-2/about.md"
+      "en": "work-gallery/work-2/about.en.md",
+      "ja": "work-gallery/work-2/about.ja.md"
     },
     "banner": {
       "name": "banner",
@@ -148,9 +146,8 @@
   {
     "name": "work-3",
     "about": {
-      "name": "about",
-      "extension": "md",
-      "location": "work-gallery/work-3/about.md"
+      "en": "work-gallery/work-3/about.en.md",
+      "ja": "work-gallery/work-3/about.ja.md"
     },
     "banner": {
       "name": "banner",

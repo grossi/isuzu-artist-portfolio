@@ -8,6 +8,8 @@ import Link from "@material-ui/core/Link";
 import CardMedia from "@material-ui/core/CardMedia";
 import Avatar from "@material-ui/core/Avatar";
 import SocialLinks, { SocialLink } from "components/molecules/SocialLinks";
+import useMarkdown from "hooks/useMarkdown";
+import { useLanguage } from "i18n/LanguageContext";
 
 const useStyles = makeStyles((theme) => ({
   sidebarAboutBox: {
@@ -33,81 +35,37 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
+interface Book {
+  link: string;
+  image: string;
+  description: string;
+}
+
 interface SidebarProps {
   title: string;
   description: string;
-  firstBookHeader: string;
-  firstBookDescription: string;
-  secondBookHeader: string;
-  secondBookDescription: string;
-  thirdBookHeader: string;
-  thirdBookDescription: string;
-  bookLink: string;
-  book2Link: string;
-  book3Link: string;
+  booksHeader: string;
+  books: Book[];
   socialLinks: SocialLink[];
+}
+
+function BookEntry(props: Book) {
+  const description = useMarkdown(props.description);
+  return (
+    <React.Fragment>
+      <Link href={props.link}>
+        <CardMedia component="img" src={props.image} />
+      </Link>
+      <Markdown>{description}</Markdown>
+    </React.Fragment>
+  );
 }
 
 export default function Sidebar(props: SidebarProps) {
   const classes = useStyles();
-  const {
-    title,
-    description,
-    firstBookHeader,
-    firstBookDescription,
-    secondBookHeader,
-    secondBookDescription,
-    thirdBookHeader,
-    thirdBookDescription,
-    bookLink,
-    book2Link,
-    book3Link,
-  } = props;
-  const [loadedAbout, setLoadedAbout] = React.useState<string>("");
-  React.useEffect(() => {
-    setLoadedAbout("");
-    fetch(description)
-      .then((data) => data.text())
-      .then((text) => {
-        setLoadedAbout(text);
-      });
-  }, [description]);
-  const [
-    loadedFirstBookDescription,
-    setLoadedFirstBookDescription,
-  ] = React.useState<string>("");
-  React.useEffect(() => {
-    setLoadedFirstBookDescription("");
-    fetch(firstBookDescription)
-      .then((data) => data.text())
-      .then((text) => {
-        setLoadedFirstBookDescription(text);
-      });
-  }, [firstBookDescription]);
-  const [
-    loadedSecondBookDescription,
-    setLoadedSecondBookDescription,
-  ] = React.useState<string>("");
-  React.useEffect(() => {
-    setLoadedSecondBookDescription("");
-    fetch(secondBookDescription)
-      .then((data) => data.text())
-      .then((text) => {
-        setLoadedSecondBookDescription(text);
-      });
-  }, [secondBookDescription]);
-  const [
-    loadedThirdBookDescription,
-    setLoadedThirdBookDescription,
-  ] = React.useState<string>("");
-  React.useEffect(() => {
-    setLoadedThirdBookDescription("");
-    fetch(thirdBookDescription)
-      .then((data) => data.text())
-      .then((text) => {
-        setLoadedThirdBookDescription(text);
-      });
-  }, [thirdBookDescription]);
+  const { title, description, booksHeader, books, socialLinks } = props;
+  const { t } = useLanguage();
+  const loadedAbout = useMarkdown(description);
 
   return (
     <Grid item xs={12} md={4} className={classes.sidebarGrid}>
@@ -117,46 +75,22 @@ export default function Sidebar(props: SidebarProps) {
         </Typography>
         <Grid container direction="row" alignItems="center" spacing={2} className={classes.avatarGrid}>
           <Grid item>
-            <Avatar className={classes.avatar} alt="isuZu" src={`${process.env.PUBLIC_URL}/isuzu.jpg`} />
+            <Avatar className={classes.avatar} alt={t("sidebar.avatarAlt")} src={`${process.env.PUBLIC_URL}/isuzu.jpg`} />
           </Grid>
           <Grid item>
             <Typography variant="h4">isuZu</Typography>
           </Grid>
         </Grid>
         <Markdown>{loadedAbout}</Markdown>
-        <SocialLinks socialLinks={props.socialLinks} />
+        <SocialLinks socialLinks={socialLinks} />
       </Paper>
       <Paper elevation={0} className={classes.sidebarAboutBox}>
         <Typography variant="h4" gutterBottom>
-          {firstBookHeader}
+          {booksHeader}
         </Typography>
-        <Link href={bookLink}>
-          <CardMedia
-            component="img"
-            src={`${process.env.PUBLIC_URL}/isuzubook.webp`}
-          />
-        </Link>
-        <Markdown>{loadedFirstBookDescription}</Markdown>
-        <Typography variant="h4" gutterBottom>
-          {secondBookHeader}
-        </Typography>
-        <Link href={book2Link}>
-          <CardMedia
-            component="img"
-            src={`${process.env.PUBLIC_URL}/isuzubook2.webp`}
-          />
-        </Link>
-        <Markdown>{loadedSecondBookDescription}</Markdown>
-        <Typography variant="h4" gutterBottom>
-          {thirdBookHeader}
-        </Typography>
-        <Link href={book3Link}>
-          <CardMedia
-            component="img"
-            src={`${process.env.PUBLIC_URL}/isuzubook3.webp`}
-          />
-        </Link>
-        <Markdown>{loadedThirdBookDescription}</Markdown>
+        {books.map((book) => (
+          <BookEntry key={book.link} {...book} />
+        ))}
       </Paper>
     </Grid>
   );

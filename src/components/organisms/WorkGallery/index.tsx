@@ -17,7 +17,10 @@ const works = workGalleryData.map((work, k) => {
       name: work.banner.name,
       src: `${process.env.PUBLIC_URL}/${work.banner.location}`,
     },
-    about: `${process.env.PUBLIC_URL}/${work.about.location}`,
+    about: {
+      ja: `${process.env.PUBLIC_URL}/${work.about.ja}`,
+      en: `${process.env.PUBLIC_URL}/${work.about.en}`,
+    },
     imageList
   };
 });

@@ -87,12 +87,10 @@ const workGalleryDirectories = fs.readdirSync(workGalleryNormalizedPath).map((wo
         if( extension === 'jpg' || extension === 'png') {
           dimensions = sizeOf(`public/work-gallery/${workDirectory}/${file}`);
         } else {
-          if( extension === "md" ) {
-            about = {
-              name,
-              extension,
-              location: `work-gallery/${workDirectory}/${file}`,
-            };
+          // about.<lang>.md, e.g. about.ja.md -> about.ja
+          const aboutLang = (file.match(/^about\.(\w+)\.md$/) || [])[1];
+          if( aboutLang ) {
+            about = { ...about, [aboutLang]: `work-gallery/${workDirectory}/${file}` };
           }
           return {
             name,

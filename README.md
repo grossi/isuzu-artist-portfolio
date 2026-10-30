@@ -14,7 +14,7 @@ This reads the images inside the `/public` folder to create the json who are use
 
 `public/carousel` -> Main page hero carousel images
 
-`public/work-gallery` -> Work page, each folder representing a work card with `about.md` as the description, `banner.png` as the card banner and the rest as the work card gallery.
+`public/work-gallery` -> Work page, each folder representing a work card with `about.ja.md` / `about.en.md` as the Japanese / English description, `banner.png` as the card banner and the rest as the work card gallery.
 
 
 ### `yarn start`

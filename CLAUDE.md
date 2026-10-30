@@ -23,7 +23,7 @@ The `yarn build-images` command processes images from:
 - `/public/carousel/` → Hero carousel images  
 - `/public/work-gallery/` → Work portfolios (each folder = one work card)
   - `banner.png` → Card banner image
-  - `about.md` → Work description
+  - `about.ja.md` / `about.en.md` → Work description per language
   - Other images → Gallery images for that work
 
 ## Architecture
@@ -52,11 +52,12 @@ components/
 - `src/App.tsx` - Main routing setup
 - `src/utils/loadImages.js` - Image processing script that generates JSON and WebP versions
 - `src/pages/` - Page components for each route
-- `src/assets/md/` - Markdown content files
+- `src/assets/md/` - Markdown content files, one per language (`name.ja.md`, `name.en.md`)
+- `src/i18n/` - `LanguageContext` plus the UI string tables (`ja.ts`, `en.ts`)
 
 ### Routing
 - `/` - Home page with carousel and gallery
-- `/works` - Work portfolio listing
+- `/work` - Work portfolio listing
 - `/history` - Professional history/resume
 
 ## Development Notes
@@ -77,13 +78,21 @@ yarn push-s3 --dryrun  # Preview the uploads; no invalidation
 ```
 See `scripts/push-s3.sh`. Never delete remote objects (no `sync --delete`): `isuzubook.jpg` exists only in S3.
 
-### Japanese UI
-The interface uses Japanese text:
-- 仕事 (shigoto) = Work
-- 職務経歴書 (shokumu keirekisho) = Resume/CV
+### Languages (Japanese / English)
+The site is bilingual; Japanese is the default and the header has a "日本語 / EN" toggle.
+- UI strings live in `src/i18n/ja.ts` and `src/i18n/en.ts`. `en.ts` is typed against
+  `ja.ts`, so a key missing from either table is a compile error. Read them with
+  `const { t } = useLanguage()`; `t("key", { name })` fills `{name}` placeholders.
+- Long-form text is markdown, split into `.ja.md` / `.en.md` files. Import both and pick
+  `content[lang]`, then load it with the `useMarkdown(url)` hook.
+- The choice is saved in `localStorage` (`lang`). First visits follow `navigator.languages`,
+  falling back to Japanese. `LanguageProvider` keeps `<html lang>`, the title and the meta
+  description in sync.
+- Japanese CV/profile text is the source; keep names, titles and dates identical in English.
 
 ### Material-UI Theme
 Uses default MUI theme with responsive breakpoints. Components use `useMediaQuery` for responsive behavior.
 
 ### State Management
-Simple prop drilling - no Redux or Context API. Gallery modal state managed locally in Gallery component.
+Mostly prop drilling, no Redux. The one Context is `LanguageContext` (`src/i18n/`) for the
+current language. Gallery modal state managed locally in Gallery component.
