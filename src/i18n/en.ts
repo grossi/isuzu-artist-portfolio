@@ -10,7 +10,6 @@ const en: Translations = {
   "home.books": "My Books",
   "sidebar.avatarAlt": "isuZu's avatar",
   "social.email": "Email",
-  "workCard.showMore": "Show more",
   "workCard.bannerAlt": "{name} banner",
   "gallery.photoAlt": "isuZu illustration {n}",
   "common.close": "Close",

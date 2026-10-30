@@ -12,16 +12,18 @@
     "deploy": "yarn build && yarn push-s3"
   },
   "dependencies": {
-    "@material-ui/core": "^4.11.3",
-    "@material-ui/icons": "^4.11.2",
-    "clsx": "^1.1.1",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.11",
+    "@mui/material": "^7.3.11",
     "markdown-to-jsx": "^7.1.2",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
     "react-icons": "^4.2.0",
     "react-photo-gallery": "^8.0.0",
     "react-router-dom": "^5.2.0",
-    "react-slick": "^0.28.1"
+    "react-slick": "^0.28.1",
+    "tss-react": "^4.9.21"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

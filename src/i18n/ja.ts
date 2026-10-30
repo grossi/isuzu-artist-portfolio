@@ -8,7 +8,6 @@ const ja = {
   "home.books": "著書",
   "sidebar.avatarAlt": "isuZuのアイコン",
   "social.email": "メール",
-  "workCard.showMore": "もっと見る",
   "workCard.bannerAlt": "{name}のバナー",
   "gallery.photoAlt": "isuZuのイラスト{n}",
   "common.close": "閉じる",
