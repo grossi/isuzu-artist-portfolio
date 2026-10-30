@@ -75,7 +75,7 @@ export default function Featured() {
                   className={classes.image}
                   src={painting.src}
                   alt=""
-                  fetchpriority={index === 0 ? "high" : undefined}
+                  fetchPriority={index === 0 ? "high" : undefined}
                   onLoad={index === 0 ? () => loadSlides(nextIndex(0)) : undefined}
                 />
               )}
