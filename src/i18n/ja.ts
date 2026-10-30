@@ -9,6 +9,7 @@ const ja = {
   "sidebar.avatarAlt": "isuZuのアイコン",
   "social.email": "メール",
   "workCard.bannerAlt": "{name}のバナー",
+  "gallery.label": "イラスト一覧",
   "gallery.photoAlt": "isuZuのイラスト{n}",
   "common.close": "閉じる",
   "footer.copyright": "Copyright © {year} isuZu 無断転載を禁じます。",

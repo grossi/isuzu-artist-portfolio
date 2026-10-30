@@ -12,10 +12,9 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
 
 import Markdown from "components/molecules/Markdown";
-import PhotoGallery, { RenderImageProps } from "react-photo-gallery";
 import useMarkdown from "hooks/useMarkdown";
 import { Localized, useLanguage } from "i18n/LanguageContext";
-import GalleryPhoto, { GalleryPhotoData, GalleryPhotoSource, usePhotoAlts } from "components/atoms/GalleryPhoto";
+import PhotoRows, { GalleryPhotoData, GalleryPhotoSource, usePhotoAlts } from "components/molecules/PhotoRows";
 
 const useStyles = makeStyles()((theme) => ({
   root: {
@@ -64,7 +63,7 @@ const calculateTargetRowHeight = (containerWidth: number) => {
   }
 };
 
-const calculateLimitNodeSearch = (containerWidth: number) => {
+const calculateMaxPhotosPerRow = (containerWidth: number) => {
   if (containerWidth > 800) {
     return 10;
   } else {
@@ -80,11 +79,6 @@ export default function WorkCard(props: WorkCardProps) {
   // The gallery stays mounted so Collapse can measure it, but its images are only
   // downloaded once the card has been opened.
   const [galleryWasOpened, setGalleryWasOpened] = React.useState(false);
-  const renderPhoto = React.useCallback(
-    (photoProps: RenderImageProps) =>
-      GalleryPhoto({ ...photoProps, deferred: !galleryWasOpened }),
-    [galleryWasOpened]
-  );
   const { work } = props;
   const { lang, t } = useLanguage();
   const loadedAbout = useMarkdown(work.about[lang]);
@@ -92,7 +86,7 @@ export default function WorkCard(props: WorkCardProps) {
   const photos = usePhotoAlts(work.imageList);
   const currentImage: GalleryPhotoData | undefined = photos[currentIndex];
 
-  const openDialog = React.useCallback((event, { photo, index }) => {
+  const openDialog = React.useCallback((index: number) => {
     setCurrentIndex(index);
     setViewerIsOpen(true);
   }, []);
@@ -131,12 +125,12 @@ export default function WorkCard(props: WorkCardProps) {
           </CardContent>
         </CardActionArea>
         <Collapse in={galleryIsOpen}>
-          <PhotoGallery
-            onClick={openDialog}
-            targetRowHeight={calculateTargetRowHeight}
+          <PhotoRows
             photos={photos}
-            limitNodeSearch={calculateLimitNodeSearch}
-            renderImage={renderPhoto}
+            targetRowHeight={calculateTargetRowHeight}
+            maxPhotosPerRow={calculateMaxPhotosPerRow}
+            onClick={openDialog}
+            deferred={!galleryWasOpened}
           />
         </Collapse>
       </Card>

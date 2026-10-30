@@ -5,8 +5,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import CardMedia from "@mui/material/CardMedia";
 import Dialog from "@mui/material/Dialog";
 import Grid from "@mui/material/Grid";
-import PhotoGallery from "react-photo-gallery";
-import GalleryPhoto, { GalleryPhotoData, GalleryPhotoSource, usePhotoAlts } from "components/atoms/GalleryPhoto";
+import PhotoRows, { GalleryPhotoData, GalleryPhotoSource, usePhotoAlts } from "components/molecules/PhotoRows";
 import galleryData from "gallery.json";
 import { useLanguage } from "i18n/LanguageContext";
 
@@ -42,6 +41,8 @@ const calculateTargetRowHeight = (containerWidth: number) => {
   }
 };
 
+const maxPhotosPerRow = () => 4;
+
 export default function Gallery() {
   const { classes } = useStyles();
   const [currentIndex, setCurrentIndex] = React.useState(0);
@@ -50,7 +51,7 @@ export default function Gallery() {
   const photos = usePhotoAlts(paintings);
   const currentImage: GalleryPhotoData | undefined = photos[currentIndex];
 
-  const openDialog = React.useCallback((event, { photo, index }) => {
+  const openDialog = React.useCallback((index: number) => {
     setCurrentIndex(index);
     setViewerIsOpen(true);
   }, []);
@@ -58,12 +59,11 @@ export default function Gallery() {
   return (
     <React.Fragment>
       <Grid size={{ xs: 12, md: 8 }} className={classes.galleryGrid}>
-        <PhotoGallery
-          targetRowHeight={calculateTargetRowHeight}
+        <PhotoRows
           photos={photos}
+          targetRowHeight={calculateTargetRowHeight}
+          maxPhotosPerRow={maxPhotosPerRow}
           onClick={openDialog}
-          limitNodeSearch={4}
-          renderImage={GalleryPhoto}
         />
       </Grid>
       <Dialog

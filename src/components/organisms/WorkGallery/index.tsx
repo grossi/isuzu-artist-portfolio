@@ -11,7 +11,7 @@ const works = workGalleryData.map((work, k) => {
       srcBig,
       // Some row layouts render a thumbnail wider than the small derivative
       // covers on retina screens; let the browser fall back to the large one.
-      srcSet: painting.widthLarge > painting.widthSmall
+      thumbnailSrcSet: painting.widthLarge > painting.widthSmall
         ? `${src} ${painting.widthSmall}w, ${srcBig} ${painting.widthLarge}w`
         : undefined,
       width: painting.width,

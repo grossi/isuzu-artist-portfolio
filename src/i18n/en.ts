@@ -11,6 +11,7 @@ const en: Translations = {
   "sidebar.avatarAlt": "isuZu's avatar",
   "social.email": "Email",
   "workCard.bannerAlt": "{name} banner",
+  "gallery.label": "Illustrations",
   "gallery.photoAlt": "isuZu illustration {n}",
   "common.close": "Close",
   "footer.copyright": "Copyright © {year} isuZu. All rights reserved.",
