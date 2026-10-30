@@ -2,16 +2,7 @@ import * as React from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import Container from '@material-ui/core/Container';
 import Typography from '@material-ui/core/Typography';
-
-function Copyright() {
-  return (
-    <Typography variant="body2" color="textSecondary" align="center">
-      {'Copyright © isuZu all rights reserved. '}
-      {new Date().getFullYear()}
-      {'.'}
-    </Typography>
-  );
-}
+import { useLanguage } from 'i18n/LanguageContext';
 
 const useStyles = makeStyles((theme) => ({
   footer: {
@@ -21,30 +12,16 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-interface FooterProps {
-  description: string;
-  title: string;
-}
-
-export default function Footer(props: FooterProps) {
+export default function Footer() {
   const classes = useStyles();
-  // const { description, title } = props;
+  const { t } = useLanguage();
 
   return (
     <footer className={classes.footer}>
       <Container maxWidth="lg">
-        {/* <Typography variant="h6" align="center" gutterBottom>
-          {title}
+        <Typography variant="body2" color="textSecondary" align="center">
+          {t('footer.copyright', { year: new Date().getFullYear() })}
         </Typography>
-        <Typography
-          variant="subtitle1"
-          align="center"
-          color="textSecondary"
-          component="p"
-        >
-          {description}
-        </Typography> */}
-        <Copyright />
       </Container>
     </footer>
   );

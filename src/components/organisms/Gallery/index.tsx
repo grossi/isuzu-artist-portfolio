@@ -7,6 +7,7 @@ import Dialog from "@material-ui/core/Dialog";
 import Grid from "@material-ui/core/Grid";
 import PhotoGallery from "react-photo-gallery";
 import galleryData from "gallery.json";
+import { useLanguage } from "i18n/LanguageContext";
 
 const useStyles = makeStyles((theme) => ({
   closeButton: {
@@ -45,6 +46,7 @@ export default function Gallery() {
   const classes = useStyles();
   const [currentImage, setCurrentImage] = React.useState("");
   const [viewerIsOpen, setViewerIsOpen] = React.useState(false);
+  const { t } = useLanguage();
 
   const openDialog = React.useCallback((event, { photo, index }) => {
     setCurrentImage(photo.srcBig);
@@ -68,7 +70,7 @@ export default function Gallery() {
         maxWidth="xl"
       >
         <CardMedia component="img" src={currentImage} />
-        <IconButton aria-label="close" className={classes.closeButton} onClick={() => setViewerIsOpen(false)}>
+        <IconButton aria-label={t("common.close")} className={classes.closeButton} onClick={() => setViewerIsOpen(false)}>
           <CloseIcon />
         </IconButton>
       </Dialog>

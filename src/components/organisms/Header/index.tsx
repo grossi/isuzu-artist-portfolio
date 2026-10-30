@@ -1,11 +1,23 @@
 import * as React from "react";
+import { Link as RouterLink } from "react-router-dom";
+import clsx from "clsx";
 import { makeStyles } from "@material-ui/core/styles";
 import Toolbar from "@material-ui/core/Toolbar";
 import Link from "@material-ui/core/Link";
+import ButtonBase from "@material-ui/core/ButtonBase";
+import { Lang, useLanguage } from "i18n/LanguageContext";
+import { TranslationKey } from "i18n/ja";
+
+// Common phone widths (360px) need a tighter header than MUI's xs breakpoint gives.
+const narrowScreen = "@media (max-width: 374.95px)";
 
 const useStyles = makeStyles((theme) => ({
   toolbar: {
     borderBottom: `1px solid ${theme.palette.divider}`,
+    [narrowScreen]: {
+      paddingRight: theme.spacing(1),
+      paddingLeft: theme.spacing(1),
+    },
     [theme.breakpoints.up("lg")]: {
       paddingRight: theme.spacing(12),
       paddingLeft: theme.spacing(12),
@@ -16,9 +28,15 @@ const useStyles = makeStyles((theme) => ({
     },
   },
   toolbarTitle: {
-    marginRight: 'auto',
+    marginRight: "auto",
     "&:hover": {
       textDecoration: "none",
+    },
+    [theme.breakpoints.down("xs")]: {
+      fontSize: "2.5rem",
+    },
+    [narrowScreen]: {
+      fontSize: "2rem",
     },
   },
   toolbarLink: {
@@ -28,44 +46,106 @@ const useStyles = makeStyles((theme) => ({
       paddingRight: theme.spacing(1),
       paddingLeft: theme.spacing(1),
     },
+    [narrowScreen]: {
+      paddingRight: theme.spacing(0.75),
+      paddingLeft: theme.spacing(0.75),
+    },
+  },
+  languageToggle: {
+    display: "flex",
+    alignItems: "center",
+    flexShrink: 0,
+    marginLeft: theme.spacing(1),
+    color: theme.palette.text.secondary,
+    ...theme.typography.body2,
+  },
+  languageOption: {
+    padding: theme.spacing(0.5),
+    borderRadius: theme.shape.borderRadius,
+    font: "inherit",
+    color: "inherit",
+    "&:hover": {
+      color: theme.palette.text.primary,
+    },
+  },
+  languageOptionFocus: {
+    outline: "2px solid currentColor",
+    outlineOffset: 1,
+  },
+  languageOptionActive: {
+    color: theme.palette.text.primary,
+    fontWeight: 700,
   },
 }));
 
+const sections: Array<{ titleKey: TranslationKey; url: string }> = [
+  { titleKey: "nav.work", url: "/work" },
+  { titleKey: "nav.history", url: "/history" },
+];
+
+// Each language is labelled in its own language, so it reads the same either way.
+const languages: Array<{ lang: Lang; label: string; ariaLabel?: string }> = [
+  { lang: "ja", label: "日本語" },
+  { lang: "en", label: "EN", ariaLabel: "English" },
+];
+
 interface HeaderProps {
-  sections: Array<{
-    title: string;
-    url: string;
-  }>;
   title: string;
 }
 
 export default function Header(props: HeaderProps) {
   const classes = useStyles();
   const { title } = props;
+  const { lang, setLang, t } = useLanguage();
 
   return (
     <Toolbar component="nav" variant="dense" className={classes.toolbar}>
       <Link
+        component={RouterLink}
+        to="/"
         color="inherit"
         noWrap
         variant="h2"
-        href={"/"}
         className={classes.toolbarTitle}
       >
         {title}
       </Link>
-      {/* {sections.map((section) => (
+      {sections.map((section) => (
         <Link
+          component={RouterLink}
+          to={section.url}
           color="inherit"
           noWrap
-          key={section.title}
+          key={section.url}
           variant="subtitle1"
-          href={section.url}
           className={classes.toolbarLink}
         >
-          {section.title}
+          {t(section.titleKey)}
         </Link>
-      ))} */}
+      ))}
+      <div
+        role="group"
+        aria-label={t("header.language")}
+        className={classes.languageToggle}
+      >
+        {languages.map((option, index) => (
+          <React.Fragment key={option.lang}>
+            {index > 0 && <span aria-hidden="true">/</span>}
+            <ButtonBase
+              lang={option.lang}
+              aria-label={option.ariaLabel}
+              aria-pressed={lang === option.lang}
+              onClick={() => setLang(option.lang)}
+              focusVisibleClassName={classes.languageOptionFocus}
+              className={clsx(classes.languageOption, {
+                [classes.languageOptionActive]: lang === option.lang,
+              })}
+            >
+              {option.label}
+            </ButtonBase>
+          </React.Fragment>
+        ))}
+      </div>
     </Toolbar>
   );
 }

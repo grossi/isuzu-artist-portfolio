@@ -14,6 +14,8 @@ import CloseIcon from "@material-ui/icons/Close";
 
 import Markdown from "components/molecules/Markdown";
 import PhotoGallery from "react-photo-gallery";
+import useMarkdown from "hooks/useMarkdown";
+import { Localized, useLanguage } from "i18n/LanguageContext";
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -48,7 +50,7 @@ interface WorkCardProps {
   setOpen?: (value: (state: any) => boolean) => any;
   work: {
     name: string;
-    about: string;
+    about: Localized<string>;
     banner: { src: string; name: string };
     imageList: { src: string; height: number; width: number; name: string }[];
   };
@@ -76,15 +78,9 @@ export default function WorkCard(props: WorkCardProps) {
   const [viewerIsOpen, setViewerIsOpen] = React.useState(false);
   const [galleryIsOpen, setGalleryIsOpen] = React.useState(false);
   const { work } = props;
-  const [loadedAbout, setLoadedAbout] = React.useState<string>("");
-  React.useEffect(() => {
-    setLoadedAbout("");
-    fetch(work.about)
-      .then((data) => data.text())
-      .then((text) => {
-        setLoadedAbout(text);
-      });
-  }, [work.about]);
+  const { lang, t } = useLanguage();
+  const loadedAbout = useMarkdown(work.about[lang]);
+  const bannerAlt = t("workCard.bannerAlt", { name: work.name });
 
   const openDialog = React.useCallback((event, { photo, index }) => {
     setCurrentImage(photo.src);
@@ -97,10 +93,10 @@ export default function WorkCard(props: WorkCardProps) {
         <CardActionArea onClick={() => setGalleryIsOpen((state) => !state)}>
           <CardMedia
             component="img"
-            alt={`${work.name} banner`}
+            alt={bannerAlt}
             height="60"
             image={work.banner.src}
-            title={`${work.name} banner`}
+            title={bannerAlt}
           />
           <CardContent className={classes.mainContent}>
             <Markdown>{loadedAbout}</Markdown>
@@ -109,7 +105,7 @@ export default function WorkCard(props: WorkCardProps) {
                 [classes.expandOpen]: galleryIsOpen,
               })}
               aria-expanded={galleryIsOpen}
-              aria-label="show more"
+              aria-label={t("workCard.showMore")}
             >
               <ExpandMoreIcon />
             </IconButton>
@@ -132,7 +128,7 @@ export default function WorkCard(props: WorkCardProps) {
       >
         <CardMedia component="img" src={currentImage} />
         <IconButton
-          aria-label="close"
+          aria-label={t("common.close")}
           className={classes.closeButton}
           onClick={() => setViewerIsOpen(false)}
         >
