@@ -4,9 +4,14 @@ import workGalleryData from "work-gallery.json";
 
 const works = workGalleryData.map((work, k) => {
   let imageList = work.workList.map(painting => {
+    const src = `${process.env.PUBLIC_URL}/${painting.locationSmall}`;
+    const srcBig = `${process.env.PUBLIC_URL}/${painting.locationLarge}`;
     return {
-      src: `${process.env.PUBLIC_URL}/${painting.locationSmall}`,
-      srcBig: `${process.env.PUBLIC_URL}/${painting.locationLarge}`,
+      src,
+      srcBig,
+      // Some row layouts render a thumbnail wider than the small derivative
+      // covers on retina screens; let the browser fall back to the large one.
+      srcSet: `${src} ${painting.widthSmall}w, ${srcBig} ${painting.widthLarge}w`,
       width: painting.width,
       height: painting.height,
     };  

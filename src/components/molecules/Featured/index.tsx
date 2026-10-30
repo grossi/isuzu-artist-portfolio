@@ -6,7 +6,6 @@ import carouselData from 'carousel.json';
 const paintings = carouselData.map(image => {
   return {
     src: `${process.env.PUBLIC_URL}/${image.locationLarge}`,
-    name: image.name,
   };
 });
 
