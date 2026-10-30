@@ -1,3 +1,3 @@
 # Rawr
 
-"Uzushi" (うずし) is isuZu read backwards.
+Read isuZu backwards and you get "Uzushi" (うずし).

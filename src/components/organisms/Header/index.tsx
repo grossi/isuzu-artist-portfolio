@@ -8,9 +8,16 @@ import ButtonBase from "@material-ui/core/ButtonBase";
 import { Lang, useLanguage } from "i18n/LanguageContext";
 import { TranslationKey } from "i18n/ja";
 
+// Common phone widths (360px) need a tighter header than MUI's xs breakpoint gives.
+const narrowScreen = "@media (max-width: 374.95px)";
+
 const useStyles = makeStyles((theme) => ({
   toolbar: {
     borderBottom: `1px solid ${theme.palette.divider}`,
+    [narrowScreen]: {
+      paddingRight: theme.spacing(1),
+      paddingLeft: theme.spacing(1),
+    },
     [theme.breakpoints.up("lg")]: {
       paddingRight: theme.spacing(12),
       paddingLeft: theme.spacing(12),
@@ -28,7 +35,7 @@ const useStyles = makeStyles((theme) => ({
     [theme.breakpoints.down("xs")]: {
       fontSize: "2.5rem",
     },
-    "@media (max-width: 359.95px)": {
+    [narrowScreen]: {
       fontSize: "2rem",
     },
   },
@@ -38,6 +45,10 @@ const useStyles = makeStyles((theme) => ({
     [theme.breakpoints.down("xs")]: {
       paddingRight: theme.spacing(1),
       paddingLeft: theme.spacing(1),
+    },
+    [narrowScreen]: {
+      paddingRight: theme.spacing(0.75),
+      paddingLeft: theme.spacing(0.75),
     },
   },
   languageToggle: {
@@ -73,9 +84,9 @@ const sections: Array<{ titleKey: TranslationKey; url: string }> = [
 ];
 
 // Each language is labelled in its own language, so it reads the same either way.
-const languages: Array<{ lang: Lang; label: string }> = [
+const languages: Array<{ lang: Lang; label: string; ariaLabel?: string }> = [
   { lang: "ja", label: "日本語" },
-  { lang: "en", label: "EN" },
+  { lang: "en", label: "EN", ariaLabel: "English" },
 ];
 
 interface HeaderProps {
@@ -122,6 +133,7 @@ export default function Header(props: HeaderProps) {
             {index > 0 && <span aria-hidden="true">/</span>}
             <ButtonBase
               lang={option.lang}
+              aria-label={option.ariaLabel}
               aria-pressed={lang === option.lang}
               onClick={() => setLang(option.lang)}
               focusVisibleClassName={classes.languageOptionFocus}

@@ -87,10 +87,10 @@ const workGalleryDirectories = fs.readdirSync(workGalleryNormalizedPath).map((wo
         if( extension === 'jpg' || extension === 'png') {
           dimensions = sizeOf(`public/work-gallery/${workDirectory}/${file}`);
         } else {
-          // about.<lang>.md, e.g. about.ja.md -> about.ja
-          const aboutLang = (file.match(/^about\.(\w+)\.md$/) || [])[1];
-          if( aboutLang ) {
-            about = { ...about, [aboutLang]: `work-gallery/${workDirectory}/${file}` };
+          // about.ja.md / about.en.md; a plain about.md counts as Japanese
+          const aboutMatch = file.match(/^about(?:\.(ja|en))?\.md$/);
+          if( aboutMatch ) {
+            about = { ...about, [aboutMatch[1] || 'ja']: `work-gallery/${workDirectory}/${file}` };
           }
           return {
             name,
@@ -118,8 +118,9 @@ const workGalleryDirectories = fs.readdirSync(workGalleryNormalizedPath).map((wo
           location: `work-gallery/${workDirectory}/${file}`,
         }
       }).filter(picture => (picture.extension === 'jpg' || picture.extension === 'png'));
-      // Fall back to the other language if only one about.<lang>.md exists
-      if (about) about = { ja: about.ja || about.en, en: about.en || about.ja };
+      if (!about) throw new Error(`public/work-gallery/${workDirectory} has no about.ja.md or about.en.md`);
+      // Fall back to the other language if only one exists
+      about = { ja: about.ja || about.en, en: about.en || about.ja };
       return {
         name: workDirectory,
         about,
