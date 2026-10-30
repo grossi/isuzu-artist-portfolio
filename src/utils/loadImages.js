@@ -159,9 +159,10 @@ const workGalleryDirectories = fs.readdirSync(workGalleryNormalizedPath).map((wo
           return { };
         }
 
+        const widthSmall = scaledDimentions({ h: dimensions.height, w: dimensions.width });
         rescaleJobs.push(rescale({
           imagePath: `public/work-gallery/${workDirectory}/${file}`,
-          width: scaledDimentions({ h: dimensions.height, w: dimensions.width }),
+          width: widthSmall,
           destinationPath: `public/work-gallery/${workDirectory}/small/${name}`
         }));
         rescaleJobs.push(rescaleLarge({
@@ -178,6 +179,8 @@ const workGalleryDirectories = fs.readdirSync(workGalleryNormalizedPath).map((wo
           location: `work-gallery/${workDirectory}/${file}`,
           locationSmall: `work-gallery/${workDirectory}/small/${name}.webp`,
           locationLarge: `work-gallery/${workDirectory}/large/${name}.webp`,
+          widthSmall,
+          widthLarge: Math.min(dimensions.width, LARGE_WIDTH),
         }
       }).filter(picture => (picture.extension === 'jpg' || picture.extension === 'png'));
       if (!about) throw new Error(`public/work-gallery/${workDirectory} has no about.ja.md or about.en.md`);

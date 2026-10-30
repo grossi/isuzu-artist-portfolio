@@ -7,6 +7,8 @@ export interface GalleryPhotoSource {
   srcBig: string;
   width: number;
   height: number;
+  // Optional width candidates; the photo's rendered width is passed as `sizes`.
+  srcSet?: string;
 }
 
 export interface GalleryPhotoData extends GalleryPhotoSource {
@@ -45,12 +47,14 @@ export default function GalleryPhoto({
   margin,
   deferred = false,
 }: RenderImageProps & { deferred?: boolean }) {
-  const clickable = onClick !== null;
+  const clickable = !!onClick;
 
   return (
     <img
       key={photo.key || photo.src}
       src={deferred ? undefined : photo.src}
+      sizes={photo.srcSet ? `${photo.width}px` : undefined}
+      srcSet={deferred ? undefined : (photo.srcSet as GalleryPhotoSource["srcSet"])}
       width={photo.width}
       height={photo.height}
       alt={photo.alt}
