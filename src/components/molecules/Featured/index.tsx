@@ -1,15 +1,15 @@
 import * as React from "react";
-import { makeStyles } from "@material-ui/core/styles";
+import { makeStyles } from "tss-react/mui";
 import Slider from "react-slick";
 import carouselData from 'carousel.json';
 
 const paintings = carouselData.map(image => {
   return {
-    src: `${process.env.PUBLIC_URL}/${image.locationLarge}`,
+    src: `${import.meta.env.BASE_URL}${image.locationLarge}`,
   };
 });
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles()((theme) => ({
   mainFeaturedPost: {
     height: "80vh",
     position: "relative",
@@ -25,7 +25,7 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 export default function Featured() {
-  const classes = useStyles();
+  const { classes } = useStyles();
   // Slides whose image may be fetched. Only the first slide loads up front; the
   // next one is fetched once it has loaded, and from then on each slide change
   // fetches the slide after the one coming into view. Once the visitor reaches
@@ -75,7 +75,7 @@ export default function Featured() {
                   className={classes.image}
                   src={painting.src}
                   alt=""
-                  fetchpriority={index === 0 ? "high" : undefined}
+                  fetchPriority={index === 0 ? "high" : undefined}
                   onLoad={index === 0 ? () => loadSlides(nextIndex(0)) : undefined}
                 />
               )}

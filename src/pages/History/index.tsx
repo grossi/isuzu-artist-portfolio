@@ -1,17 +1,20 @@
 import * as React from "react";
-import { makeStyles } from "@material-ui/core/styles";
-import Grid from "@material-ui/core/Grid";
-import Container from "@material-ui/core/Container";
-import CardMedia from "@material-ui/core/CardMedia";
-import workHistoryJa from "assets/md/work_history.ja.md";
-import workHistoryEn from "assets/md/work_history.en.md";
+import { makeStyles } from "tss-react/mui";
+import Container from "@mui/material/Container";
+import CardMedia from "@mui/material/CardMedia";
+import workHistoryJa from "assets/md/work_history.ja.md?url";
+import workHistoryEn from "assets/md/work_history.en.md?url";
 import Markdown from "components/molecules/Markdown";
 import useMarkdown from "hooks/useMarkdown";
 import { Localized, useLanguage } from "i18n/LanguageContext";
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles()((theme) => ({
   mainGrid: {
     paddingTop: theme.spacing(3),
+    // Same layout the v4 Grid container (spacing={2}) had
+    display: "flex",
+    flexWrap: "wrap",
+    margin: theme.spacing(-1),
   },
   mainContainer: {
     minHeight: "100%",
@@ -43,7 +46,7 @@ const useStyles = makeStyles((theme) => ({
 const workHistory: Localized<string> = { ja: workHistoryJa, en: workHistoryEn };
 
 export default function History() {
-  const classes = useStyles();
+  const { classes } = useStyles();
   const { lang } = useLanguage();
   const loadedAbout = useMarkdown(workHistory[lang]);
 
@@ -52,13 +55,13 @@ export default function History() {
       <CardMedia
         component="img"
         height={120}
-        src={`${process.env.PUBLIC_URL}/isuzubook.webp`}
+        src={`${import.meta.env.BASE_URL}isuzubook.webp`}
       />
       <Container maxWidth="lg" className={classes.mainContainer}>
         <main>
-          <Grid container spacing={2} className={classes.mainGrid}>
+          <div className={classes.mainGrid}>
             <Markdown>{loadedAbout}</Markdown>
-          </Grid>
+          </div>
         </main>
       </Container>
     </React.Fragment>

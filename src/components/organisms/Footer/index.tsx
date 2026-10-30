@@ -1,10 +1,10 @@
 import * as React from 'react';
-import { makeStyles } from '@material-ui/core/styles';
-import Container from '@material-ui/core/Container';
-import Typography from '@material-ui/core/Typography';
+import { makeStyles } from "tss-react/mui";
+import Container from '@mui/material/Container';
+import Typography from '@mui/material/Typography';
 import { useLanguage } from 'i18n/LanguageContext';
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles()((theme) => ({
   footer: {
     backgroundColor: theme.palette.background.paper,
     marginTop: theme.spacing(8),
@@ -13,13 +13,13 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 export default function Footer() {
-  const classes = useStyles();
+  const { classes } = useStyles();
   const { t } = useLanguage();
 
   return (
     <footer className={classes.footer}>
       <Container maxWidth="lg">
-        <Typography variant="body2" color="textSecondary" align="center">
+        <Typography variant="body2" color="text.secondary" align="center">
           {t('footer.copyright', { year: new Date().getFullYear() })}
         </Typography>
       </Container>

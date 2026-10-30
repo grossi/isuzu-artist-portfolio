@@ -1,24 +1,22 @@
 import React from "react";
-import clsx from "clsx";
-import { makeStyles } from "@material-ui/core/styles";
-import Card from "@material-ui/core/Card";
-import CardActionArea from "@material-ui/core/CardActionArea";
-import CardContent from "@material-ui/core/CardContent";
-import CardMedia from "@material-ui/core/CardMedia";
-import IconButton from "@material-ui/core/IconButton";
-import Dialog from "@material-ui/core/Dialog";
-import Collapse from "@material-ui/core/Collapse";
+import { makeStyles } from "tss-react/mui";
+import Card from "@mui/material/Card";
+import CardActionArea from "@mui/material/CardActionArea";
+import CardContent from "@mui/material/CardContent";
+import CardMedia from "@mui/material/CardMedia";
+import IconButton from "@mui/material/IconButton";
+import Dialog from "@mui/material/Dialog";
+import Collapse from "@mui/material/Collapse";
 
-import ExpandMoreIcon from "@material-ui/icons/ExpandMore";
-import CloseIcon from "@material-ui/icons/Close";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import CloseIcon from "@mui/icons-material/Close";
 
 import Markdown from "components/molecules/Markdown";
-import PhotoGallery, { RenderImageProps } from "react-photo-gallery";
 import useMarkdown from "hooks/useMarkdown";
 import { Localized, useLanguage } from "i18n/LanguageContext";
-import GalleryPhoto, { GalleryPhotoData, GalleryPhotoSource, usePhotoAlts } from "components/atoms/GalleryPhoto";
+import PhotoRows, { GalleryPhotoData, GalleryPhotoSource, usePhotoAlts } from "components/molecules/PhotoRows";
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles()((theme) => ({
   root: {
     width: "100%",
     marginBottom: theme.spacing(2),
@@ -65,7 +63,7 @@ const calculateTargetRowHeight = (containerWidth: number) => {
   }
 };
 
-const calculateLimitNodeSearch = (containerWidth: number) => {
+const calculateMaxPhotosPerRow = (containerWidth: number) => {
   if (containerWidth > 800) {
     return 10;
   } else {
@@ -74,18 +72,13 @@ const calculateLimitNodeSearch = (containerWidth: number) => {
 };
 
 export default function WorkCard(props: WorkCardProps) {
-  const classes = useStyles();
+  const { classes, cx } = useStyles();
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [viewerIsOpen, setViewerIsOpen] = React.useState(false);
   const [galleryIsOpen, setGalleryIsOpen] = React.useState(false);
   // The gallery stays mounted so Collapse can measure it, but its images are only
   // downloaded once the card has been opened.
   const [galleryWasOpened, setGalleryWasOpened] = React.useState(false);
-  const renderPhoto = React.useCallback(
-    (photoProps: RenderImageProps) =>
-      GalleryPhoto({ ...photoProps, deferred: !galleryWasOpened }),
-    [galleryWasOpened]
-  );
   const { work } = props;
   const { lang, t } = useLanguage();
   const loadedAbout = useMarkdown(work.about[lang]);
@@ -93,7 +86,7 @@ export default function WorkCard(props: WorkCardProps) {
   const photos = usePhotoAlts(work.imageList);
   const currentImage: GalleryPhotoData | undefined = photos[currentIndex];
 
-  const openDialog = React.useCallback((event, { photo, index }) => {
+  const openDialog = React.useCallback((index: number) => {
     setCurrentIndex(index);
     setViewerIsOpen(true);
   }, []);
@@ -106,6 +99,7 @@ export default function WorkCard(props: WorkCardProps) {
             setGalleryIsOpen((state) => !state);
             setGalleryWasOpened(true);
           }}
+          aria-expanded={galleryIsOpen}
         >
           <CardMedia
             component="img"
@@ -116,24 +110,27 @@ export default function WorkCard(props: WorkCardProps) {
           />
           <CardContent className={classes.mainContent}>
             <Markdown>{loadedAbout}</Markdown>
+            {/* Decorative: the whole CardActionArea is the toggle button */}
             <IconButton
-              className={clsx(classes.expand, {
+              component="span"
+              tabIndex={-1}
+              role="presentation"
+              aria-hidden
+              className={cx(classes.expand, {
                 [classes.expandOpen]: galleryIsOpen,
               })}
-              aria-expanded={galleryIsOpen}
-              aria-label={t("workCard.showMore")}
             >
               <ExpandMoreIcon />
             </IconButton>
           </CardContent>
         </CardActionArea>
         <Collapse in={galleryIsOpen}>
-          <PhotoGallery
-            onClick={openDialog}
-            targetRowHeight={calculateTargetRowHeight}
+          <PhotoRows
             photos={photos}
-            limitNodeSearch={calculateLimitNodeSearch}
-            renderImage={renderPhoto}
+            targetRowHeight={calculateTargetRowHeight}
+            maxPhotosPerRow={calculateMaxPhotosPerRow}
+            onClick={openDialog}
+            deferred={!galleryWasOpened}
           />
         </Collapse>
       </Card>
