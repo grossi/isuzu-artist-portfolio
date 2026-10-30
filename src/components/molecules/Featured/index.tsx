@@ -29,7 +29,10 @@ export default function Featured() {
   const classes = useStyles();
   // Slides whose image may be fetched. Only the first slide loads up front; the
   // next one is fetched once it has loaded, and from then on each slide change
-  // fetches the slide after the one coming into view.
+  // fetches the slide after the one coming into view. Once the visitor reaches
+  // for the controls (hovering the arrows or dots, touching, focusing) the rest
+  // are fetched too, so navigating doesn't land on a slide that hasn't started
+  // loading.
   const [loadedSlides, setLoadedSlides] = React.useState(() => new Set([0]));
   const loadSlides = React.useCallback((...indexes: number[]) => {
     setLoadedSlides((slides) =>
@@ -39,6 +42,7 @@ export default function Featured() {
     );
   }, []);
   const nextIndex = (index: number) => (index + 1) % paintings.length;
+  const loadAllSlides = () => loadSlides(...paintings.map((_, index) => index));
 
   const settings = {
     dots: true,
@@ -53,22 +57,32 @@ export default function Featured() {
   };
 
   return (
-    <Slider {...settings}>
-      {paintings.map((painting, index) => (
-        <div key={index}>
-          <div className={classes.mainFeaturedPost}>
-            {loadedSlides.has(index) && (
-              <img
-                className={classes.image}
-                src={painting.src}
-                alt={painting.name}
-                fetchpriority={index === 0 ? "high" : undefined}
-                onLoad={index === 0 ? () => loadSlides(nextIndex(0)) : undefined}
-              />
-            )}
+    <div
+      onMouseOver={(event) => {
+        if ((event.target as Element).closest(".slick-arrow, .slick-dots")) {
+          loadAllSlides();
+        }
+      }}
+      onTouchStart={loadAllSlides}
+      onFocus={loadAllSlides}
+    >
+      <Slider {...settings}>
+        {paintings.map((painting, index) => (
+          <div key={index}>
+            <div className={classes.mainFeaturedPost}>
+              {loadedSlides.has(index) && (
+                <img
+                  className={classes.image}
+                  src={painting.src}
+                  alt=""
+                  fetchpriority={index === 0 ? "high" : undefined}
+                  onLoad={index === 0 ? () => loadSlides(nextIndex(0)) : undefined}
+                />
+              )}
+            </div>
           </div>
-        </div>
-      ))}
-    </Slider>
+        ))}
+      </Slider>
+    </div>
   );
 }

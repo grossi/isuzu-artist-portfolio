@@ -13,7 +13,7 @@ import ExpandMoreIcon from "@material-ui/icons/ExpandMore";
 import CloseIcon from "@material-ui/icons/Close";
 
 import Markdown from "components/molecules/Markdown";
-import PhotoGallery from "react-photo-gallery";
+import PhotoGallery, { RenderImageProps } from "react-photo-gallery";
 import useMarkdown from "hooks/useMarkdown";
 import { Localized, useLanguage } from "i18n/LanguageContext";
 import GalleryPhoto, { GalleryPhotoData } from "components/atoms/GalleryPhoto";
@@ -78,6 +78,14 @@ export default function WorkCard(props: WorkCardProps) {
   const [currentImage, setCurrentImage] = React.useState<GalleryPhotoData>();
   const [viewerIsOpen, setViewerIsOpen] = React.useState(false);
   const [galleryIsOpen, setGalleryIsOpen] = React.useState(false);
+  // The gallery stays mounted so Collapse can measure it, but its images are only
+  // downloaded once the card has been opened.
+  const [galleryWasOpened, setGalleryWasOpened] = React.useState(false);
+  const renderPhoto = React.useCallback(
+    (photoProps: RenderImageProps) =>
+      GalleryPhoto({ ...photoProps, deferred: !galleryWasOpened }),
+    [galleryWasOpened]
+  );
   const { work } = props;
   const { lang, t } = useLanguage();
   const loadedAbout = useMarkdown(work.about[lang]);
@@ -91,7 +99,12 @@ export default function WorkCard(props: WorkCardProps) {
   return (
     <React.Fragment>
       <Card className={classes.root}>
-        <CardActionArea onClick={() => setGalleryIsOpen((state) => !state)}>
+        <CardActionArea
+          onClick={() => {
+            setGalleryIsOpen((state) => !state);
+            setGalleryWasOpened(true);
+          }}
+        >
           <CardMedia
             component="img"
             alt={bannerAlt}
@@ -112,15 +125,13 @@ export default function WorkCard(props: WorkCardProps) {
             </IconButton>
           </CardContent>
         </CardActionArea>
-        {/* Mount the gallery only once the card is first opened, so its images
-            are not downloaded while every card is collapsed. */}
-        <Collapse in={galleryIsOpen} mountOnEnter>
+        <Collapse in={galleryIsOpen}>
           <PhotoGallery
             onClick={openDialog}
             targetRowHeight={calculateTargetRowHeight}
             photos={work.imageList}
             limitNodeSearch={calculateLimitNodeSearch}
-            renderImage={GalleryPhoto}
+            renderImage={renderPhoto}
           />
         </Collapse>
       </Card>
