@@ -3,9 +3,11 @@
 #
 # Usage: scripts/push-s3.sh [--dryrun] [--full]
 #   --dryrun  Show what would be uploaded; skip the CloudFront invalidation.
-#   --full    Re-upload every file (cp --recursive) instead of syncing changed
-#             ones. 'sync' skips unchanged files and so never rewrites their
-#             metadata: use this once after changing the Cache-Control rules.
+#   --full    Re-upload every file (cp --recursive) instead of syncing. 'sync'
+#             skips a file whose size matches and whose S3 copy is newer, so it
+#             would keep that object's old metadata. A fresh 'yarn build' is
+#             always newer, but --full guarantees every object gets the current
+#             headers (e.g. the first deploy after changing them).
 #
 # Never add --delete: some objects (e.g. isuzubook.jpg) exist only in S3.
 # Written for bash 3.2 (macOS): never expand an empty array under 'set -u'.
@@ -32,7 +34,7 @@ push() {
   shift
   echo "== Cache-Control: $cache_control"
   # shellcheck disable=SC2086 # $upload and $dryrun must word-split (or vanish when empty).
-  aws s3 $upload build/ "$BUCKET" --acl public-read --cache-control "$cache_control" $dryrun "$@"
+  aws s3 $upload build/ "$BUCKET" --acl public-read --cache-control "$cache_control" $dryrun "$@" --exclude "*.DS_Store"
 }
 
 include_images=()
