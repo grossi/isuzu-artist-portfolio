@@ -28,6 +28,9 @@ const useStyles = makeStyles((theme) => ({
     [theme.breakpoints.down("xs")]: {
       fontSize: "2.5rem",
     },
+    "@media (max-width: 359.95px)": {
+      fontSize: "2rem",
+    },
   },
   toolbarLink: {
     padding: theme.spacing(2),
@@ -53,6 +56,10 @@ const useStyles = makeStyles((theme) => ({
     "&:hover": {
       color: theme.palette.text.primary,
     },
+  },
+  languageOptionFocus: {
+    outline: "2px solid currentColor",
+    outlineOffset: 1,
   },
   languageOptionActive: {
     color: theme.palette.text.primary,
@@ -117,6 +124,7 @@ export default function Header(props: HeaderProps) {
               lang={option.lang}
               aria-pressed={lang === option.lang}
               onClick={() => setLang(option.lang)}
+              focusVisibleClassName={classes.languageOptionFocus}
               className={clsx(classes.languageOption, {
                 [classes.languageOptionActive]: lang === option.lang,
               })}
