@@ -13,9 +13,10 @@ import ExpandMoreIcon from "@material-ui/icons/ExpandMore";
 import CloseIcon from "@material-ui/icons/Close";
 
 import Markdown from "components/molecules/Markdown";
-import PhotoGallery from "react-photo-gallery";
+import PhotoGallery, { RenderImageProps } from "react-photo-gallery";
 import useMarkdown from "hooks/useMarkdown";
 import { Localized, useLanguage } from "i18n/LanguageContext";
+import GalleryPhoto, { GalleryPhotoData, GalleryPhotoSource, usePhotoAlts } from "components/atoms/GalleryPhoto";
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -52,7 +53,7 @@ interface WorkCardProps {
     name: string;
     about: Localized<string>;
     banner: { src: string; name: string };
-    imageList: { src: string; height: number; width: number; name: string }[];
+    imageList: GalleryPhotoSource[];
   };
 }
 
@@ -74,23 +75,38 @@ const calculateLimitNodeSearch = (containerWidth: number) => {
 
 export default function WorkCard(props: WorkCardProps) {
   const classes = useStyles();
-  const [currentImage, setCurrentImage] = React.useState("");
+  const [currentIndex, setCurrentIndex] = React.useState(0);
   const [viewerIsOpen, setViewerIsOpen] = React.useState(false);
   const [galleryIsOpen, setGalleryIsOpen] = React.useState(false);
+  // The gallery stays mounted so Collapse can measure it, but its images are only
+  // downloaded once the card has been opened.
+  const [galleryWasOpened, setGalleryWasOpened] = React.useState(false);
+  const renderPhoto = React.useCallback(
+    (photoProps: RenderImageProps) =>
+      GalleryPhoto({ ...photoProps, deferred: !galleryWasOpened }),
+    [galleryWasOpened]
+  );
   const { work } = props;
   const { lang, t } = useLanguage();
   const loadedAbout = useMarkdown(work.about[lang]);
   const bannerAlt = t("workCard.bannerAlt", { name: work.name });
+  const photos = usePhotoAlts(work.imageList);
+  const currentImage: GalleryPhotoData | undefined = photos[currentIndex];
 
   const openDialog = React.useCallback((event, { photo, index }) => {
-    setCurrentImage(photo.src);
+    setCurrentIndex(index);
     setViewerIsOpen(true);
   }, []);
 
   return (
     <React.Fragment>
       <Card className={classes.root}>
-        <CardActionArea onClick={() => setGalleryIsOpen((state) => !state)}>
+        <CardActionArea
+          onClick={() => {
+            setGalleryIsOpen((state) => !state);
+            setGalleryWasOpened(true);
+          }}
+        >
           <CardMedia
             component="img"
             alt={bannerAlt}
@@ -115,8 +131,9 @@ export default function WorkCard(props: WorkCardProps) {
           <PhotoGallery
             onClick={openDialog}
             targetRowHeight={calculateTargetRowHeight}
-            photos={work.imageList}
+            photos={photos}
             limitNodeSearch={calculateLimitNodeSearch}
+            renderImage={renderPhoto}
           />
         </Collapse>
       </Card>
@@ -126,7 +143,7 @@ export default function WorkCard(props: WorkCardProps) {
         scroll="body"
         maxWidth="xl"
       >
-        <CardMedia component="img" src={currentImage} />
+        <CardMedia component="img" src={currentImage?.srcBig} alt={currentImage?.alt} />
         <IconButton
           aria-label={t("common.close")}
           className={classes.closeButton}

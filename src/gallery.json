@@ -5,7 +5,8 @@
     "width": 1000,
     "height": 707,
     "location": "gallery/10000.png",
-    "locationSmall": "gallery/small/10000.webp"
+    "locationSmall": "gallery/small/10000.webp",
+    "locationLarge": "gallery/large/10000.webp"
   },
   {
     "name": "10001",
@@ -13,7 +14,8 @@
     "width": 636,
     "height": 900,
     "location": "gallery/10001.jpg",
-    "locationSmall": "gallery/small/10001.webp"
+    "locationSmall": "gallery/small/10001.webp",
+    "locationLarge": "gallery/large/10001.webp"
   },
   {
     "name": "10002",
@@ -21,7 +23,8 @@
     "width": 636,
     "height": 900,
     "location": "gallery/10002.jpg",
-    "locationSmall": "gallery/small/10002.webp"
+    "locationSmall": "gallery/small/10002.webp",
+    "locationLarge": "gallery/large/10002.webp"
   },
   {
     "name": "100021_2024",
@@ -29,7 +32,8 @@
     "width": 1500,
     "height": 1061,
     "location": "gallery/100021_2024.png",
-    "locationSmall": "gallery/small/100021_2024.webp"
+    "locationSmall": "gallery/small/100021_2024.webp",
+    "locationLarge": "gallery/large/100021_2024.webp"
   },
   {
     "name": "10003",
@@ -37,7 +41,8 @@
     "width": 724,
     "height": 1023,
     "location": "gallery/10003.jpg",
-    "locationSmall": "gallery/small/10003.webp"
+    "locationSmall": "gallery/small/10003.webp",
+    "locationLarge": "gallery/large/10003.webp"
   },
   {
     "name": "10041",
@@ -45,7 +50,8 @@
     "width": 661,
     "height": 829,
     "location": "gallery/10041.jpg",
-    "locationSmall": "gallery/small/10041.webp"
+    "locationSmall": "gallery/small/10041.webp",
+    "locationLarge": "gallery/large/10041.webp"
   },
   {
     "name": "10042",
@@ -53,7 +59,8 @@
     "width": 566,
     "height": 800,
     "location": "gallery/10042.jpg",
-    "locationSmall": "gallery/small/10042.webp"
+    "locationSmall": "gallery/small/10042.webp",
+    "locationLarge": "gallery/large/10042.webp"
   },
   {
     "name": "10045",
@@ -61,7 +68,8 @@
     "width": 1060,
     "height": 1500,
     "location": "gallery/10045.png",
-    "locationSmall": "gallery/small/10045.webp"
+    "locationSmall": "gallery/small/10045.webp",
+    "locationLarge": "gallery/large/10045.webp"
   },
   {
     "name": "12023",
@@ -69,7 +77,8 @@
     "width": 848,
     "height": 1200,
     "location": "gallery/12023.png",
-    "locationSmall": "gallery/small/12023.webp"
+    "locationSmall": "gallery/small/12023.webp",
+    "locationLarge": "gallery/large/12023.webp"
   },
   {
     "name": "20051",
@@ -77,7 +86,8 @@
     "width": 1415,
     "height": 1010,
     "location": "gallery/20051.png",
-    "locationSmall": "gallery/small/20051.webp"
+    "locationSmall": "gallery/small/20051.webp",
+    "locationLarge": "gallery/large/20051.webp"
   },
   {
     "name": "20052",
@@ -85,7 +95,8 @@
     "width": 1415,
     "height": 1010,
     "location": "gallery/20052.png",
-    "locationSmall": "gallery/small/20052.webp"
+    "locationSmall": "gallery/small/20052.webp",
+    "locationLarge": "gallery/large/20052.webp"
   },
   {
     "name": "20053",
@@ -93,7 +104,8 @@
     "width": 1415,
     "height": 1010,
     "location": "gallery/20053.png",
-    "locationSmall": "gallery/small/20053.webp"
+    "locationSmall": "gallery/small/20053.webp",
+    "locationLarge": "gallery/large/20053.webp"
   },
   {
     "name": "30004",
@@ -101,7 +113,8 @@
     "width": 1000,
     "height": 707,
     "location": "gallery/30004.jpg",
-    "locationSmall": "gallery/small/30004.webp"
+    "locationSmall": "gallery/small/30004.webp",
+    "locationLarge": "gallery/large/30004.webp"
   },
   {
     "name": "30009",
@@ -109,7 +122,8 @@
     "width": 800,
     "height": 540,
     "location": "gallery/30009.jpg",
-    "locationSmall": "gallery/small/30009.webp"
+    "locationSmall": "gallery/small/30009.webp",
+    "locationLarge": "gallery/large/30009.webp"
   },
   {
     "name": "30011",
@@ -117,7 +131,8 @@
     "width": 637,
     "height": 900,
     "location": "gallery/30011.jpg",
-    "locationSmall": "gallery/small/30011.webp"
+    "locationSmall": "gallery/small/30011.webp",
+    "locationLarge": "gallery/large/30011.webp"
   },
   {
     "name": "30035",
@@ -125,7 +140,8 @@
     "width": 566,
     "height": 800,
     "location": "gallery/30035.jpg",
-    "locationSmall": "gallery/small/30035.webp"
+    "locationSmall": "gallery/small/30035.webp",
+    "locationLarge": "gallery/large/30035.webp"
   },
   {
     "name": "30039",
@@ -133,7 +149,8 @@
     "width": 900,
     "height": 608,
     "location": "gallery/30039.jpg",
-    "locationSmall": "gallery/small/30039.webp"
+    "locationSmall": "gallery/small/30039.webp",
+    "locationLarge": "gallery/large/30039.webp"
   },
   {
     "name": "30040",
@@ -141,7 +158,8 @@
     "width": 324,
     "height": 1158,
     "location": "gallery/30040.jpg",
-    "locationSmall": "gallery/small/30040.webp"
+    "locationSmall": "gallery/small/30040.webp",
+    "locationLarge": "gallery/large/30040.webp"
   },
   {
     "name": "30054",
@@ -149,7 +167,8 @@
     "width": 636,
     "height": 900,
     "location": "gallery/30054.png",
-    "locationSmall": "gallery/small/30054.webp"
+    "locationSmall": "gallery/small/30054.webp",
+    "locationLarge": "gallery/large/30054.webp"
   },
   {
     "name": "30055",
@@ -157,7 +176,8 @@
     "width": 636,
     "height": 900,
     "location": "gallery/30055.png",
-    "locationSmall": "gallery/small/30055.webp"
+    "locationSmall": "gallery/small/30055.webp",
+    "locationLarge": "gallery/large/30055.webp"
   },
   {
     "name": "30056",
@@ -165,7 +185,8 @@
     "width": 977,
     "height": 1200,
     "location": "gallery/30056.png",
-    "locationSmall": "gallery/small/30056.webp"
+    "locationSmall": "gallery/small/30056.webp",
+    "locationLarge": "gallery/large/30056.webp"
   },
   {
     "name": "30057",
@@ -173,7 +194,8 @@
     "width": 636,
     "height": 900,
     "location": "gallery/30057.png",
-    "locationSmall": "gallery/small/30057.webp"
+    "locationSmall": "gallery/small/30057.webp",
+    "locationLarge": "gallery/large/30057.webp"
   },
   {
     "name": "30058",
@@ -181,7 +203,8 @@
     "width": 723,
     "height": 1023,
     "location": "gallery/30058.png",
-    "locationSmall": "gallery/small/30058.webp"
+    "locationSmall": "gallery/small/30058.webp",
+    "locationLarge": "gallery/large/30058.webp"
   },
   {
     "name": "zzzzz (1)",
@@ -189,7 +212,8 @@
     "width": 636,
     "height": 900,
     "location": "gallery/zzzzz (1).png",
-    "locationSmall": "gallery/small/zzzzz (1).webp"
+    "locationSmall": "gallery/small/zzzzz (1).webp",
+    "locationLarge": "gallery/large/zzzzz (1).webp"
   },
   {
     "name": "zzzzz (10)",
@@ -197,7 +221,8 @@
     "width": 566,
     "height": 800,
     "location": "gallery/zzzzz (10).jpg",
-    "locationSmall": "gallery/small/zzzzz (10).webp"
+    "locationSmall": "gallery/small/zzzzz (10).webp",
+    "locationLarge": "gallery/large/zzzzz (10).webp"
   },
   {
     "name": "zzzzz (11)",
@@ -205,7 +230,8 @@
     "width": 842,
     "height": 595,
     "location": "gallery/zzzzz (11).jpg",
-    "locationSmall": "gallery/small/zzzzz (11).webp"
+    "locationSmall": "gallery/small/zzzzz (11).webp",
+    "locationLarge": "gallery/large/zzzzz (11).webp"
   },
   {
     "name": "zzzzz (12)",
@@ -213,7 +239,8 @@
     "width": 848,
     "height": 1200,
     "location": "gallery/zzzzz (12).jpg",
-    "locationSmall": "gallery/small/zzzzz (12).webp"
+    "locationSmall": "gallery/small/zzzzz (12).webp",
+    "locationLarge": "gallery/large/zzzzz (12).webp"
   },
   {
     "name": "zzzzz (13)",
@@ -221,7 +248,8 @@
     "width": 845,
     "height": 1200,
     "location": "gallery/zzzzz (13).jpg",
-    "locationSmall": "gallery/small/zzzzz (13).webp"
+    "locationSmall": "gallery/small/zzzzz (13).webp",
+    "locationLarge": "gallery/large/zzzzz (13).webp"
   },
   {
     "name": "zzzzz (14)",
@@ -229,7 +257,8 @@
     "width": 636,
     "height": 900,
     "location": "gallery/zzzzz (14).jpg",
-    "locationSmall": "gallery/small/zzzzz (14).webp"
+    "locationSmall": "gallery/small/zzzzz (14).webp",
+    "locationLarge": "gallery/large/zzzzz (14).webp"
   },
   {
     "name": "zzzzz (15)",
@@ -237,7 +266,8 @@
     "width": 1120,
     "height": 1486,
     "location": "gallery/zzzzz (15).jpg",
-    "locationSmall": "gallery/small/zzzzz (15).webp"
+    "locationSmall": "gallery/small/zzzzz (15).webp",
+    "locationLarge": "gallery/large/zzzzz (15).webp"
   },
   {
     "name": "zzzzz (16)",
@@ -245,7 +275,8 @@
     "width": 641,
     "height": 1300,
     "location": "gallery/zzzzz (16).jpg",
-    "locationSmall": "gallery/small/zzzzz (16).webp"
+    "locationSmall": "gallery/small/zzzzz (16).webp",
+    "locationLarge": "gallery/large/zzzzz (16).webp"
   },
   {
     "name": "zzzzz (17)",
@@ -253,7 +284,8 @@
     "width": 800,
     "height": 600,
     "location": "gallery/zzzzz (17).jpg",
-    "locationSmall": "gallery/small/zzzzz (17).webp"
+    "locationSmall": "gallery/small/zzzzz (17).webp",
+    "locationLarge": "gallery/large/zzzzz (17).webp"
   },
   {
     "name": "zzzzz (18)",
@@ -261,7 +293,8 @@
     "width": 480,
     "height": 804,
     "location": "gallery/zzzzz (18).jpg",
-    "locationSmall": "gallery/small/zzzzz (18).webp"
+    "locationSmall": "gallery/small/zzzzz (18).webp",
+    "locationLarge": "gallery/large/zzzzz (18).webp"
   },
   {
     "name": "zzzzz (19)",
@@ -269,7 +302,8 @@
     "width": 800,
     "height": 566,
     "location": "gallery/zzzzz (19).jpg",
-    "locationSmall": "gallery/small/zzzzz (19).webp"
+    "locationSmall": "gallery/small/zzzzz (19).webp",
+    "locationLarge": "gallery/large/zzzzz (19).webp"
   },
   {
     "name": "zzzzz (2)",
@@ -277,7 +311,8 @@
     "width": 575,
     "height": 800,
     "location": "gallery/zzzzz (2).png",
-    "locationSmall": "gallery/small/zzzzz (2).webp"
+    "locationSmall": "gallery/small/zzzzz (2).webp",
+    "locationLarge": "gallery/large/zzzzz (2).webp"
   },
   {
     "name": "zzzzz (20)",
@@ -285,7 +320,8 @@
     "width": 640,
     "height": 480,
     "location": "gallery/zzzzz (20).jpg",
-    "locationSmall": "gallery/small/zzzzz (20).webp"
+    "locationSmall": "gallery/small/zzzzz (20).webp",
+    "locationLarge": "gallery/large/zzzzz (20).webp"
   },
   {
     "name": "zzzzz (21)",
@@ -293,7 +329,8 @@
     "width": 1433,
     "height": 1145,
     "location": "gallery/zzzzz (21).jpg",
-    "locationSmall": "gallery/small/zzzzz (21).webp"
+    "locationSmall": "gallery/small/zzzzz (21).webp",
+    "locationLarge": "gallery/large/zzzzz (21).webp"
   },
   {
     "name": "zzzzz (22)",
@@ -301,7 +338,8 @@
     "width": 724,
     "height": 1023,
     "location": "gallery/zzzzz (22).jpg",
-    "locationSmall": "gallery/small/zzzzz (22).webp"
+    "locationSmall": "gallery/small/zzzzz (22).webp",
+    "locationLarge": "gallery/large/zzzzz (22).webp"
   },
   {
     "name": "zzzzz (23)",
@@ -309,7 +347,8 @@
     "width": 565,
     "height": 800,
     "location": "gallery/zzzzz (23).jpg",
-    "locationSmall": "gallery/small/zzzzz (23).webp"
+    "locationSmall": "gallery/small/zzzzz (23).webp",
+    "locationLarge": "gallery/large/zzzzz (23).webp"
   },
   {
     "name": "zzzzz (24)",
@@ -317,7 +356,8 @@
     "width": 802,
     "height": 676,
     "location": "gallery/zzzzz (24).jpg",
-    "locationSmall": "gallery/small/zzzzz (24).webp"
+    "locationSmall": "gallery/small/zzzzz (24).webp",
+    "locationLarge": "gallery/large/zzzzz (24).webp"
   },
   {
     "name": "zzzzz (25)",
@@ -325,7 +365,8 @@
     "width": 1300,
     "height": 920,
     "location": "gallery/zzzzz (25).jpg",
-    "locationSmall": "gallery/small/zzzzz (25).webp"
+    "locationSmall": "gallery/small/zzzzz (25).webp",
+    "locationLarge": "gallery/large/zzzzz (25).webp"
   },
   {
     "name": "zzzzz (26)",
@@ -333,7 +374,8 @@
     "width": 636,
     "height": 900,
     "location": "gallery/zzzzz (26).jpg",
-    "locationSmall": "gallery/small/zzzzz (26).webp"
+    "locationSmall": "gallery/small/zzzzz (26).webp",
+    "locationLarge": "gallery/large/zzzzz (26).webp"
   },
   {
     "name": "zzzzz (27)",
@@ -341,7 +383,8 @@
     "width": 604,
     "height": 820,
     "location": "gallery/zzzzz (27).jpg",
-    "locationSmall": "gallery/small/zzzzz (27).webp"
+    "locationSmall": "gallery/small/zzzzz (27).webp",
+    "locationLarge": "gallery/large/zzzzz (27).webp"
   },
   {
     "name": "zzzzz (28)",
@@ -349,7 +392,8 @@
     "width": 446,
     "height": 909,
     "location": "gallery/zzzzz (28).jpg",
-    "locationSmall": "gallery/small/zzzzz (28).webp"
+    "locationSmall": "gallery/small/zzzzz (28).webp",
+    "locationLarge": "gallery/large/zzzzz (28).webp"
   },
   {
     "name": "zzzzz (29)",
@@ -357,7 +401,8 @@
     "width": 883,
     "height": 834,
     "location": "gallery/zzzzz (29).jpg",
-    "locationSmall": "gallery/small/zzzzz (29).webp"
+    "locationSmall": "gallery/small/zzzzz (29).webp",
+    "locationLarge": "gallery/large/zzzzz (29).webp"
   },
   {
     "name": "zzzzz (3)",
@@ -365,7 +410,8 @@
     "width": 1061,
     "height": 1500,
     "location": "gallery/zzzzz (3).png",
-    "locationSmall": "gallery/small/zzzzz (3).webp"
+    "locationSmall": "gallery/small/zzzzz (3).webp",
+    "locationLarge": "gallery/large/zzzzz (3).webp"
   },
   {
     "name": "zzzzz (30)",
@@ -373,7 +419,8 @@
     "width": 842,
     "height": 595,
     "location": "gallery/zzzzz (30).jpg",
-    "locationSmall": "gallery/small/zzzzz (30).webp"
+    "locationSmall": "gallery/small/zzzzz (30).webp",
+    "locationLarge": "gallery/large/zzzzz (30).webp"
   },
   {
     "name": "zzzzz (31)",
@@ -381,7 +428,8 @@
     "width": 810,
     "height": 738,
     "location": "gallery/zzzzz (31).jpg",
-    "locationSmall": "gallery/small/zzzzz (31).webp"
+    "locationSmall": "gallery/small/zzzzz (31).webp",
+    "locationLarge": "gallery/large/zzzzz (31).webp"
   },
   {
     "name": "zzzzz (32)",
@@ -389,7 +437,8 @@
     "width": 1920,
     "height": 1080,
     "location": "gallery/zzzzz (32).jpg",
-    "locationSmall": "gallery/small/zzzzz (32).webp"
+    "locationSmall": "gallery/small/zzzzz (32).webp",
+    "locationLarge": "gallery/large/zzzzz (32).webp"
   },
   {
     "name": "zzzzz (4)",
@@ -397,7 +446,8 @@
     "width": 1061,
     "height": 1500,
     "location": "gallery/zzzzz (4).png",
-    "locationSmall": "gallery/small/zzzzz (4).webp"
+    "locationSmall": "gallery/small/zzzzz (4).webp",
+    "locationLarge": "gallery/large/zzzzz (4).webp"
   },
   {
     "name": "zzzzz (5)",
@@ -405,7 +455,8 @@
     "width": 1920,
     "height": 1080,
     "location": "gallery/zzzzz (5).png",
-    "locationSmall": "gallery/small/zzzzz (5).webp"
+    "locationSmall": "gallery/small/zzzzz (5).webp",
+    "locationLarge": "gallery/large/zzzzz (5).webp"
   },
   {
     "name": "zzzzz (6)",
@@ -413,7 +464,8 @@
     "width": 566,
     "height": 800,
     "location": "gallery/zzzzz (6).jpg",
-    "locationSmall": "gallery/small/zzzzz (6).webp"
+    "locationSmall": "gallery/small/zzzzz (6).webp",
+    "locationLarge": "gallery/large/zzzzz (6).webp"
   },
   {
     "name": "zzzzz (8)",
@@ -421,7 +473,8 @@
     "width": 1500,
     "height": 1060,
     "location": "gallery/zzzzz (8).jpg",
-    "locationSmall": "gallery/small/zzzzz (8).webp"
+    "locationSmall": "gallery/small/zzzzz (8).webp",
+    "locationLarge": "gallery/large/zzzzz (8).webp"
   },
   {
     "name": "zzzzz (9)",
@@ -429,7 +482,8 @@
     "width": 536,
     "height": 740,
     "location": "gallery/zzzzz (9).jpg",
-    "locationSmall": "gallery/small/zzzzz (9).webp"
+    "locationSmall": "gallery/small/zzzzz (9).webp",
+    "locationLarge": "gallery/large/zzzzz (9).webp"
   },
   {
     "name": "zzzzz 1(2)",
@@ -437,7 +491,8 @@
     "width": 724,
     "height": 1023,
     "location": "gallery/zzzzz 1(2).jpg",
-    "locationSmall": "gallery/small/zzzzz 1(2).webp"
+    "locationSmall": "gallery/small/zzzzz 1(2).webp",
+    "locationLarge": "gallery/large/zzzzz 1(2).webp"
   },
   {
     "name": "zzzzz 1(5)",
@@ -445,7 +500,8 @@
     "width": 705,
     "height": 900,
     "location": "gallery/zzzzz 1(5).jpg",
-    "locationSmall": "gallery/small/zzzzz 1(5).webp"
+    "locationSmall": "gallery/small/zzzzz 1(5).webp",
+    "locationLarge": "gallery/large/zzzzz 1(5).webp"
   },
   {
     "name": "zzzzz1 (1)",
@@ -453,7 +509,8 @@
     "width": 728,
     "height": 1034,
     "location": "gallery/zzzzz1 (1).jpg",
-    "locationSmall": "gallery/small/zzzzz1 (1).webp"
+    "locationSmall": "gallery/small/zzzzz1 (1).webp",
+    "locationLarge": "gallery/large/zzzzz1 (1).webp"
   },
   {
     "name": "zzzzz1 (3)",
@@ -461,7 +518,8 @@
     "width": 1748,
     "height": 2480,
     "location": "gallery/zzzzz1 (3).jpg",
-    "locationSmall": "gallery/small/zzzzz1 (3).webp"
+    "locationSmall": "gallery/small/zzzzz1 (3).webp",
+    "locationLarge": "gallery/large/zzzzz1 (3).webp"
   },
   {
     "name": "zzzzz1 (4)",
@@ -469,6 +527,7 @@
     "width": 960,
     "height": 1280,
     "location": "gallery/zzzzz1 (4).jpg",
-    "locationSmall": "gallery/small/zzzzz1 (4).webp"
+    "locationSmall": "gallery/small/zzzzz1 (4).webp",
+    "locationLarge": "gallery/large/zzzzz1 (4).webp"
   }
 ]
