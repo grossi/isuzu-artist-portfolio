@@ -11,7 +11,11 @@ const cache = new Map<string, string>();
 export default function useMarkdown(src: string) {
   const [, setLoadedSrc] = React.useState("");
   React.useEffect(() => {
-    if (cache.has(src)) return;
+    if (cache.has(src)) {
+      // An earlier fetch may have filled the cache after this render
+      setLoadedSrc(src);
+      return;
+    }
     let current = true;
     fetch(src)
       .then((response) => {
