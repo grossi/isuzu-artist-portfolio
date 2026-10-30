@@ -9,8 +9,7 @@ import about from "assets/md/about.md";
 import about_book from "assets/md/about_book.md";
 import about_book2 from "assets/md/about_book2.md";
 import about_book3 from "assets/md/about_book3.md";
-import { FaTwitter } from "react-icons/fa";
-import { SiPixiv } from "react-icons/si";
+import { SiX, SiPixiv, SiFiverr } from "react-icons/si";
 import { MdEmail } from "react-icons/md";
 
 const useStyles = makeStyles((theme) => ({
@@ -56,8 +55,9 @@ const sidebar = {
   book2Link: "https://www.amazon.co.jp/o/ASIN/4297128349/gihyojp-22",
   book3Link: "https://amazon.co.jp/dp/4297149761",
   socialLinks: [
-    { label: "twitter", href: "https://twitter.com/y_isuZu", Icon: FaTwitter },
+    { label: "X", href: "https://x.com/y_isuZu", Icon: SiX },
     { label: "pixiv", href: "https://www.pixiv.net/member.php?id=124098", Icon: SiPixiv },
+    { label: "Fiverr", href: "https://www.fiverr.com/y_isuzu", Icon: SiFiverr },
     { label: "email", href: "mailto:isuzu@bj8.so-net.ne.jp", Icon: MdEmail },
   ],
 };
