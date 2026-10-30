@@ -2,6 +2,10 @@
 
 Can be viewed at [http://isuzu.work](http://isuzu.work)
 
+## Requirements
+
+Node.js 20.19+, 22.13+ or 24+ (the range Vite 8 and ESLint 10 support) and Yarn 1.
+
 ## Available Scripts
 
 In the project directory, you can run:
@@ -19,19 +23,22 @@ This reads the images inside the `/public` folder to create the json who are use
 
 ### `yarn start`
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
-
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
-
-### `yarn test`
-
-Launches the test runner in the interactive watch mode.
+Runs `yarn build-images`, then the [Vite](https://vite.dev) dev server.\
+Open [http://localhost:3000](http://localhost:3000) to view it in the browser. Edits are hot-reloaded.
 
 ### `yarn build`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Runs `yarn build-images`, type-checks with `tsc`, lints, then builds the app for production into the `build` folder.\
+The build is minified, the filenames include hashes, and no source maps are emitted.
 
-The build is minified and the filenames include the hashes.
+### `yarn preview`
+
+Serves the production build from `build/` locally.
+
+### `yarn lint`
+
+Lints the project with ESLint.
+
+### `yarn deploy`
+
+Builds the app, then uploads `build/` to S3 with Cache-Control headers and invalidates CloudFront (`yarn push-s3`, see `scripts/push-s3.sh`).
