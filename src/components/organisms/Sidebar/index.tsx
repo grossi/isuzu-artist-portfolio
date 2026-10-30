@@ -75,7 +75,7 @@ export default function Sidebar(props: SidebarProps) {
         </Typography>
         <Grid container direction="row" alignItems="center" spacing={2} className={classes.avatarGrid}>
           <Grid item>
-            <Avatar className={classes.avatar} alt={t("sidebar.avatarAlt")} src={`${process.env.PUBLIC_URL}/isuzu.jpg`} />
+            <Avatar className={classes.avatar} alt={t("sidebar.avatarAlt")} src={`${import.meta.env.BASE_URL}isuzu.jpg`} />
           </Grid>
           <Grid item>
             <Typography variant="h4">isuZu</Typography>

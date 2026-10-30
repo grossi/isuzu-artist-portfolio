@@ -31,7 +31,7 @@ function MarkdownImage(props: any) {
     <CardMedia
       className={classes.image}
       component="img"
-      src={`${process.env.PUBLIC_URL}/isuzubook.webp`}
+      src={`${import.meta.env.BASE_URL}isuzubook.webp`}
       title={props.title}
       alt={props.alt}
     />

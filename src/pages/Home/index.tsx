@@ -5,14 +5,14 @@ import Container from "@material-ui/core/Container";
 import Featured from "components/molecules/Featured";
 import Sidebar from "components/organisms/Sidebar";
 import Galery from 'components/organisms/Gallery';
-import aboutJa from "assets/md/about.ja.md";
-import aboutEn from "assets/md/about.en.md";
-import aboutBookJa from "assets/md/about_book.ja.md";
-import aboutBookEn from "assets/md/about_book.en.md";
-import aboutBook2Ja from "assets/md/about_book2.ja.md";
-import aboutBook2En from "assets/md/about_book2.en.md";
-import aboutBook3Ja from "assets/md/about_book3.ja.md";
-import aboutBook3En from "assets/md/about_book3.en.md";
+import aboutJa from "assets/md/about.ja.md?url";
+import aboutEn from "assets/md/about.en.md?url";
+import aboutBookJa from "assets/md/about_book.ja.md?url";
+import aboutBookEn from "assets/md/about_book.en.md?url";
+import aboutBook2Ja from "assets/md/about_book2.ja.md?url";
+import aboutBook2En from "assets/md/about_book2.en.md?url";
+import aboutBook3Ja from "assets/md/about_book3.ja.md?url";
+import aboutBook3En from "assets/md/about_book3.en.md?url";
 import { SiX, SiPixiv, SiFiverr } from "react-icons/si";
 import { MdEmail } from "react-icons/md";
 import { Localized, useLanguage } from "i18n/LanguageContext";
@@ -52,17 +52,17 @@ const about: Localized<string> = { ja: aboutJa, en: aboutEn };
 const books: Array<{ link: string; image: string; description: Localized<string> }> = [
   {
     link: "https://www.amazon.co.jp/dp/429713134X",
-    image: `${process.env.PUBLIC_URL}/isuzubook.webp`,
+    image: `${import.meta.env.BASE_URL}isuzubook.webp`,
     description: { ja: aboutBookJa, en: aboutBookEn },
   },
   {
     link: "https://www.amazon.co.jp/o/ASIN/4297128349/gihyojp-22",
-    image: `${process.env.PUBLIC_URL}/isuzubook2.webp`,
+    image: `${import.meta.env.BASE_URL}isuzubook2.webp`,
     description: { ja: aboutBook2Ja, en: aboutBook2En },
   },
   {
     link: "https://amazon.co.jp/dp/4297149761",
-    image: `${process.env.PUBLIC_URL}/isuzubook3.webp`,
+    image: `${import.meta.env.BASE_URL}isuzubook3.webp`,
     description: { ja: aboutBook3Ja, en: aboutBook3En },
   },
 ];
