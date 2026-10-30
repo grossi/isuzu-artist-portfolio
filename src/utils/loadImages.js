@@ -23,12 +23,8 @@ function rescaleLarge({ imagePath, width, destinationPath }) {
 }
 
 function bannerStrip({ h, w }) {
-  let height = Math.min(h, Math.ceil(w / BANNER_ASPECT_RATIO));
-  // Match the parity of the source height so the strip is centred exactly.
-  if ((h - height) % 2) {
-    height += 1;
-  }
-  return { left: 0, top: (h - height) / 2, width: w, height };
+  const height = Math.min(h, Math.ceil(w / BANNER_ASPECT_RATIO));
+  return { left: 0, top: Math.floor((h - height) / 2), width: w, height };
 }
 
 function scaledDimentions({ h, w }) {

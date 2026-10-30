@@ -12,23 +12,28 @@ export interface GalleryPhotoData {
 /**
  * Lazy-loading replacement for react-photo-gallery's default image. Only the
  * props an <img> understands are passed on, and photos that open the viewer can
- * also be activated from the keyboard.
+ * also be activated from the keyboard. Supports the default row layout only
+ * (column layout would need the absolute top/left positioning).
  *
  * The gallery calls this as a plain function rather than rendering it as a
  * component, so it must not use hooks and has to set the key itself.
+ *
+ * `deferred` leaves out the src, so the photo takes up its place in the layout
+ * without being downloaded.
  */
 export default function GalleryPhoto({
   index,
   onClick,
   photo,
   margin,
-}: RenderImageProps) {
+  deferred = false,
+}: RenderImageProps & { deferred?: boolean }) {
   const clickable = onClick !== null;
 
   return (
     <img
       key={photo.key || photo.src}
-      src={photo.src}
+      src={deferred ? undefined : photo.src}
       width={photo.width}
       height={photo.height}
       alt={photo.alt}
