@@ -6,6 +6,7 @@ import CardMedia from "@material-ui/core/CardMedia";
 import Dialog from "@material-ui/core/Dialog";
 import Grid from "@material-ui/core/Grid";
 import PhotoGallery from "react-photo-gallery";
+import GalleryPhoto, { GalleryPhotoData } from "components/atoms/GalleryPhoto";
 import galleryData from "gallery.json";
 import { useLanguage } from "i18n/LanguageContext";
 
@@ -24,13 +25,13 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-const paintings = galleryData.map((image, k) => {
+const paintings: GalleryPhotoData[] = galleryData.map((image, k) => {
   return {
     src: `${process.env.PUBLIC_URL}/${image.locationSmall}`,
-    srcBig: `${process.env.PUBLIC_URL}/${image.location}`,
+    srcBig: `${process.env.PUBLIC_URL}/${image.locationLarge}`,
     width: image.width,
     height: image.height,
-    name: image.name,
+    alt: `isuZu illustration ${k + 1}`,
   };
 });
 
@@ -44,12 +45,12 @@ const calculateTargetRowHeight = (containerWidth: number) => {
 
 export default function Gallery() {
   const classes = useStyles();
-  const [currentImage, setCurrentImage] = React.useState("");
+  const [currentImage, setCurrentImage] = React.useState<GalleryPhotoData>();
   const [viewerIsOpen, setViewerIsOpen] = React.useState(false);
   const { t } = useLanguage();
 
   const openDialog = React.useCallback((event, { photo, index }) => {
-    setCurrentImage(photo.srcBig);
+    setCurrentImage(photo);
     setViewerIsOpen(true);
   }, []);
 
@@ -61,6 +62,7 @@ export default function Gallery() {
           photos={paintings}
           onClick={openDialog}
           limitNodeSearch={4}
+          renderImage={GalleryPhoto}
         />
       </Grid>
       <Dialog
@@ -69,7 +71,7 @@ export default function Gallery() {
         scroll="body"
         maxWidth="xl"
       >
-        <CardMedia component="img" src={currentImage} />
+        <CardMedia component="img" src={currentImage?.srcBig} alt={currentImage?.alt} />
         <IconButton aria-label={t("common.close")} className={classes.closeButton} onClick={() => setViewerIsOpen(false)}>
           <CloseIcon />
         </IconButton>

@@ -3,19 +3,20 @@ import WorkCard from "components/molecules/WorkCard";
 import workGalleryData from "work-gallery.json";
 
 const works = workGalleryData.map((work, k) => {
-  let imageList = work.workList.map(painting => {
+  let imageList = work.workList.map((painting, k) => {
     return {
-      src: `${process.env.PUBLIC_URL}/${painting.location}`,
+      src: `${process.env.PUBLIC_URL}/${painting.locationSmall}`,
+      srcBig: `${process.env.PUBLIC_URL}/${painting.locationLarge}`,
       width: painting.width,
       height: painting.height,
-      name: painting.name,
+      alt: `${work.name} illustration ${k + 1}`,
     };  
   });
   return {
     name: work.name,
     banner: {
       name: work.banner.name,
-      src: `${process.env.PUBLIC_URL}/${work.banner.location}`,
+      src: `${process.env.PUBLIC_URL}/${work.banner.locationSmall}`,
     },
     about: {
       ja: `${process.env.PUBLIC_URL}/${work.about.ja}`,
