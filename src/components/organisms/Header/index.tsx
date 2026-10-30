@@ -8,16 +8,9 @@ import ButtonBase from "@mui/material/ButtonBase";
 import { Lang, useLanguage } from "i18n/LanguageContext";
 import { TranslationKey } from "i18n/ja";
 
-// Common phone widths (360px) need a tighter header than MUI's xs breakpoint gives.
-const narrowScreen = "@media (max-width: 374.95px)";
-
 const useStyles = makeStyles()((theme) => ({
   toolbar: {
     borderBottom: `1px solid ${theme.palette.divider}`,
-    [narrowScreen]: {
-      paddingRight: theme.spacing(1),
-      paddingLeft: theme.spacing(1),
-    },
     [theme.breakpoints.up("lg")]: {
       paddingRight: theme.spacing(12),
       paddingLeft: theme.spacing(12),
@@ -35,9 +28,6 @@ const useStyles = makeStyles()((theme) => ({
     [theme.breakpoints.down("sm")]: {
       fontSize: "2.5rem",
     },
-    [narrowScreen]: {
-      fontSize: "2rem",
-    },
   },
   toolbarLink: {
     padding: theme.spacing(2),
@@ -45,10 +35,6 @@ const useStyles = makeStyles()((theme) => ({
     [theme.breakpoints.down("sm")]: {
       paddingRight: theme.spacing(1),
       paddingLeft: theme.spacing(1),
-    },
-    [narrowScreen]: {
-      paddingRight: theme.spacing(0.75),
-      paddingLeft: theme.spacing(0.75),
     },
   },
   languageToggle: {
@@ -78,6 +64,11 @@ const useStyles = makeStyles()((theme) => ({
     fontWeight: 700,
   },
 }));
+
+// The Work and CV pages are still work in progress, so their links are hidden for now.
+// The routes stay live by direct URL. Set this to true to show the links again; below
+// 375px the header will then need the tighter title and padding from commit 81c4b6b.
+const showSectionLinks = false;
 
 const sections: Array<{ titleKey: TranslationKey; url: string }> = [
   { titleKey: "nav.work", url: "/work" },
@@ -111,19 +102,20 @@ export default function Header(props: HeaderProps) {
       >
         {title}
       </Link>
-      {sections.map((section) => (
-        <Link
-          component={RouterLink}
-          to={section.url}
-          color="inherit"
-          noWrap
-          key={section.url}
-          variant="subtitle1"
-          className={classes.toolbarLink}
-        >
-          {t(section.titleKey)}
-        </Link>
-      ))}
+      {showSectionLinks &&
+        sections.map((section) => (
+          <Link
+            component={RouterLink}
+            to={section.url}
+            color="inherit"
+            noWrap
+            key={section.url}
+            variant="subtitle1"
+            className={classes.toolbarLink}
+          >
+            {t(section.titleKey)}
+          </Link>
+        ))}
       <div
         role="group"
         aria-label={t("header.language")}
