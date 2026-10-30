@@ -16,7 +16,7 @@ import Markdown from "components/molecules/Markdown";
 import PhotoGallery, { RenderImageProps } from "react-photo-gallery";
 import useMarkdown from "hooks/useMarkdown";
 import { Localized, useLanguage } from "i18n/LanguageContext";
-import GalleryPhoto, { GalleryPhotoData } from "components/atoms/GalleryPhoto";
+import GalleryPhoto, { GalleryPhotoData, GalleryPhotoSource, usePhotoAlts } from "components/atoms/GalleryPhoto";
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -53,7 +53,7 @@ interface WorkCardProps {
     name: string;
     about: Localized<string>;
     banner: { src: string; name: string };
-    imageList: GalleryPhotoData[];
+    imageList: GalleryPhotoSource[];
   };
 }
 
@@ -75,7 +75,7 @@ const calculateLimitNodeSearch = (containerWidth: number) => {
 
 export default function WorkCard(props: WorkCardProps) {
   const classes = useStyles();
-  const [currentImage, setCurrentImage] = React.useState<GalleryPhotoData>();
+  const [currentIndex, setCurrentIndex] = React.useState(0);
   const [viewerIsOpen, setViewerIsOpen] = React.useState(false);
   const [galleryIsOpen, setGalleryIsOpen] = React.useState(false);
   // The gallery stays mounted so Collapse can measure it, but its images are only
@@ -90,9 +90,11 @@ export default function WorkCard(props: WorkCardProps) {
   const { lang, t } = useLanguage();
   const loadedAbout = useMarkdown(work.about[lang]);
   const bannerAlt = t("workCard.bannerAlt", { name: work.name });
+  const photos = usePhotoAlts(work.imageList);
+  const currentImage: GalleryPhotoData | undefined = photos[currentIndex];
 
   const openDialog = React.useCallback((event, { photo, index }) => {
-    setCurrentImage(photo);
+    setCurrentIndex(index);
     setViewerIsOpen(true);
   }, []);
 
@@ -129,7 +131,7 @@ export default function WorkCard(props: WorkCardProps) {
           <PhotoGallery
             onClick={openDialog}
             targetRowHeight={calculateTargetRowHeight}
-            photos={work.imageList}
+            photos={photos}
             limitNodeSearch={calculateLimitNodeSearch}
             renderImage={renderPhoto}
           />

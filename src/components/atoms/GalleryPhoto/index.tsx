@@ -1,12 +1,29 @@
 import * as React from "react";
 import { RenderImageProps } from "react-photo-gallery";
+import { useLanguage } from "i18n/LanguageContext";
 
-export interface GalleryPhotoData {
+export interface GalleryPhotoSource {
   src: string;
   srcBig: string;
   width: number;
   height: number;
+}
+
+export interface GalleryPhotoData extends GalleryPhotoSource {
   alt: string;
+}
+
+/** Adds translated, numbered alt text to a gallery's photos. */
+export function usePhotoAlts(photos: GalleryPhotoSource[]): GalleryPhotoData[] {
+  const { t } = useLanguage();
+  return React.useMemo(
+    () =>
+      photos.map((photo, index) => ({
+        ...photo,
+        alt: t("gallery.photoAlt", { n: index + 1 }),
+      })),
+    [photos, t]
+  );
 }
 
 /**
