@@ -12,6 +12,7 @@ const en: Translations = {
   "social.email": "Email",
   "workCard.showMore": "Show more",
   "workCard.bannerAlt": "{name} banner",
+  "gallery.photoAlt": "isuZu illustration {n}",
   "common.close": "Close",
   "footer.copyright": "Copyright © {year} isuZu. All rights reserved.",
 };

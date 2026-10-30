@@ -4,18 +4,25 @@ import workGalleryData from "work-gallery.json";
 
 const works = workGalleryData.map((work, k) => {
   let imageList = work.workList.map(painting => {
+    const src = `${process.env.PUBLIC_URL}/${painting.locationSmall}`;
+    const srcBig = `${process.env.PUBLIC_URL}/${painting.locationLarge}`;
     return {
-      src: `${process.env.PUBLIC_URL}/${painting.location}`,
+      src,
+      srcBig,
+      // Some row layouts render a thumbnail wider than the small derivative
+      // covers on retina screens; let the browser fall back to the large one.
+      srcSet: painting.widthLarge > painting.widthSmall
+        ? `${src} ${painting.widthSmall}w, ${srcBig} ${painting.widthLarge}w`
+        : undefined,
       width: painting.width,
       height: painting.height,
-      name: painting.name,
     };  
   });
   return {
     name: work.name,
     banner: {
       name: work.banner.name,
-      src: `${process.env.PUBLIC_URL}/${work.banner.location}`,
+      src: `${process.env.PUBLIC_URL}/${work.banner.locationSmall}`,
     },
     about: {
       ja: `${process.env.PUBLIC_URL}/${work.about.ja}`,
