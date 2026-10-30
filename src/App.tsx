@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter, Route, Switch } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import Footer from "components/organisms/Footer";
@@ -17,11 +17,11 @@ export default function App() {
         <BrowserRouter>
           <CssBaseline />
           <Header title="isuZu" />
-          <Switch>
-            <Route exact path="/" component={Home} />
-            <Route path="/work" component={WorkGallery} />
-            <Route path="/history" component={WorkHistory} />
-          </Switch>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/work/*" element={<WorkGallery />} />
+            <Route path="/history/*" element={<WorkHistory />} />
+          </Routes>
           <Footer />
         </BrowserRouter>
       </LanguageProvider>
