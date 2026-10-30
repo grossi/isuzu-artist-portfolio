@@ -54,7 +54,7 @@ export default function History() {
       <CardMedia
         component="img"
         height={120}
-        src={`${process.env.PUBLIC_URL}/isuzubook.jpg`}
+        src={`${process.env.PUBLIC_URL}/isuzubook.webp`}
       />
       <Container maxWidth="lg" className={classes.mainContainer}>
         <main>
