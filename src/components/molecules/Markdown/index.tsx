@@ -1,11 +1,11 @@
 import * as React from "react";
 import ReactMarkdown from "markdown-to-jsx";
-import { makeStyles } from "@material-ui/core/styles";
-import Typography from "@material-ui/core/Typography";
-import CardMedia from "@material-ui/core/CardMedia";
-import Link from "@material-ui/core/Link";
+import { makeStyles } from "tss-react/mui";
+import Typography from "@mui/material/Typography";
+import CardMedia from "@mui/material/CardMedia";
+import Link from "@mui/material/Link";
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles()((theme) => ({
   listItem: {
     marginTop: theme.spacing(1),
   },
@@ -16,7 +16,7 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 function MarkdownListItem(props: any) {
-  const classes = useStyles();
+  const { classes } = useStyles();
   return (
     <li className={classes.listItem}>
       <Typography component="span" {...props} />
@@ -25,13 +25,13 @@ function MarkdownListItem(props: any) {
 }
 
 function MarkdownImage(props: any) {
-  const classes = useStyles();
+  const { classes } = useStyles();
   console.log("props", props);
   return (
     <CardMedia
       className={classes.image}
       component="img"
-      src={`${process.env.PUBLIC_URL}/isuzubook.webp`}
+      src={`${import.meta.env.BASE_URL}isuzubook.webp`}
       title={props.title}
       alt={props.alt}
     />
@@ -60,12 +60,13 @@ const options = {
       props: {
         gutterBottom: true,
         variant: "caption",
-        paragraph: true,
+        component: "p",
+        sx: { mb: 2 },
       },
     },
     p: {
       component: Typography,
-      props: { paragraph: true, variant: "body2" },
+      props: { variant: "body2", sx: { mb: 2 } },
     },
     a: { component: Link },
     li: {

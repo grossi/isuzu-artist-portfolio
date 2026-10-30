@@ -1,16 +1,15 @@
 import * as React from "react";
-import { makeStyles } from '@material-ui/core/styles';
-import IconButton from '@material-ui/core/IconButton';
-import CloseIcon from '@material-ui/icons/Close';
-import CardMedia from "@material-ui/core/CardMedia";
-import Dialog from "@material-ui/core/Dialog";
-import Grid from "@material-ui/core/Grid";
-import PhotoGallery from "react-photo-gallery";
-import GalleryPhoto, { GalleryPhotoData, GalleryPhotoSource, usePhotoAlts } from "components/atoms/GalleryPhoto";
+import { makeStyles } from "tss-react/mui";
+import IconButton from '@mui/material/IconButton';
+import CloseIcon from '@mui/icons-material/Close';
+import CardMedia from "@mui/material/CardMedia";
+import Dialog from "@mui/material/Dialog";
+import Grid from "@mui/material/Grid";
+import PhotoRows, { GalleryPhotoData, GalleryPhotoSource, usePhotoAlts } from "components/molecules/PhotoRows";
 import galleryData from "gallery.json";
 import { useLanguage } from "i18n/LanguageContext";
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles()((theme) => ({
   closeButton: {
     position: 'absolute',
     right: theme.spacing(1),
@@ -19,7 +18,7 @@ const useStyles = makeStyles((theme) => ({
   },
   galleryGrid: {
     order: 1,
-    [theme.breakpoints.down('sm')]: {
+    [theme.breakpoints.down('md')]: {
       order: 2,
     },
   },
@@ -27,8 +26,8 @@ const useStyles = makeStyles((theme) => ({
 
 const paintings: GalleryPhotoSource[] = galleryData.map((image, k) => {
   return {
-    src: `${process.env.PUBLIC_URL}/${image.locationSmall}`,
-    srcBig: `${process.env.PUBLIC_URL}/${image.locationLarge}`,
+    src: `${import.meta.env.BASE_URL}${image.locationSmall}`,
+    srcBig: `${import.meta.env.BASE_URL}${image.locationLarge}`,
     width: image.width,
     height: image.height,
   };
@@ -42,28 +41,29 @@ const calculateTargetRowHeight = (containerWidth: number) => {
   }
 };
 
+const maxPhotosPerRow = () => 4;
+
 export default function Gallery() {
-  const classes = useStyles();
+  const { classes } = useStyles();
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [viewerIsOpen, setViewerIsOpen] = React.useState(false);
   const { t } = useLanguage();
   const photos = usePhotoAlts(paintings);
   const currentImage: GalleryPhotoData | undefined = photos[currentIndex];
 
-  const openDialog = React.useCallback((event, { photo, index }) => {
+  const openDialog = React.useCallback((index: number) => {
     setCurrentIndex(index);
     setViewerIsOpen(true);
   }, []);
 
   return (
     <React.Fragment>
-      <Grid item xs={12} md={8} className={classes.galleryGrid}>
-        <PhotoGallery
-          targetRowHeight={calculateTargetRowHeight}
+      <Grid size={{ xs: 12, md: 8 }} className={classes.galleryGrid}>
+        <PhotoRows
           photos={photos}
+          targetRowHeight={calculateTargetRowHeight}
+          maxPhotosPerRow={maxPhotosPerRow}
           onClick={openDialog}
-          limitNodeSearch={4}
-          renderImage={GalleryPhoto}
         />
       </Grid>
       <Dialog

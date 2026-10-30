@@ -10,11 +10,12 @@ This is an artist portfolio website for isuZu (isuzu.work), built with React and
 
 ### Development
 ```bash
-yarn start          # Generate image derivatives, then start dev server on localhost:3000
+yarn start          # Generate image derivatives, then start the Vite dev server on localhost:3000
 yarn build-images   # Process images and generate JSON files (run before deployment)
-yarn build          # Create production build
-yarn test           # Run tests in watch mode
-yarn deploy         # Full deployment pipeline (build-images → build → push-s3)
+yarn build          # build-images → type-check (tsc) → lint → Vite production build into build/
+yarn preview        # Serve the production build locally
+yarn lint           # ESLint (flat config in eslint.config.mjs)
+yarn deploy         # Full deployment pipeline (build → push-s3)
 ```
 
 ### Image Processing
@@ -31,19 +32,18 @@ For each source image it writes WebP derivatives next to it: `small/` (grid thum
 ## Architecture
 
 ### Tech Stack
-- React 17 with TypeScript
-- Material-UI v4 for components
-- React Router v5 for routing
-- react-photo-gallery & react-slick for image displays
+- React 19 with TypeScript 6, built with Vite 8
+- MUI v7 (`@mui/material`) for components, styled with `tss-react`'s `makeStyles`
+- React Router v7 (`react-router`) for routing
+- react-photo-album (rows layout) & react-slick for image displays
 
 ### Component Structure
 ```
 components/
-├── atoms/
-│   └── GalleryPhoto/ # Lazy <img> for react-photo-gallery
 ├── molecules/      # Reusable mid-level components
 │   ├── Featured/   # Homepage featured content
 │   ├── Markdown/   # Markdown renderer
+│   ├── PhotoRows/  # Justified photo rows (react-photo-album)
 │   ├── SocialLinks/
 │   └── WorkCard/   # Work portfolio cards
 └── organisms/      # Complex page sections
@@ -53,9 +53,13 @@ components/
 ```
 
 ### Key Files
+- `index.html` - HTML entry point (Vite serves it from the project root)
+- `vite.config.mts` - Vite config (output dir `build/`, no source maps, vendor chunks)
+- `src/index.tsx` - React entry point
 - `src/App.tsx` - Main routing setup
+- `src/theme.ts` - MUI theme
 - `src/utils/loadImages.js` - Image processing script that generates JSON and WebP versions
-- `src/components/atoms/GalleryPhoto/` - Lazy-loading image renderer shared by the photo galleries
+- `src/components/molecules/PhotoRows/` - Justified photo rows shared by the galleries: react-photo-gallery's row layout rendered with react-photo-album, lazy-loaded photos that open the viewer
 - `src/pages/` - Page components for each route
 - `src/assets/md/` - Markdown content files, one per language (`name.ja.md`, `name.en.md`)
 - `src/i18n/` - `LanguageContext` plus the UI string tables (`ja.ts`, `en.ts`)
@@ -75,13 +79,20 @@ Images are processed at build time to create:
 
 Always run `yarn build-images` after adding/modifying images (and commit the updated `src/*.json`). The generated WebP folders are build-only and never committed.
 
+### Imports and Assets
+- Bare imports resolve from `src/` (`components/...`, `pages/...`, `gallery.json`) through the `paths` mapping in `tsconfig.json` (Vite's `resolve.tsconfigPaths`).
+- Markdown files imported for fetching need the `?url` suffix (`import about from "assets/md/about.md?url"`).
+- Reference files in `public/` with `` `${import.meta.env.BASE_URL}file.jpg` `` (`BASE_URL` already ends in `/`).
+
 ### Deployment
 The site deploys to AWS S3 (isuzu.work) behind CloudFront (`E3FT8MC74I1LTP`) using:
 ```bash
 yarn push-s3           # Uploads build/ with Cache-Control headers, then invalidates CloudFront
 yarn push-s3 --dryrun  # Preview the uploads; no invalidation
 ```
-See `scripts/push-s3.sh`. Never delete remote objects (no `sync --delete`): `isuzubook.jpg` exists only in S3.
+See `scripts/push-s3.sh`: Vite's hashed `build/assets/*` are uploaded as immutable, images get a one-week cache, everything else (`index.html`, markdown, ...) `no-cache`. Never delete remote objects (no `sync --delete`): `isuzubook.jpg` exists only in S3.
+
+It is a single-page app: CloudFront serves `index.html` for unknown paths so `/work` and `/history` deep links work. Vercel PR previews use `vercel.json` (Vite preset, `build/` output, the same SPA rewrite).
 
 ### Languages (Japanese / English)
 The site is bilingual; Japanese is the default and the header has a "日本語 / EN" toggle.
@@ -95,8 +106,10 @@ The site is bilingual; Japanese is the default and the header has a "日本語 /
   description in sync.
 - Japanese CV/profile text is the source; keep names, titles and dates identical in English.
 
-### Material-UI Theme
-Uses default MUI theme with responsive breakpoints. Components use `useMediaQuery` for responsive behavior.
+### MUI Theme
+`src/theme.ts` keeps the Material-UI v4 defaults the design was built with: breakpoints (sm 600, md 960, lg 1280, xl 1920), primary colour, `#fafafa` background, body2 body text and hover-only link underlines. Remember that MUI v5+ `breakpoints.down(key)` is exclusive of `key` (v4's `down('sm')` is `down('md')` now).
+
+The v7 `Grid` uses `size={{ xs: 12, md: 8 }}` and has no item padding or negative container margins.
 
 ### State Management
 Mostly prop drilling, no Redux. The one Context is `LanguageContext` (`src/i18n/`) for the

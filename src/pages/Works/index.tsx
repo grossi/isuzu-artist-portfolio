@@ -1,12 +1,14 @@
 import * as React from "react";
-import { makeStyles } from "@material-ui/core/styles";
-import Grid from "@material-ui/core/Grid";
-import Container from "@material-ui/core/Container";
+import { makeStyles } from "tss-react/mui";
+import Container from "@mui/material/Container";
 import Galery from 'components/organisms/WorkGallery';
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles()((theme) => ({
   mainGrid: {
-    marginTop: theme.spacing(3),
+    // Same layout the v4 Grid container (spacing={2}) had
+    display: "flex",
+    flexWrap: "wrap",
+    margin: theme.spacing(3, -1, -1),
   },
   mainContainer: {
     minHeight: "100%",
@@ -35,14 +37,14 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 export default function Works() {
-  const classes = useStyles();
+  const { classes } = useStyles();
 
   return (
     <Container maxWidth="xl" className={classes.mainContainer}>
       <main>
-        <Grid container spacing={2} className={classes.mainGrid}>
+        <div className={classes.mainGrid}>
           <Galery />
-        </Grid>
+        </div>
       </main>
     </Container>
   );

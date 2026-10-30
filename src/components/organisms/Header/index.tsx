@@ -1,17 +1,17 @@
 import * as React from "react";
-import { Link as RouterLink } from "react-router-dom";
-import clsx from "clsx";
-import { makeStyles } from "@material-ui/core/styles";
-import Toolbar from "@material-ui/core/Toolbar";
-import Link from "@material-ui/core/Link";
-import ButtonBase from "@material-ui/core/ButtonBase";
+import { Link as RouterLink } from "react-router";
+import { makeStyles } from "tss-react/mui";
+import type { CSSObject } from "tss-react";
+import Toolbar from "@mui/material/Toolbar";
+import Link from "@mui/material/Link";
+import ButtonBase from "@mui/material/ButtonBase";
 import { Lang, useLanguage } from "i18n/LanguageContext";
 import { TranslationKey } from "i18n/ja";
 
 // Common phone widths (360px) need a tighter header than MUI's xs breakpoint gives.
 const narrowScreen = "@media (max-width: 374.95px)";
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles()((theme) => ({
   toolbar: {
     borderBottom: `1px solid ${theme.palette.divider}`,
     [narrowScreen]: {
@@ -32,7 +32,7 @@ const useStyles = makeStyles((theme) => ({
     "&:hover": {
       textDecoration: "none",
     },
-    [theme.breakpoints.down("xs")]: {
+    [theme.breakpoints.down("sm")]: {
       fontSize: "2.5rem",
     },
     [narrowScreen]: {
@@ -42,7 +42,7 @@ const useStyles = makeStyles((theme) => ({
   toolbarLink: {
     padding: theme.spacing(2),
     flexShrink: 0,
-    [theme.breakpoints.down("xs")]: {
+    [theme.breakpoints.down("sm")]: {
       paddingRight: theme.spacing(1),
       paddingLeft: theme.spacing(1),
     },
@@ -57,7 +57,8 @@ const useStyles = makeStyles((theme) => ({
     flexShrink: 0,
     marginLeft: theme.spacing(1),
     color: theme.palette.text.secondary,
-    ...theme.typography.body2,
+    // MUI's typography type and tss-react's CSSObject differ only in their CSS typings
+    ...(theme.typography.body2 as CSSObject),
   },
   languageOption: {
     padding: theme.spacing(0.5),
@@ -94,7 +95,7 @@ interface HeaderProps {
 }
 
 export default function Header(props: HeaderProps) {
-  const classes = useStyles();
+  const { classes, cx } = useStyles();
   const { title } = props;
   const { lang, setLang, t } = useLanguage();
 
@@ -137,7 +138,7 @@ export default function Header(props: HeaderProps) {
               aria-pressed={lang === option.lang}
               onClick={() => setLang(option.lang)}
               focusVisibleClassName={classes.languageOptionFocus}
-              className={clsx(classes.languageOption, {
+              className={cx(classes.languageOption, {
                 [classes.languageOptionActive]: lang === option.lang,
               })}
             >
