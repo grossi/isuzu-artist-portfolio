@@ -15,11 +15,18 @@ const BANNER_ASPECT_RATIO = 4;
 
 function rescale({ imagePath, width, destinationPath, quality, crop }) {
   const image = crop ? sharp(imagePath).extract(crop) : sharp(imagePath);
-  return image.resize({ width }).webp({effort: 6, quality}).toFile(`${destinationPath}.webp`);
+  return image.resize({ width, withoutEnlargement: true }).webp({effort: 6, quality}).toFile(`${destinationPath}.webp`);
 }
 
-function rescaleLarge({ imagePath, width, destinationPath }) {
-  return rescale({ imagePath, width: Math.min(width, LARGE_WIDTH), destinationPath, quality: LARGE_QUALITY });
+function rescaleLarge({ imagePath, destinationPath }) {
+  return rescale({ imagePath, width: LARGE_WIDTH, destinationPath, quality: LARGE_QUALITY });
+}
+
+// Derivative folders are rebuilt from scratch on every run, so files left over
+// from renamed or deleted sources don't keep shipping (the folders are gitignored).
+function freshDir(dir) {
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
 }
 
 function bannerStrip({ h, w }) {
@@ -38,8 +45,8 @@ function scaledDimentions({ h, w }) {
 
 const galleryNormalizedPath = require("path").join(__dirname, "../../public/gallery");
 
-fs.mkdirSync('public/gallery/small', { recursive: true });
-fs.mkdirSync('public/gallery/large', { recursive: true });
+freshDir('public/gallery/small');
+freshDir('public/gallery/large');
 
 const rescaleJobs = [];
 
@@ -59,7 +66,6 @@ const galleryPictures = fs.readdirSync(galleryNormalizedPath).sort().map((file, 
     }));
     rescaleJobs.push(rescaleLarge({
       imagePath: `public/gallery/${file}`,
-      width: dimensions.width,
       destinationPath: `public/gallery/large/${name}`
     }));
 
@@ -83,7 +89,7 @@ fs.writeFileSync('./src/gallery.json', JSON.stringify(galleryPictures, null, 2),
 
 const carouselNormalizedPath = require("path").join(__dirname, "../../public/carousel");
 
-fs.mkdirSync('public/carousel/large', { recursive: true });
+freshDir('public/carousel/large');
 
 const carouselPictures = fs.readdirSync(carouselNormalizedPath).map((file, k) => {
   const extension = file.split('.')[1];
@@ -94,7 +100,6 @@ const carouselPictures = fs.readdirSync(carouselNormalizedPath).map((file, k) =>
 
   rescaleJobs.push(rescaleLarge({
     imagePath: `public/carousel/${file}`,
-    width: sizeOf(`public/carousel/${file}`).width,
     destinationPath: `public/carousel/large/${name}`
   }));
 
@@ -119,8 +124,8 @@ const workGalleryDirectories = fs.readdirSync(workGalleryNormalizedPath).map((wo
     let about;
     let banner;
     if(fileStats.isDirectory()) {
-      fs.mkdirSync(`${filePath}/small`, { recursive: true });
-      fs.mkdirSync(`${filePath}/large`, { recursive: true });
+      freshDir(`${filePath}/small`);
+      freshDir(`${filePath}/large`);
       let workList = fs.readdirSync(filePath).map((file, k) => {
         const extension = file.split('.')[1];
         const name = file.split('.')[0];
@@ -167,7 +172,6 @@ const workGalleryDirectories = fs.readdirSync(workGalleryNormalizedPath).map((wo
         }));
         rescaleJobs.push(rescaleLarge({
           imagePath: `public/work-gallery/${workDirectory}/${file}`,
-          width: dimensions.width,
           destinationPath: `public/work-gallery/${workDirectory}/large/${name}`
         }));
 
