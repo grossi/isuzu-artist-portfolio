@@ -1,16 +1,16 @@
 import * as React from "react";
-import { makeStyles } from '@material-ui/core/styles';
-import IconButton from '@material-ui/core/IconButton';
-import CloseIcon from '@material-ui/icons/Close';
-import CardMedia from "@material-ui/core/CardMedia";
-import Dialog from "@material-ui/core/Dialog";
-import Grid from "@material-ui/core/Grid";
+import { makeStyles } from "tss-react/mui";
+import IconButton from '@mui/material/IconButton';
+import CloseIcon from '@mui/icons-material/Close';
+import CardMedia from "@mui/material/CardMedia";
+import Dialog from "@mui/material/Dialog";
+import Grid from "@mui/material/Grid";
 import PhotoGallery from "react-photo-gallery";
 import GalleryPhoto, { GalleryPhotoData, GalleryPhotoSource, usePhotoAlts } from "components/atoms/GalleryPhoto";
 import galleryData from "gallery.json";
 import { useLanguage } from "i18n/LanguageContext";
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles()((theme) => ({
   closeButton: {
     position: 'absolute',
     right: theme.spacing(1),
@@ -19,7 +19,7 @@ const useStyles = makeStyles((theme) => ({
   },
   galleryGrid: {
     order: 1,
-    [theme.breakpoints.down('sm')]: {
+    [theme.breakpoints.down('md')]: {
       order: 2,
     },
   },
@@ -43,7 +43,7 @@ const calculateTargetRowHeight = (containerWidth: number) => {
 };
 
 export default function Gallery() {
-  const classes = useStyles();
+  const { classes } = useStyles();
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [viewerIsOpen, setViewerIsOpen] = React.useState(false);
   const { t } = useLanguage();
@@ -57,7 +57,7 @@ export default function Gallery() {
 
   return (
     <React.Fragment>
-      <Grid item xs={12} md={8} className={classes.galleryGrid}>
+      <Grid size={{ xs: 12, md: 8 }} className={classes.galleryGrid}>
         <PhotoGallery
           targetRowHeight={calculateTargetRowHeight}
           photos={photos}

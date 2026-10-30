@@ -1,16 +1,15 @@
 import React from "react";
-import clsx from "clsx";
-import { makeStyles } from "@material-ui/core/styles";
-import Card from "@material-ui/core/Card";
-import CardActionArea from "@material-ui/core/CardActionArea";
-import CardContent from "@material-ui/core/CardContent";
-import CardMedia from "@material-ui/core/CardMedia";
-import IconButton from "@material-ui/core/IconButton";
-import Dialog from "@material-ui/core/Dialog";
-import Collapse from "@material-ui/core/Collapse";
+import { makeStyles } from "tss-react/mui";
+import Card from "@mui/material/Card";
+import CardActionArea from "@mui/material/CardActionArea";
+import CardContent from "@mui/material/CardContent";
+import CardMedia from "@mui/material/CardMedia";
+import IconButton from "@mui/material/IconButton";
+import Dialog from "@mui/material/Dialog";
+import Collapse from "@mui/material/Collapse";
 
-import ExpandMoreIcon from "@material-ui/icons/ExpandMore";
-import CloseIcon from "@material-ui/icons/Close";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import CloseIcon from "@mui/icons-material/Close";
 
 import Markdown from "components/molecules/Markdown";
 import PhotoGallery, { RenderImageProps } from "react-photo-gallery";
@@ -18,7 +17,7 @@ import useMarkdown from "hooks/useMarkdown";
 import { Localized, useLanguage } from "i18n/LanguageContext";
 import GalleryPhoto, { GalleryPhotoData, GalleryPhotoSource, usePhotoAlts } from "components/atoms/GalleryPhoto";
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles()((theme) => ({
   root: {
     width: "100%",
     marginBottom: theme.spacing(2),
@@ -74,7 +73,7 @@ const calculateLimitNodeSearch = (containerWidth: number) => {
 };
 
 export default function WorkCard(props: WorkCardProps) {
-  const classes = useStyles();
+  const { classes, cx } = useStyles();
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [viewerIsOpen, setViewerIsOpen] = React.useState(false);
   const [galleryIsOpen, setGalleryIsOpen] = React.useState(false);
@@ -106,6 +105,7 @@ export default function WorkCard(props: WorkCardProps) {
             setGalleryIsOpen((state) => !state);
             setGalleryWasOpened(true);
           }}
+          aria-expanded={galleryIsOpen}
         >
           <CardMedia
             component="img"
@@ -116,12 +116,15 @@ export default function WorkCard(props: WorkCardProps) {
           />
           <CardContent className={classes.mainContent}>
             <Markdown>{loadedAbout}</Markdown>
+            {/* Decorative: the whole CardActionArea is the toggle button */}
             <IconButton
-              className={clsx(classes.expand, {
+              component="span"
+              tabIndex={-1}
+              role="presentation"
+              aria-hidden
+              className={cx(classes.expand, {
                 [classes.expandOpen]: galleryIsOpen,
               })}
-              aria-expanded={galleryIsOpen}
-              aria-label={t("workCard.showMore")}
             >
               <ExpandMoreIcon />
             </IconButton>

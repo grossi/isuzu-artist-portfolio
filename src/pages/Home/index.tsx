@@ -1,7 +1,7 @@
 import * as React from "react";
-import { makeStyles } from "@material-ui/core/styles";
-import Grid from "@material-ui/core/Grid";
-import Container from "@material-ui/core/Container";
+import { makeStyles } from "tss-react/mui";
+import Grid from "@mui/material/Grid";
+import Container from "@mui/material/Container";
 import Featured from "components/molecules/Featured";
 import Sidebar from "components/organisms/Sidebar";
 import Galery from 'components/organisms/Gallery';
@@ -17,9 +17,10 @@ import { SiX, SiPixiv, SiFiverr } from "react-icons/si";
 import { MdEmail } from "react-icons/md";
 import { Localized, useLanguage } from "i18n/LanguageContext";
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles()((theme) => ({
   mainGrid: {
-    marginTop: theme.spacing(3),
+    // 3 + the 1 unit of item padding v4 Grid added
+    marginTop: theme.spacing(4),
   },
   mainContainer: {
     minHeight: "100%",
@@ -68,7 +69,7 @@ const books: Array<{ link: string; image: string; description: Localized<string>
 ];
 
 export default function Home() {
-  const classes = useStyles();
+  const { classes } = useStyles();
   const { lang, t } = useLanguage();
 
   const socialLinks = [
