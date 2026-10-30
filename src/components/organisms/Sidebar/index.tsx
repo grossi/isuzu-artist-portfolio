@@ -7,7 +7,7 @@ import Markdown from "components/molecules/Markdown";
 import Link from "@material-ui/core/Link";
 import CardMedia from "@material-ui/core/CardMedia";
 import Avatar from "@material-ui/core/Avatar";
-import SocialLinks from "components/molecules/SocialLinks";
+import SocialLinks, { SocialLink } from "components/molecules/SocialLinks";
 
 const useStyles = makeStyles((theme) => ({
   sidebarAboutBox: {
@@ -45,11 +45,7 @@ interface SidebarProps {
   bookLink: string;
   book2Link: string;
   book3Link: string;
-  socialLinks: {
-    twitter: string;
-    pixiv: string;
-    email: string;
-  }
+  socialLinks: SocialLink[];
 }
 
 export default function Sidebar(props: SidebarProps) {
