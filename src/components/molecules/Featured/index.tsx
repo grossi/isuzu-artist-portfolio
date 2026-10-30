@@ -4,8 +4,8 @@ import Slider from "react-slick";
 import carouselData from 'carousel.json';
 
 const paintings = carouselData.map(image => {
-  return { 
-    src: `${process.env.PUBLIC_URL}/${image.location}`,
+  return {
+    src: `${process.env.PUBLIC_URL}/${image.locationLarge}`,
     name: image.name,
   };
 });
@@ -16,14 +16,30 @@ const useStyles = makeStyles((theme) => ({
     position: "relative",
     backgroundColor: theme.palette.grey[800],
     color: theme.palette.common.white,
-    backgroundSize: "cover",
-    backgroundRepeat: "no-repeat",
-    backgroundPosition: "center",
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    objectPosition: "center",
   },
 }));
 
 export default function Featured() {
   const classes = useStyles();
+  // Slides whose image may be fetched. Only the first slide loads up front; the
+  // next one is fetched once it has loaded, and from then on each slide change
+  // fetches the slide after the one coming into view.
+  const [loadedSlides, setLoadedSlides] = React.useState(() => new Set([0]));
+  const loadSlides = React.useCallback((...indexes: number[]) => {
+    setLoadedSlides((slides) =>
+      indexes.every((index) => slides.has(index))
+        ? slides
+        : new Set([...Array.from(slides), ...indexes])
+    );
+  }, []);
+  const nextIndex = (index: number) => (index + 1) % paintings.length;
+
   const settings = {
     dots: true,
     infinite: true,
@@ -32,21 +48,25 @@ export default function Featured() {
     slidesToScroll: 1,
     autoplay: true,
     pauseOnHover: false,
+    beforeChange: (current: number, next: number) =>
+      loadSlides(next, nextIndex(next)),
   };
 
   return (
     <Slider {...settings}>
       {paintings.map((painting, index) => (
         <div key={index}>
-          <div className={classes.mainFeaturedPost} style={{ backgroundImage: `url(${painting.src})`}} />
-          {/* Increase the priority of the hero background image */}
-          {
-            <img
-              style={{ display: "none" }}
-              src={painting.src}
-              alt={painting.name}
-            />
-          }
+          <div className={classes.mainFeaturedPost}>
+            {loadedSlides.has(index) && (
+              <img
+                className={classes.image}
+                src={painting.src}
+                alt={painting.name}
+                fetchpriority={index === 0 ? "high" : undefined}
+                onLoad={index === 0 ? () => loadSlides(nextIndex(0)) : undefined}
+              />
+            )}
+          </div>
         </div>
       ))}
     </Slider>
