@@ -118,6 +118,8 @@ const workGalleryDirectories = fs.readdirSync(workGalleryNormalizedPath).map((wo
           location: `work-gallery/${workDirectory}/${file}`,
         }
       }).filter(picture => (picture.extension === 'jpg' || picture.extension === 'png'));
+      // Fall back to the other language if only one about.<lang>.md exists
+      if (about) about = { ja: about.ja || about.en, en: about.en || about.ja };
       return {
         name: workDirectory,
         about,

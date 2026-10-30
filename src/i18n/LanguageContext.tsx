@@ -54,7 +54,9 @@ export function LanguageProvider(props: { children: React.ReactNode }) {
   const t = React.useCallback<LanguageContextValue["t"]>(
     (key, params) =>
       translations[lang][key].replace(/\{(\w+)\}/g, (match, name) =>
-        params && name in params ? String(params[name]) : match
+        params && Object.prototype.hasOwnProperty.call(params, name)
+          ? String(params[name])
+          : match
       ),
     [lang]
   );
