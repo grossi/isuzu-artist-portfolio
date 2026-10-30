@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 # Uploads build/ to S3 with Cache-Control headers, then invalidates CloudFront.
 #
-# Usage: scripts/push-s3.sh [--dryrun] [--full]
+# Usage: scripts/push-s3.sh [--dryrun]
 #   --dryrun  Show what would be uploaded; skip the CloudFront invalidation.
-#   --full    Re-upload every file (cp --recursive) instead of syncing. 'sync'
-#             skips a file whose size matches and whose S3 copy is newer, so it
-#             would keep that object's old metadata. A fresh 'yarn build' is
-#             always newer, but --full guarantees every object gets the current
-#             headers (e.g. the first deploy after changing them).
 #
-# Never add --delete: some objects (e.g. isuzubook.jpg) exist only in S3.
+# Uses 'cp --recursive' rather than 'sync': sync skips files it thinks are
+# unchanged and would leave their old metadata in place. A fresh build is
+# re-uploaded in full by sync anyway, since CRA rewrites every file's mtime.
+# Never delete remote objects: some (e.g. isuzubook.jpg) exist only in S3.
 # Written for bash 3.2 (macOS): never expand an empty array under 'set -u'.
 set -euo pipefail
 
@@ -17,11 +15,9 @@ BUCKET="s3://isuzu.work"
 DISTRIBUTION_ID="E3FT8MC74I1LTP"
 
 dryrun=""
-upload="sync"
 for arg in "$@"; do
   case "$arg" in
     --dryrun) dryrun="--dryrun" ;;
-    --full) upload="cp --recursive" ;;
     *) echo "Unknown option: $arg" >&2; exit 1 ;;
   esac
 done
@@ -33,8 +29,8 @@ push() {
   local cache_control="$1"
   shift
   echo "== Cache-Control: $cache_control"
-  # shellcheck disable=SC2086 # $upload and $dryrun must word-split (or vanish when empty).
-  aws s3 $upload build/ "$BUCKET" --acl public-read --cache-control "$cache_control" $dryrun "$@" --exclude "*.DS_Store"
+  # shellcheck disable=SC2086 # $dryrun must vanish when empty.
+  aws s3 cp --recursive build/ "$BUCKET" --acl public-read --cache-control "$cache_control" $dryrun "$@" --exclude "*.DS_Store"
 }
 
 include_images=()
