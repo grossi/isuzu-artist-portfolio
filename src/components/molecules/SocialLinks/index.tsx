@@ -3,9 +3,7 @@ import { makeStyles, darken } from "@material-ui/core/styles";
 import Button from "@material-ui/core/Button";
 import Typography from "@material-ui/core/Typography";
 import Link from "@material-ui/core/Link";
-import { FaTwitter } from "react-icons/fa";
-import { SiPixiv } from "react-icons/si";
-import { MdEmail } from "react-icons/md";
+import { IconType } from "react-icons";
 
 const useStyles = makeStyles((theme) => ({
   linkGrid: {
@@ -28,48 +26,38 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-interface SocialLinksProps {
-  socialLinks: {
-    twitter: string;
-    pixiv: string;
-    email: string;
-  };
+export interface SocialLink {
+  label: string;
+  href: string;
+  Icon: IconType;
 }
+
+interface SocialLinksProps {
+  socialLinks: SocialLink[];
+}
+
+const isExternal = (href: string) => /^https?:\/\//.test(href);
 
 export default function SocialLinks(props: SocialLinksProps) {
   const classes = useStyles();
   return (
     <div className={classes.linksContainer}>
-      <Button
-        className={classes.linkGrid}
-        component={Link}
-        href={props.socialLinks.twitter}
-        target="_blank"
-        rel="noopener"
-        startIcon={<FaTwitter className={classes.icon} />}
-      >
-        <Typography variant="body1">twitter</Typography>
-      </Button>
-      <Button
-        className={classes.linkGrid}
-        component={Link}
-        href={props.socialLinks.pixiv}
-        target="_blank"
-        rel="noopener"
-        startIcon={<SiPixiv className={classes.icon} />}
-      >
-        <Typography variant="body1">pixiv</Typography>
-      </Button>
-      <Button
-        className={classes.linkGrid}
-        component={Link}
-        href={props.socialLinks.email}
-        target="_blank"
-        rel="noopener"
-        startIcon={<MdEmail className={classes.icon} />}
-      >
-        <Typography variant="body1">email</Typography>
-      </Button>
+      {props.socialLinks.map(({ label, href, Icon }) => {
+        const external = isExternal(href);
+        return (
+          <Button
+            key={href}
+            className={classes.linkGrid}
+            component={Link}
+            href={href}
+            target={external ? "_blank" : undefined}
+            rel={external ? "noopener noreferrer" : undefined}
+            startIcon={<Icon className={classes.icon} aria-hidden />}
+          >
+            <Typography variant="body1">{label}</Typography>
+          </Button>
+        );
+      })}
     </div>
   );
 }
