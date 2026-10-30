@@ -28,7 +28,7 @@
     "build": "yarn build-images && react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "push-s3": "aws s3 sync build/ s3://isuzu.work --acl public-read",
+    "push-s3": "bash scripts/push-s3.sh",
     "build-images": "node ./src/utils/loadImages.js",
     "deploy": "yarn build && yarn push-s3"
   },
