@@ -1,3 +1,3 @@
 # Banyanya
 
-I'm open to illustration commissions.
+I'm available for illustration work.

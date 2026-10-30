@@ -40,7 +40,7 @@
 
 # **Illustrations in Publications (Magazines, etc.) / Awards**
 
-- Aozora Bunko — 9th Famous Novel Cover Art Contest, cover category: Award of Excellence
+- Aozora Bunko — 第9回有名小説表紙絵コンテスト (9th Famous Novel Cover Art Contest), cover category: Award of Excellence
 - Suntory Holdings — 『コミックアート イラストレーターズ ファイル 2013 』
 - 『C.C.Lemon　擬人化プロジェクト』 (C.C.Lemon personification project): selected as one of 200 winning entries
 - FromSoftware — 『DARK SOULS shield design contest』 (焔色の盾): Honorable Mention
