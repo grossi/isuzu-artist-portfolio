@@ -52,7 +52,7 @@ export default function SocialLinks(props: SocialLinksProps) {
             href={href}
             target={external ? "_blank" : undefined}
             rel={external ? "noopener noreferrer" : undefined}
-            startIcon={<Icon className={classes.icon} />}
+            startIcon={<Icon className={classes.icon} aria-hidden />}
           >
             <Typography variant="body1">{label}</Typography>
           </Button>
