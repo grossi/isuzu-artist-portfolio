@@ -2,8 +2,33 @@ const fs = require("fs");
 const sizeOf = require('image-size');
 const sharp = require('sharp');
 
-function rescale({ imagePath, width, destinationPath }) {
-  return sharp(imagePath).resize({ width }).webp({effort: 6}).toFile(`${destinationPath}.webp`);
+// Full-size derivatives (hero slides, click-to-enlarge viewers) are capped at this
+// width and never enlarged. Every current source is narrower, so they keep their
+// native resolution and the viewer layout is unchanged.
+const LARGE_WIDTH = 2048;
+const LARGE_QUALITY = 85;
+
+// WorkCard shows the banner 60px tall with object-fit: cover. While the card is at
+// least 60 * BANNER_ASPECT_RATIO px wide, only a centred strip this many times
+// shorter than the image width is ever visible, so that is all we ship.
+const BANNER_ASPECT_RATIO = 4;
+
+function rescale({ imagePath, width, destinationPath, quality, crop }) {
+  const image = crop ? sharp(imagePath).extract(crop) : sharp(imagePath);
+  return image.resize({ width }).webp({effort: 6, quality}).toFile(`${destinationPath}.webp`);
+}
+
+function rescaleLarge({ imagePath, width, destinationPath }) {
+  return rescale({ imagePath, width: Math.min(width, LARGE_WIDTH), destinationPath, quality: LARGE_QUALITY });
+}
+
+function bannerStrip({ h, w }) {
+  let height = Math.min(h, Math.ceil(w / BANNER_ASPECT_RATIO));
+  // Match the parity of the source height so the strip is centred exactly.
+  if ((h - height) % 2) {
+    height += 1;
+  }
+  return { left: 0, top: (h - height) / 2, width: w, height };
 }
 
 function scaledDimentions({ h, w }) {
@@ -17,9 +42,8 @@ function scaledDimentions({ h, w }) {
 
 const galleryNormalizedPath = require("path").join(__dirname, "../../public/gallery");
 
-if (!fs.existsSync('public/gallery/small')){
-  fs.mkdirSync('public/gallery/small');
-}
+fs.mkdirSync('public/gallery/small', { recursive: true });
+fs.mkdirSync('public/gallery/large', { recursive: true });
 
 const rescaleJobs = [];
 
@@ -36,6 +60,11 @@ const galleryPictures = fs.readdirSync(galleryNormalizedPath).sort().map((file, 
       width: scaledDimentions({ h: dimensions.height, w: dimensions.width }),
       destinationPath: `public/gallery/small/${name}`
     }));
+    rescaleJobs.push(rescaleLarge({
+      imagePath: `public/gallery/${file}`,
+      width: dimensions.width,
+      destinationPath: `public/gallery/large/${name}`
+    }));
 
     return {
       name,
@@ -44,6 +73,7 @@ const galleryPictures = fs.readdirSync(galleryNormalizedPath).sort().map((file, 
       height: dimensions.height,
       location: `gallery/${file}`,
       locationSmall: `gallery/small/${name}.webp`,
+      locationLarge: `gallery/large/${name}.webp`,
     }
   } else {
     return {};
@@ -56,14 +86,26 @@ fs.writeFileSync('./src/gallery.json', JSON.stringify(galleryPictures, null, 2),
 
 const carouselNormalizedPath = require("path").join(__dirname, "../../public/carousel");
 
+fs.mkdirSync('public/carousel/large', { recursive: true });
+
 const carouselPictures = fs.readdirSync(carouselNormalizedPath).map((file, k) => {
   const extension = file.split('.')[1];
   const name = file.split('.')[0];
+  if (extension !== 'jpg' && extension !== 'png') {
+    return {};
+  }
+
+  rescaleJobs.push(rescaleLarge({
+    imagePath: `public/carousel/${file}`,
+    width: sizeOf(`public/carousel/${file}`).width,
+    destinationPath: `public/carousel/large/${name}`
+  }));
 
   return {
     name,
     extension,
-    location: `carousel/${file}`
+    location: `carousel/${file}`,
+    locationLarge: `carousel/large/${name}.webp`,
   }
 }).filter(picture => (picture.extension === 'jpg' || picture.extension === 'png'));
 
@@ -80,6 +122,8 @@ const workGalleryDirectories = fs.readdirSync(workGalleryNormalizedPath).map((wo
     let about;
     let banner;
     if(fileStats.isDirectory()) {
+      fs.mkdirSync(`${filePath}/small`, { recursive: true });
+      fs.mkdirSync(`${filePath}/large`, { recursive: true });
       let workList = fs.readdirSync(filePath).map((file, k) => {
         const extension = file.split('.')[1];
         const name = file.split('.')[0];
@@ -100,15 +144,34 @@ const workGalleryDirectories = fs.readdirSync(workGalleryNormalizedPath).map((wo
         }
 
         if( name === 'banner' ) {
+          rescaleJobs.push(rescale({
+            imagePath: `public/work-gallery/${workDirectory}/${file}`,
+            width: dimensions.width,
+            destinationPath: `public/work-gallery/${workDirectory}/small/${name}`,
+            quality: LARGE_QUALITY,
+            crop: bannerStrip({ h: dimensions.height, w: dimensions.width }),
+          }));
           banner = {
             name,
             extension,
             width: dimensions.width,
             height: dimensions.height,
             location: `work-gallery/${workDirectory}/${file}`,
+            locationSmall: `work-gallery/${workDirectory}/small/${name}.webp`,
           };
           return { };
         }
+
+        rescaleJobs.push(rescale({
+          imagePath: `public/work-gallery/${workDirectory}/${file}`,
+          width: scaledDimentions({ h: dimensions.height, w: dimensions.width }),
+          destinationPath: `public/work-gallery/${workDirectory}/small/${name}`
+        }));
+        rescaleJobs.push(rescaleLarge({
+          imagePath: `public/work-gallery/${workDirectory}/${file}`,
+          width: dimensions.width,
+          destinationPath: `public/work-gallery/${workDirectory}/large/${name}`
+        }));
 
         return {
           name,
@@ -116,6 +179,8 @@ const workGalleryDirectories = fs.readdirSync(workGalleryNormalizedPath).map((wo
           width: dimensions.width,
           height: dimensions.height,
           location: `work-gallery/${workDirectory}/${file}`,
+          locationSmall: `work-gallery/${workDirectory}/small/${name}.webp`,
+          locationLarge: `work-gallery/${workDirectory}/large/${name}.webp`,
         }
       }).filter(picture => (picture.extension === 'jpg' || picture.extension === 'png'));
       if (!about) throw new Error(`public/work-gallery/${workDirectory} has no about.ja.md or about.en.md`);

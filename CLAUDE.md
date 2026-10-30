@@ -10,7 +10,7 @@ This is an artist portfolio website for isuZu (isuzu.work), built with React and
 
 ### Development
 ```bash
-yarn start          # Start dev server on localhost:3000
+yarn start          # Generate image derivatives, then start dev server on localhost:3000
 yarn build-images   # Process images and generate JSON files (run before deployment)
 yarn build          # Create production build
 yarn test           # Run tests in watch mode
@@ -26,6 +26,8 @@ The `yarn build-images` command processes images from:
   - `about.ja.md` / `about.en.md` → Work description per language
   - Other images → Gallery images for that work
 
+For each source image it writes WebP derivatives next to it: `small/` (grid thumbnails and the cropped work-card banner strip) and `large/` (hero slides and the click-to-enlarge viewer, max 2048px wide). These folders are gitignored and regenerated on every `yarn start`/`yarn build`; only the originals and the `src/*.json` manifests are committed.
+
 ## Architecture
 
 ### Tech Stack
@@ -37,6 +39,8 @@ The `yarn build-images` command processes images from:
 ### Component Structure
 ```
 components/
+├── atoms/
+│   └── GalleryPhoto/ # Lazy <img> for react-photo-gallery
 ├── molecules/      # Reusable mid-level components
 │   ├── Featured/   # Homepage featured content
 │   ├── Markdown/   # Markdown renderer
@@ -51,6 +55,7 @@ components/
 ### Key Files
 - `src/App.tsx` - Main routing setup
 - `src/utils/loadImages.js` - Image processing script that generates JSON and WebP versions
+- `src/components/atoms/GalleryPhoto/` - Lazy-loading image renderer shared by the photo galleries
 - `src/pages/` - Page components for each route
 - `src/assets/md/` - Markdown content files, one per language (`name.ja.md`, `name.en.md`)
 - `src/i18n/` - `LanguageContext` plus the UI string tables (`ja.ts`, `en.ts`)
@@ -68,7 +73,7 @@ Images are processed at build time to create:
 2. JSON manifests with dimensions
 3. Automatic thumbnails for galleries
 
-Always run `yarn build-images` after adding/modifying images.
+Always run `yarn build-images` after adding/modifying images (and commit the updated `src/*.json`). The generated WebP folders are build-only and never committed.
 
 ### Deployment
 The site deploys to AWS S3 (isuzu.work) behind CloudFront (`E3FT8MC74I1LTP`) using:
