@@ -3,8 +3,11 @@ import { makeStyles } from "@material-ui/core/styles";
 import Grid from "@material-ui/core/Grid";
 import Container from "@material-ui/core/Container";
 import CardMedia from "@material-ui/core/CardMedia";
-import work_history from "assets/md/work_history.md";
+import workHistoryJa from "assets/md/work_history.ja.md";
+import workHistoryEn from "assets/md/work_history.en.md";
 import Markdown from "components/molecules/Markdown";
+import useMarkdown from "hooks/useMarkdown";
+import { Localized, useLanguage } from "i18n/LanguageContext";
 
 const useStyles = makeStyles((theme) => ({
   mainGrid: {
@@ -37,17 +40,12 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
+const workHistory: Localized<string> = { ja: workHistoryJa, en: workHistoryEn };
+
 export default function History() {
   const classes = useStyles();
-  const [loadedAbout, setLoadedAbout] = React.useState<string>("");
-  React.useEffect(() => {
-    setLoadedAbout("");
-    fetch(work_history)
-      .then((data) => data.text())
-      .then((text) => {
-        setLoadedAbout(text);
-      });
-  }, []);
+  const { lang } = useLanguage();
+  const loadedAbout = useMarkdown(workHistory[lang]);
 
   return (
     <React.Fragment>
