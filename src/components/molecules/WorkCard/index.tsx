@@ -111,7 +111,9 @@ export default function WorkCard(props: WorkCardProps) {
             </IconButton>
           </CardContent>
         </CardActionArea>
-        <Collapse in={galleryIsOpen}>
+        {/* Mount the gallery only once the card is first opened, so its images
+            are not downloaded while every card is collapsed. */}
+        <Collapse in={galleryIsOpen} mountOnEnter>
           <PhotoGallery
             onClick={openDialog}
             targetRowHeight={calculateTargetRowHeight}
