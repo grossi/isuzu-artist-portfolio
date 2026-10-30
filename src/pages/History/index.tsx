@@ -3,8 +3,8 @@ import { makeStyles } from "@material-ui/core/styles";
 import Grid from "@material-ui/core/Grid";
 import Container from "@material-ui/core/Container";
 import CardMedia from "@material-ui/core/CardMedia";
-import workHistoryJa from "assets/md/work_history.ja.md";
-import workHistoryEn from "assets/md/work_history.en.md";
+import workHistoryJa from "assets/md/work_history.ja.md?url";
+import workHistoryEn from "assets/md/work_history.en.md?url";
 import Markdown from "components/molecules/Markdown";
 import useMarkdown from "hooks/useMarkdown";
 import { Localized, useLanguage } from "i18n/LanguageContext";
@@ -52,7 +52,7 @@ export default function History() {
       <CardMedia
         component="img"
         height={120}
-        src={`${process.env.PUBLIC_URL}/isuzubook.webp`}
+        src={`${import.meta.env.BASE_URL}isuzubook.webp`}
       />
       <Container maxWidth="lg" className={classes.mainContainer}>
         <main>

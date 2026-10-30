@@ -27,8 +27,8 @@ const useStyles = makeStyles((theme) => ({
 
 const paintings: GalleryPhotoSource[] = galleryData.map((image, k) => {
   return {
-    src: `${process.env.PUBLIC_URL}/${image.locationSmall}`,
-    srcBig: `${process.env.PUBLIC_URL}/${image.locationLarge}`,
+    src: `${import.meta.env.BASE_URL}${image.locationSmall}`,
+    srcBig: `${import.meta.env.BASE_URL}${image.locationLarge}`,
     width: image.width,
     height: image.height,
   };

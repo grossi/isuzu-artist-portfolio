@@ -6,7 +6,7 @@
 #
 # Uses 'cp --recursive' rather than 'sync': sync skips files it thinks are
 # unchanged and would leave their old metadata in place. A fresh build is
-# re-uploaded in full by sync anyway, since CRA rewrites every file's mtime.
+# re-uploaded in full by sync anyway, since the build rewrites every file's mtime.
 # Never delete remote objects: some (e.g. isuzubook.jpg) exist only in S3.
 # Written for bash 3.2 (macOS): never expand an empty array under 'set -u'.
 set -euo pipefail
@@ -41,10 +41,10 @@ for ext in jpg jpeg png webp gif svg ico; do
 done
 
 # Hashed bundles first and HTML last, so index.html never points at missing files.
-push "public,max-age=31536000,immutable" --exclude "*" --include "static/*"
-push "public,max-age=604800" --exclude "*" "${include_images[@]}" --exclude "static/*"
+push "public,max-age=31536000,immutable" --exclude "*" --include "assets/*"
+push "public,max-age=604800" --exclude "*" "${include_images[@]}" --exclude "assets/*"
 # Everything else (index.html, manifest.json, robots.txt, markdown, ...) is revalidated on every load.
-push "no-cache" "${exclude_images[@]}" --exclude "static/*"
+push "no-cache" "${exclude_images[@]}" --exclude "assets/*"
 
 if [ -n "$dryrun" ]; then
   echo "(dryrun) aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths \"/*\""

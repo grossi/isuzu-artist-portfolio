@@ -2,6 +2,15 @@
   "name": "isuzu-page",
   "version": "0.1.0",
   "private": true,
+  "scripts": {
+    "start": "yarn build-images && vite",
+    "build": "yarn build-images && tsc && yarn lint && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --max-warnings 0",
+    "push-s3": "bash scripts/push-s3.sh",
+    "build-images": "node ./src/utils/loadImages.js",
+    "deploy": "yarn build && yarn push-s3"
+  },
   "dependencies": {
     "@material-ui/core": "^4.11.3",
     "@material-ui/icons": "^4.11.2",
@@ -12,43 +21,22 @@
     "react-icons": "^4.2.0",
     "react-photo-gallery": "^8.0.0",
     "react-router-dom": "^5.2.0",
-    "react-scripts": "5.0.1",
     "react-slick": "^0.28.1"
   },
-  "scripts": {
-    "start": "yarn build-images && react-scripts start",
-    "build": "yarn build-images && react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "push-s3": "bash scripts/push-s3.sh",
-    "build-images": "node ./src/utils/loadImages.js",
-    "deploy": "yarn build && yarn push-s3"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/react": "17.0.39",
     "@types/react-dom": "17.0.11",
     "@types/react-router-dom": "^5.1.7",
     "@types/react-slick": "^0.23.13",
+    "@vitejs/plugin-react": "^6.1.2",
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
     "sharp": "^0.35.5",
-    "typescript": "^4.2.3"
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "vite": "^8.3.5"
   },
   "resolutions": {
     "@types/react": "17.0.39",
