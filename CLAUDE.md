@@ -70,10 +70,13 @@ Images are processed at build time to create:
 Always run `yarn build-images` after adding/modifying images.
 
 ### Deployment
-The site deploys to AWS S3 (isuzu.work) using:
+The site deploys to AWS S3 (isuzu.work) behind CloudFront (`E3FT8MC74I1LTP`) using:
 ```bash
-yarn push-s3  # Syncs build folder to S3 bucket
+yarn push-s3           # Syncs build/ with Cache-Control headers, then invalidates CloudFront
+yarn push-s3 --dryrun  # Preview the uploads; no invalidation
+yarn push-s3 --full    # Re-upload everything, e.g. after changing Cache-Control rules
 ```
+See `scripts/push-s3.sh`. Never sync with `--delete`: `isuzubook.jpg` exists only in S3.
 
 ### Japanese UI
 The interface uses Japanese text:
