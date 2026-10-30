@@ -46,8 +46,9 @@ const rescaleJobs = [];
 // Plain code-unit (byte) order, e.g. "zzzzz (10)" before "zzzzz (2)": the gallery order is curated against it.
 const galleryPictures = fs.readdirSync(galleryNormalizedPath).sort().map((file, k) => {
   let fileStats = fs.statSync(`public/gallery/${file}`);
-  if(!fileStats.isDirectory()) {
-    const extension = file.split('.')[1];
+  const extension = file.split('.')[1];
+  // Skip folders and stray files such as .DS_Store, which sizeOf can't read.
+  if(!fileStats.isDirectory() && (extension === 'jpg' || extension === 'png')) {
     const name = file.split('.')[0];
     const dimensions = sizeOf(`public/gallery/${file}`);
 
