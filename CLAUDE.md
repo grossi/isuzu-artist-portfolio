@@ -74,7 +74,7 @@ The site deploys to AWS S3 (isuzu.work) behind CloudFront (`E3FT8MC74I1LTP`) usi
 ```bash
 yarn push-s3           # Syncs build/ with Cache-Control headers, then invalidates CloudFront
 yarn push-s3 --dryrun  # Preview the uploads; no invalidation
-yarn push-s3 --full    # Re-upload everything, e.g. after changing Cache-Control rules
+yarn push-s3 --full    # Re-upload everything so every object gets the current headers
 ```
 See `scripts/push-s3.sh`. Never sync with `--delete`: `isuzubook.jpg` exists only in S3.
 
