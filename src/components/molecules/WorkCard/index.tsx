@@ -16,6 +16,7 @@ import Markdown from "components/molecules/Markdown";
 import PhotoGallery from "react-photo-gallery";
 import useMarkdown from "hooks/useMarkdown";
 import { Localized, useLanguage } from "i18n/LanguageContext";
+import GalleryPhoto, { GalleryPhotoData } from "components/atoms/GalleryPhoto";
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -52,7 +53,7 @@ interface WorkCardProps {
     name: string;
     about: Localized<string>;
     banner: { src: string; name: string };
-    imageList: { src: string; height: number; width: number; name: string }[];
+    imageList: GalleryPhotoData[];
   };
 }
 
@@ -74,7 +75,7 @@ const calculateLimitNodeSearch = (containerWidth: number) => {
 
 export default function WorkCard(props: WorkCardProps) {
   const classes = useStyles();
-  const [currentImage, setCurrentImage] = React.useState("");
+  const [currentImage, setCurrentImage] = React.useState<GalleryPhotoData>();
   const [viewerIsOpen, setViewerIsOpen] = React.useState(false);
   const [galleryIsOpen, setGalleryIsOpen] = React.useState(false);
   const { work } = props;
@@ -83,7 +84,7 @@ export default function WorkCard(props: WorkCardProps) {
   const bannerAlt = t("workCard.bannerAlt", { name: work.name });
 
   const openDialog = React.useCallback((event, { photo, index }) => {
-    setCurrentImage(photo.src);
+    setCurrentImage(photo);
     setViewerIsOpen(true);
   }, []);
 
@@ -119,6 +120,7 @@ export default function WorkCard(props: WorkCardProps) {
             targetRowHeight={calculateTargetRowHeight}
             photos={work.imageList}
             limitNodeSearch={calculateLimitNodeSearch}
+            renderImage={GalleryPhoto}
           />
         </Collapse>
       </Card>
@@ -128,7 +130,7 @@ export default function WorkCard(props: WorkCardProps) {
         scroll="body"
         maxWidth="xl"
       >
-        <CardMedia component="img" src={currentImage} />
+        <CardMedia component="img" src={currentImage?.srcBig} alt={currentImage?.alt} />
         <IconButton
           aria-label={t("common.close")}
           className={classes.closeButton}
