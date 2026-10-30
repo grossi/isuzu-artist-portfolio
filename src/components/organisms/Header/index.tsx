@@ -41,7 +41,7 @@ interface HeaderProps {
 
 export default function Header(props: HeaderProps) {
   const classes = useStyles();
-  const { title, sections } = props;
+  const { title } = props;
 
   return (
     <Toolbar component="nav" variant="dense" className={classes.toolbar}>
