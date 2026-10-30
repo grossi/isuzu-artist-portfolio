@@ -6,7 +6,7 @@ import CardMedia from "@material-ui/core/CardMedia";
 import Dialog from "@material-ui/core/Dialog";
 import Grid from "@material-ui/core/Grid";
 import PhotoGallery from "react-photo-gallery";
-import GalleryPhoto, { GalleryPhotoData } from "components/atoms/GalleryPhoto";
+import GalleryPhoto, { GalleryPhotoData, GalleryPhotoSource, usePhotoAlts } from "components/atoms/GalleryPhoto";
 import galleryData from "gallery.json";
 import { useLanguage } from "i18n/LanguageContext";
 
@@ -25,13 +25,12 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-const paintings: GalleryPhotoData[] = galleryData.map((image, k) => {
+const paintings: GalleryPhotoSource[] = galleryData.map((image, k) => {
   return {
     src: `${process.env.PUBLIC_URL}/${image.locationSmall}`,
     srcBig: `${process.env.PUBLIC_URL}/${image.locationLarge}`,
     width: image.width,
     height: image.height,
-    alt: `isuZu illustration ${k + 1}`,
   };
 });
 
@@ -45,12 +44,14 @@ const calculateTargetRowHeight = (containerWidth: number) => {
 
 export default function Gallery() {
   const classes = useStyles();
-  const [currentImage, setCurrentImage] = React.useState<GalleryPhotoData>();
+  const [currentIndex, setCurrentIndex] = React.useState(0);
   const [viewerIsOpen, setViewerIsOpen] = React.useState(false);
   const { t } = useLanguage();
+  const photos = usePhotoAlts(paintings);
+  const currentImage: GalleryPhotoData | undefined = photos[currentIndex];
 
   const openDialog = React.useCallback((event, { photo, index }) => {
-    setCurrentImage(photo);
+    setCurrentIndex(index);
     setViewerIsOpen(true);
   }, []);
 
@@ -59,7 +60,7 @@ export default function Gallery() {
       <Grid item xs={12} md={8} className={classes.galleryGrid}>
         <PhotoGallery
           targetRowHeight={calculateTargetRowHeight}
-          photos={paintings}
+          photos={photos}
           onClick={openDialog}
           limitNodeSearch={4}
           renderImage={GalleryPhoto}

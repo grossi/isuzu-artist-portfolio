@@ -10,6 +10,7 @@ const ja = {
   "social.email": "メール",
   "workCard.showMore": "もっと見る",
   "workCard.bannerAlt": "{name}のバナー",
+  "gallery.photoAlt": "isuZuのイラスト{n}",
   "common.close": "閉じる",
   "footer.copyright": "Copyright © {year} isuZu 無断転載を禁じます。",
 };
