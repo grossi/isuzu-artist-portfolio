@@ -3,11 +3,13 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "./lib/config.js";
-import { HttpError, Jobs, summary } from "./lib/jobs.js";
+import { AdminError, HttpError, describeError } from "./lib/errors.js";
+import { Jobs, summary } from "./lib/jobs.js";
 import { contentType, sendFile, serveStatic } from "./lib/static.js";
 import { thumbnail } from "./lib/thumbs.js";
 import { receiveUploads, removeTemp } from "./lib/uploads.js";
 import { CAROUSEL_DIR, GALLERY_DIR, Workspace, commitMessage, git, isImageFile } from "./lib/workspace.js";
+import { matchLang, translate } from "./public/i18n/translate.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const config = loadConfig();
@@ -42,7 +44,9 @@ function pruneThumbs() {
 // The frontend as it was when this server started: a deploy that brings a
 // newer admin/ from main must not serve new pages to the old server.
 const ASSETS = new Map(
-  fs.readdirSync(path.join(here, "public")).map((name) => [`/${name}`, fs.readFileSync(path.join(here, "public", name))])
+  fs.readdirSync(path.join(here, "public"), { recursive: true })
+    .filter((name) => fs.statSync(path.join(here, "public", name)).isFile())
+    .map((name) => [`/${name.split(path.sep).join("/")}`, fs.readFileSync(path.join(here, "public", name))])
 );
 ASSETS.set("/", ASSETS.get("/index.html"));
 ASSETS.set("/vendor/Sortable.min.js", fs.readFileSync(path.join(here, "node_modules/sortablejs/Sortable.min.js")));
@@ -55,7 +59,7 @@ function markdownModule() {
   if (!markdownSource) {
     const source = fs.readFileSync(workspace.file("node_modules/markdown-to-jsx/dist/index.modern.js"), "utf-8");
     const patched = source.replace(/from\s*"react"/, 'from"/react-shim.js"');
-    if (patched === source) throw new HttpError(500, "Unexpected markdown-to-jsx build: no react import");
+    if (patched === source) throw new HttpError(500, "markdown-build");
     markdownSource = Buffer.from(patched);
   }
   return markdownSource;
@@ -99,7 +103,9 @@ async function state() {
       restartNeeded: Boolean(startedCodeVersion) && (await codeVersion()) !== startedCodeVersion,
     };
   } catch (error) {
-    return { ...base, error: error.message };
+    // A content file that doesn't parse, say: its own text is the detail.
+    const { message, code, params } = describeError(error instanceof AdminError ? error : new AdminError("workspace-unreadable", { detail: error.message }));
+    return { ...base, error: message, errorCode: code, errorParams: params };
   }
 }
 
@@ -111,15 +117,15 @@ function edited() {
 
 function assertAllowed(req) {
   const host = (req.headers.host || "").toLowerCase().replace(/:\d+$/, "");
-  if (!config.allowedHosts.has(host)) throw new HttpError(421, "Unknown host");
+  if (!config.allowedHosts.has(host)) throw new HttpError(421, "unknown-host");
   const user = (req.headers["tailscale-user-login"] || "").toLowerCase();
-  if (config.allowedUsers.size && !config.allowedUsers.has(user)) throw new HttpError(403, "Not allowed");
+  if (config.allowedUsers.size && !config.allowedUsers.has(user)) throw new HttpError(403, "not-allowed");
 }
 
 // Cross-site pages can't set a custom header without a CORS preflight, which
 // this server never answers, so they can't trigger edits or deploys.
 function assertSameOrigin(req) {
-  if (req.headers["x-isuzu-admin"] !== "1") throw new HttpError(403, "Missing X-Isuzu-Admin header");
+  if (req.headers["x-isuzu-admin"] !== "1") throw new HttpError(403, "missing-header");
   const origin = req.headers.origin;
   if (origin === undefined) return;
   let host = null;
@@ -128,22 +134,22 @@ function assertSameOrigin(req) {
   } catch {
     // "null" (sandboxed frames, some redirects) or garbage
   }
-  if (host !== (req.headers.host || "").toLowerCase()) throw new HttpError(403, "Cross-origin request refused");
+  if (host !== (req.headers.host || "").toLowerCase()) throw new HttpError(403, "cross-origin");
 }
 
 async function readJson(req) {
-  if (!(req.headers["content-type"] || "").startsWith("application/json")) throw new HttpError(415, "Expected JSON");
+  if (!(req.headers["content-type"] || "").startsWith("application/json")) throw new HttpError(415, "expected-json");
   let size = 0;
   const chunks = [];
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > 1024 * 1024) throw new HttpError(413, "Request too large");
+    if (size > 1024 * 1024) throw new HttpError(413, "request-too-large");
     chunks.push(chunk);
   }
   try {
     return JSON.parse(Buffer.concat(chunks).toString("utf-8") || "{}");
   } catch {
-    throw new HttpError(400, "Invalid JSON");
+    throw new HttpError(400, "invalid-json");
   }
 }
 
@@ -160,7 +166,7 @@ async function mutate(kind, seenVersion, apply, checkOptions = {}) {
   return jobs.withLock(kind, async () => {
     await workspace.check(checkOptions);
     if (seenVersion !== ANY_VERSION && seenVersion !== version) {
-      throw new HttpError(409, "The draft changed meanwhile (another tab?); reload the page");
+      throw new HttpError(409, "draft-changed");
     }
     const result = await apply();
     edited();
@@ -180,7 +186,7 @@ function startJob(kind, run) {
 // Receives a multipart upload into the spool, then applies it as an edit.
 // A busy lock is reported before the upload is read.
 async function withUpload(req, kind, limits, apply) {
-  if (jobs.busy()) throw new HttpError(409, `Busy: ${jobs.busy()} is running. Try again when it finishes.`);
+  if (jobs.busy()) throw new HttpError(409, "busy", { kind: jobs.busy() });
   const upload = await receiveUploads(req, { tempDir: uploadDir, maxBytes: config.maxUploadBytes, ...limits });
   try {
     const { seenVersion = ANY_VERSION, apply: run } = apply(upload);
@@ -210,7 +216,7 @@ const routes = {
 
   "POST /api/upload": async (req, res) => {
     const added = await withUpload(req, "upload", { maxFiles: config.maxUploadFiles }, ({ files }) => {
-      if (!files.length) throw new HttpError(400, "No files in the upload");
+      if (!files.length) throw new HttpError(400, "no-files");
       return { apply: () => workspace.addUploads(files) };
     });
     json(res, 200, { added, version });
@@ -237,7 +243,7 @@ const routes = {
       try {
         entry = JSON.parse(fields.entry ?? "");
       } catch {
-        throw new HttpError(400, "Invalid entry");
+        throw new HttpError(400, "invalid-entry");
       }
       return {
         seenVersion: entry?.id === undefined ? ANY_VERSION : entry.version,
@@ -284,7 +290,7 @@ const routes = {
 
   "POST /api/save": async (req, res) => {
     const { message } = await readJson(req);
-    if (typeof message !== "string" || !message.trim() || message.length > 10000) throw new HttpError(400, "A commit message is required");
+    if (typeof message !== "string" || !message.trim() || message.length > 10000) throw new HttpError(400, "message-required");
     json(res, 202, startJob("save", (log) => workspace.save(log, message.trim())));
   },
 
@@ -341,11 +347,11 @@ async function handleAdmin(req, res) {
     try {
       name = decodeURIComponent(image[2]);
     } catch {
-      throw new HttpError(400, "Bad file name");
+      throw new HttpError(400, "bad-file-name");
     }
     // Only a file that is listed in the folder: no separators, no dot names.
     const list = fs.readdirSync(workspace.file(folder), { withFileTypes: true });
-    if (!isImageFile(name) || !list.some((entry) => entry.isFile() && entry.name === name)) throw new HttpError(404, "No such image");
+    if (!isImageFile(name) || !list.some((entry) => entry.isFile() && entry.name === name)) throw new HttpError(404, "no-image");
     return sendImage(res, pathname, workspace.file(folder, name));
   }
 
@@ -353,14 +359,14 @@ async function handleAdmin(req, res) {
   const entryImage = req.method === "GET" && ENTRY_IMAGE_ROUTE.exec(pathname);
   if (entryImage) {
     const entry = workspace.readSidebar().entries.find((e) => e.id === entryImage[1]);
-    if (!entry || !fs.existsSync(workspace.file("public", entry.image))) throw new HttpError(404, "No such image");
+    if (!entry || !fs.existsSync(workspace.file("public", entry.image))) throw new HttpError(404, "no-image");
     return sendImage(res, pathname, workspace.file("public", entry.image));
   }
 
   if (pathname === "/favicon.ico") return res.writeHead(204).end();
   if (req.method === "GET" && pathname === "/vendor/markdown-to-jsx.js") return sendAsset(res, pathname, markdownModule());
   if ((req.method === "GET" || req.method === "HEAD") && ASSETS.has(pathname)) return sendAsset(res, pathname, ASSETS.get(pathname));
-  throw new HttpError(404, "Not found");
+  throw new HttpError(404, "not-found");
 }
 
 function handler(handle) {
@@ -368,24 +374,33 @@ function handler(handle) {
     Promise.resolve().then(() => handle(req, res)).catch((error) => {
       if (!(error instanceof HttpError)) console.error(error);
       if (res.headersSent) return res.end();
-      json(res, error.status || 500, { error: error.message });
+      // error: the English text; the page shows code and params in its language.
+      const { message, code, params } = describeError(error);
+      json(res, error.status || 500, { error: message, code, params });
     });
   };
 }
 
-const WAIT_PAGE = (message) => `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="2">
-<meta name="viewport" content="width=device-width, initial-scale=1"><title>Preview</title>
-<body style="font:16px system-ui;display:grid;place-items:center;height:90vh;color:#555">${message}</body>`;
+const WAIT_PAGE = (lang, key) => `<!doctype html><html lang="${lang}"><meta charset="utf-8"><meta http-equiv="refresh" content="2">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>${translate(lang, "previewPage.title")}</title>
+<body style="font:16px system-ui;display:grid;place-items:center;height:90vh;margin:0 16px;color:#555;text-align:center">${translate(lang, key)}</body></html>`;
+
+// The admin's language (a cookie it sets, shared across this host's ports),
+// else the browser's.
+function pageLang(req) {
+  const cookie = /(?:^|;\s*)isuzu-admin-lang=(ja|en)(?:;|$)/.exec(req.headers.cookie || "");
+  if (cookie) return cookie[1];
+  return matchLang((req.headers["accept-language"] || "").split(",").map((tag) => tag.split(";")[0]));
+}
 
 function handlePreview(req, res) {
   assertAllowed(req);
   // Page loads (not assets) wait while a build replaces the files.
   const pageLoad = req.method === "GET" && (req.headers.accept || "").includes("text/html");
-  const waiting = jobs.busy() === "preview" ? "Building the preview… this page reloads when it is ready."
-    : !preview ? "No preview yet: press Preview in the admin." : null;
+  const waiting = jobs.busy() === "preview" ? "previewPage.building" : !preview ? "previewPage.none" : null;
   if (pageLoad && waiting) {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
-    return res.end(WAIT_PAGE(waiting));
+    return res.end(WAIT_PAGE(pageLang(req), waiting));
   }
   return serveStatic(previewDir, req, res, { spa: true });
 }

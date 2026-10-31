@@ -18,7 +18,7 @@ before(async () => {
       res.end(JSON.stringify({ files: files.map(({ stem, extension }) => `${stem}.${extension}`), fields }));
       removeTemp(files);
     } catch (error) {
-      res.writeHead(error.status ?? 500).end(JSON.stringify({ error: error.message }));
+      res.writeHead(error.status ?? 500).end(JSON.stringify({ error: error.message, code: error.code, params: error.params }));
     }
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -51,15 +51,16 @@ test("real images pass; the extension comes from the content", async () => {
 test("non-images, truncated images, oversize files and stray fields are refused, leaving no temp files", async () => {
   const image = await png(400);
   const cases = [
-    [[["files", Buffer.from("hello"), "x.png"]], 415],
-    [[["files", image.subarray(0, Math.floor(image.length / 2)), "cut.png"]], 415],
-    [[["files", Buffer.alloc(300 * 1024, 1), "big.png"], ["files", await png(), "after.png"]], 413],
-    [[["files", await png(), "a.png"], ["files", await png(), "b.png"], ["files", await png(), "c.png"]], 413],
-    [[["other", "x"]], 400],
+    [[["files", Buffer.from("hello"), "x.png"]], 415, "not-an-image", { name: "x.png" }],
+    [[["files", image.subarray(0, Math.floor(image.length / 2)), "cut.png"]], 415, "damaged-image", { name: "cut.png" }],
+    [[["files", Buffer.alloc(300 * 1024, 1), "big.png"], ["files", await png(), "after.png"]], 413, "file-too-large", { name: "big.png", mb: 0 }],
+    [[["files", await png(), "a.png"], ["files", await png(), "b.png"], ["files", await png(), "c.png"]], 413, "too-many-files", { max: 2 }],
+    [[["other", "x"]], 400, "unexpected-field", { name: "other" }],
   ];
-  for (const [parts, status] of cases) {
+  for (const [parts, status, code, params] of cases) {
     const res = await post(parts);
     assert.equal(res.status, status, JSON.stringify(res.body));
+    assert.deepEqual([res.body.code, res.body.params], [code, params]);
     assert.ok(spoolEmpty(), `temp files left after ${res.body.error}`);
   }
 });
@@ -70,6 +71,7 @@ test("a write error fails the upload instead of crashing the server", { skip: pr
   try {
     const res = await post([["files", await png(), "a.png"]]);
     assert.equal(res.status, 500);
+    assert.equal(res.body.code, "store-failed");
     assert.match(res.body.error, /Couldn't store a.png/);
   } finally {
     fs.chmodSync(spool, 0o700);
