@@ -37,8 +37,13 @@ code { font-size: 0.92em; }
   border-bottom: 1px solid var(--line);
 }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+/* The public site, pushed to the right with the toggle after it. */
+.live-link { margin-left: auto; font-size: 14px; color: var(--accent); white-space: nowrap; text-decoration: none; }
+.live-link:hover { text-decoration: underline; }
+.live-link .short { display: none; }
+.live-link[hidden] + .lang-toggle { margin-left: auto; }
 /* 日本語 / EN, like the site's header. */
-.lang-toggle { display: flex; align-items: center; margin-left: auto; font-size: 14px; color: var(--muted); white-space: nowrap; }
+.lang-toggle { display: flex; align-items: center; font-size: 14px; color: var(--muted); white-space: nowrap; }
 .lang-toggle button { border: 0; background: none; padding: 4px; border-radius: 4px; font-size: inherit; color: inherit; }
 .lang-toggle button:hover { color: var(--ink); }
 .lang-toggle button[aria-pressed="true"] { color: var(--ink); font-weight: 700; }
@@ -103,6 +108,7 @@ button.link { border: 0; background: none; color: var(--accent); padding: 0; }
 .job.succeeded #job-title { color: var(--live); }
 .job.failed #job-title { color: var(--bad); }
 .job-links a { color: var(--accent); }
+.job-links .muted { margin-left: 10px; }
 #job-log {
   margin: 10px 0 0;
   max-height: 320px;
@@ -246,7 +252,10 @@ dialog textarea { width: 100%; font: 13px ui-monospace, SFMono-Regular, Menlo, m
   /* Two rows of buttons: sticky, they would cover a third of the screen. */
   .top { gap: 8px; position: static; }
   /* The title and the language on the first row, the actions below. */
-  .lang-toggle { order: 1; }
+  .live-link, .lang-toggle { order: 1; }
+  .live-link { font-size: 13px; }
+  .live-link .long { display: none; }
+  .live-link .short { display: inline; }
   .actions { order: 2; flex-basis: 100%; }
   .actions button, .actions .button { padding: 7px 10px; font-size: 13px; }
   .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }

@@ -57,6 +57,20 @@ test("every key the page and the server use exists", () => {
   for (const kind of ["upload", "reorder", "remove", "sidebar", "discard", "preview", "save", "deploy"]) assert.ok(`kind.${kind}` in en, kind);
 });
 
+test("the live site link opens in a new tab without leaking the opener or referrer", () => {
+  const html = read("public/index.html");
+  const link = html.match(/<a class="live-link"[^>]*>/)?.[0] ?? "";
+  assert.match(link, /target="_blank"/);
+  assert.match(link, /rel="noopener noreferrer"/);
+  assert.match(read("public/app.js"), /target: "_blank", rel: "noopener noreferrer"/);
+});
+
+test("the short live site label is part of the full one, so the accessible name contains the visible text", () => {
+  for (const [name, table] of [["ja", ja], ["en", en]]) {
+    assert.ok(table["header.liveSite"].toLowerCase().includes(table["header.liveSiteShort"].toLowerCase()), name);
+  }
+});
+
 test("translation helpers", () => {
   assert.equal(format("{n} of {total}, {n}", { n: 1 }), "1 of {total}, 1");
   assert.equal(translate("ja", "error.busy", { kind: "保存" }), "現在「保存」を実行中です。終わってからもう一度お試しください。");

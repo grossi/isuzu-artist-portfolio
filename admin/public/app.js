@@ -264,6 +264,8 @@ function upload(fileList) {
 // ---- Rendering -------------------------------------------------------------
 
 function render() {
+  $("live-link").href = state.siteUrl;
+  $("live-link").hidden = false;
   renderStatus();
   renderJob();
   renderGrid();
@@ -328,6 +330,11 @@ function renderStatus() {
   $("status").replaceChildren(...cards);
 }
 
+// The public site (ADMIN_SITE_URL), in a new tab.
+function liveLink(key) {
+  return el("a", { href: state.siteUrl, target: "_blank", rel: "noopener noreferrer" }, t(key));
+}
+
 function renderJob() {
   const job = state?.job;
   $("job").hidden = !job;
@@ -341,6 +348,9 @@ function renderJob() {
   $("job-step").textContent = job.status === "running" && job.step ? label(`step.${job.step.code}`, job.step.code, job.step.params) : "";
   const links = [];
   if (job.kind === "preview" && job.status === "succeeded") links.push(el("a", { href: previewUrl(), target: "isuzu-preview" }, t("common.openPreview")));
+  if (job.kind === "deploy" && job.status === "succeeded") {
+    links.push(liveLink("common.openLiveSite"), el("span", { class: "muted" }, t("job.liveDelay")));
+  }
   $("job-links").replaceChildren(...links);
   if (job.status === "failed") showLog = true;
   $("job-log").hidden = !showLog;
