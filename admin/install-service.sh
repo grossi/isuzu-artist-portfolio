@@ -152,6 +152,10 @@ if [ "$(loginctl show-user "$USER" -p Linger --value)" != "yes" ]; then
   echo "  sudo loginctl enable-linger $USER"
 fi
 
+if [ -n "$serve" ] && [ -z "$(from_env_file ADMIN_TAILNET_NAME "")" ]; then
+  echo "Warning: $env_file has no ADMIN_TAILNET_NAME (written by a --no-serve run?):" >&2
+  echo "  set it to $(tailnet_name) and ADMIN_PREVIEW_URL, or the tailnet URLs answer 421" >&2
+fi
 if [ -n "$serve" ]; then
   echo "== tailscale serve (tailnet only, never funnel)"
   tailscale serve --bg --yes --https="$https_port" "http://127.0.0.1:$port"

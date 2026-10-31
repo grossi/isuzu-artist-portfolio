@@ -235,6 +235,27 @@ test("an interrupted rebase: the admin's own is aborted at startup, one by hand 
   await ws.check();
 });
 
+test("a deploy retried after a failure past the rebase still regenerates the manifests", async () => {
+  fs.writeFileSync(path.join(other, "README.md"), "upstream\n");
+  sh(other, "add", ".");
+  sh(other, "commit", "--quiet", "-m", "upstream change");
+  sh(other, "push", "--quiet", "origin", "main");
+  ws.addUploads([await upload("new", "white")]);
+  await ws.save(log, "content: add new.png");
+
+  ws.install = async () => {
+    throw new Error("yarn install failed");
+  };
+  await assert.rejects(ws.deploy(log), /yarn install failed/);
+  // Rebased, not pushed: the retry has no rebase to do.
+  assert.ok(sh(ws.root, "log", "--format=%s", "-2").endsWith("upstream change"));
+  ws.install = async () => {};
+  ws.buildImages = async () => fs.writeFileSync(ws.file("src/gallery.json"), '["regenerated"]\n');
+  const deployed = await ws.deploy(log);
+  assert.equal(sh(origin, "show", `${deployed.sha}:src/gallery.json`), '["regenerated"]');
+  assert.equal((await ws.draft()).dirty, false);
+});
+
 test("a rejected push deploys nothing", async () => {
   ws.addUploads([await upload("new", "white")]);
   await ws.save(log, "content: add new.png");
