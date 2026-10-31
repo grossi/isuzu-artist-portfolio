@@ -3,7 +3,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "./lib/config.js";
-import { AdminError, HttpError, describeError } from "./lib/errors.js";
+import { HttpError, describeError } from "./lib/errors.js";
 import { Jobs, summary } from "./lib/jobs.js";
 import { contentType, sendFile, serveStatic } from "./lib/static.js";
 import { thumbnail } from "./lib/thumbs.js";
@@ -103,8 +103,7 @@ async function state() {
       restartNeeded: Boolean(startedCodeVersion) && (await codeVersion()) !== startedCodeVersion,
     };
   } catch (error) {
-    // A content file that doesn't parse, say: its own text is the detail.
-    const { message, code, params } = describeError(error instanceof AdminError ? error : new AdminError("workspace-unreadable", { detail: error.message }));
+    const { message, code, params } = describeError(error);
     return { ...base, error: message, errorCode: code, errorParams: params };
   }
 }
