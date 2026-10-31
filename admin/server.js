@@ -45,6 +45,7 @@ async function state() {
       gallery: now.gallery,
       carouselFiles: now.carouselFiles,
       carousel: now.carousel,
+      sidebar: workspace.readSidebar(),
       draft: { ...draft, message: commitMessage(draft) },
       history,
     };
@@ -115,8 +116,9 @@ const routes = {
 
   "POST /api/upload": async (req, res) => {
     if (jobs.busy()) throw new HttpError(409, `Busy: ${jobs.busy()} is running. Try again when it finishes.`);
-    const files = await receiveUploads(req, { tempDir: uploadDir, maxBytes: config.maxUploadBytes, maxFiles: config.maxUploadFiles });
+    const { files } = await receiveUploads(req, { tempDir: uploadDir, maxBytes: config.maxUploadBytes, maxFiles: config.maxUploadFiles });
     try {
+      if (!files.length) throw new HttpError(400, "No files in the upload");
       const names = await jobs.withLock("upload", async () => {
         await workspace.check();
         const names = workspace.addUploads(files);
@@ -145,6 +147,51 @@ const routes = {
     await jobs.withLock("remove", async () => {
       await workspace.check();
       await workspace.removeUpload(file);
+      edited();
+    });
+    json(res, 200, { version });
+  },
+
+  // Multipart: an "entry" JSON field ({ id?, link, description }) and an
+  // optional "image" file (required for a new entry).
+  "POST /api/sidebar/entry": async (req, res) => {
+    if (jobs.busy()) throw new HttpError(409, `Busy: ${jobs.busy()} is running. Try again when it finishes.`);
+    const { files, fields } = await receiveUploads(req, { tempDir: uploadDir, maxBytes: config.maxUploadBytes, maxFiles: 1, fieldNames: ["entry"] });
+    try {
+      let entry;
+      try {
+        entry = JSON.parse(fields.entry ?? "");
+      } catch {
+        throw new HttpError(400, "Invalid entry");
+      }
+      const saved = await jobs.withLock("sidebar", async () => {
+        await workspace.check();
+        const saved = workspace.saveSidebarEntry(entry, files[0]);
+        edited();
+        return saved;
+      });
+      json(res, 200, { saved, version });
+    } finally {
+      removeTemp(files);
+    }
+  },
+
+  "PUT /api/sidebar": async (req, res) => {
+    const body = await readJson(req);
+    await jobs.withLock("sidebar", async () => {
+      await workspace.check();
+      if (body.version !== version) throw new HttpError(409, "The draft changed meanwhile; reload the page");
+      workspace.setSidebar(body);
+      edited();
+    });
+    json(res, 200, { version });
+  },
+
+  "POST /api/sidebar/remove": async (req, res) => {
+    const { id } = await readJson(req);
+    await jobs.withLock("sidebar", async () => {
+      await workspace.check();
+      workspace.removeSidebarEntry(id);
       edited();
     });
     json(res, 200, { version });
@@ -198,6 +245,16 @@ const routes = {
 };
 
 const IMAGE_ROUTE = /^\/(?:thumb|image)\/(gallery|carousel)\/([^/]+)$/;
+const ENTRY_IMAGE_ROUTE = /^\/(?:thumb|image)\/sidebar\/([a-z0-9-]+)$/;
+const VENDOR = {
+  "/vendor/Sortable.min.js": "node_modules/sortablejs/Sortable.min.js",
+  "/vendor/markdown-to-jsx.js": "node_modules/markdown-to-jsx/dist/index.modern.js",
+};
+
+async function sendImage(res, pathname, source) {
+  if (pathname.startsWith("/image/")) return sendFile(res, source);
+  return sendFile(res, await thumbnail(source, thumbDir), { cache: "private, max-age=3600" });
+}
 
 async function handleAdmin(req, res) {
   if (!hostAllowed(req)) throw new HttpError(421, "Unknown host");
@@ -219,15 +276,19 @@ async function handleAdmin(req, res) {
     // Only a file that is listed in the folder: no separators, no dot names.
     const list = fs.readdirSync(workspace.file(folder), { withFileTypes: true });
     if (!list.some((entry) => entry.isFile() && entry.name === name)) throw new HttpError(404, "No such image");
-    const source = workspace.file(folder, name);
-    if (pathname.startsWith("/image/")) return sendFile(res, source);
-    return sendFile(res, await thumbnail(source, thumbDir), { cache: "private, max-age=3600" });
+    return sendImage(res, pathname, workspace.file(folder, name));
+  }
+
+  // A sidebar entry's image, by entry id (the content file was validated).
+  const entryImage = req.method === "GET" && ENTRY_IMAGE_ROUTE.exec(pathname);
+  if (entryImage) {
+    const entry = workspace.readSidebar().entries.find((e) => e.id === entryImage[1]);
+    if (!entry || !fs.existsSync(workspace.file("public", entry.image))) throw new HttpError(404, "No such image");
+    return sendImage(res, pathname, workspace.file("public", entry.image));
   }
 
   if (pathname === "/favicon.ico") return res.writeHead(204).end();
-  if (pathname === "/vendor/Sortable.min.js") {
-    return sendFile(res, path.join(here, "node_modules/sortablejs/Sortable.min.js"), { cache: "private, max-age=86400" });
-  }
+  if (VENDOR[pathname]) return sendFile(res, path.join(here, VENDOR[pathname]), { cache: "private, max-age=86400" });
   return serveStatic(path.join(here, "public"), req, res);
 }
 

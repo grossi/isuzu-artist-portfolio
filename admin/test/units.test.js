@@ -2,8 +2,12 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { assertPrivateHost, loadConfig } from "../lib/config.js";
 import { resolveInside } from "../lib/static.js";
+import { createRequire } from "node:module";
 import { sanitizeStem } from "../lib/uploads.js";
 import { commitMessage, describeChanges } from "../lib/workspace.js";
+
+const require = createRequire(import.meta.url);
+const sidebar = require("../../src/utils/sidebar.js");
 
 test("only loopback and tailnet addresses can be bound", () => {
   for (const host of ["127.0.0.1", "::1", "localhost", "100.79.168.105", "100.64.0.1", "fd7a:115c:a1e0::1"]) {
@@ -44,15 +48,19 @@ test("static paths never leave the root", () => {
 });
 
 test("changes and commit message", () => {
-  const head = { gallery: ["a.png", "b.png", "c.png"], carousel: ["carousel/x.png"] };
+  const noSidebar = { heading: { ja: "", en: "" }, entries: [] };
+  const head = { gallery: ["a.png", "b.png", "c.png"], carousel: ["carousel/x.png"], sidebar: noSidebar };
   const same = describeChanges(head, head);
-  assert.deepEqual(same, { added: [], removed: [], reordered: false, slidesAdded: [], slidesRemoved: [], carouselReordered: false });
+  assert.deepEqual(same, {
+    added: [], removed: [], reordered: false, slidesAdded: [], slidesRemoved: [], carouselReordered: false,
+    entriesAdded: [], entriesRemoved: [], entriesEdited: [], entriesReordered: false, headingChanged: false,
+  });
 
-  const uploads = describeChanges(head, { gallery: ["new.png", ...head.gallery], carousel: head.carousel });
+  const uploads = describeChanges(head, { ...head, gallery: ["new.png", ...head.gallery] });
   assert.deepEqual(uploads.added, ["new.png"]);
   assert.equal(uploads.reordered, false, "prepending is not a reorder");
 
-  const changes = describeChanges(head, { gallery: ["new.png", "c.png", "a.png", "b.png"], carousel: ["gallery/new.png"] });
+  const changes = describeChanges(head, { gallery: ["new.png", "c.png", "a.png", "b.png"], carousel: ["gallery/new.png"], sidebar: noSidebar });
   assert.equal(changes.reordered, true);
   assert.deepEqual(changes.slidesAdded, ["gallery/new.png"]);
   assert.deepEqual(changes.slidesRemoved, ["carousel/x.png"]);
@@ -62,4 +70,23 @@ test("changes and commit message", () => {
       "Added to the gallery:\n- new.png\nGallery order changed.\n" +
       "Carousel slides added:\n- gallery/new.png\nCarousel slides removed:\n- carousel/x.png\n"
   );
+});
+
+test("sidebar entries: links, images and fallbacks", () => {
+  for (const link of ["https://amazon.co.jp/dp/4297149761", "http://example.com/a?b=c#d"]) assert.ok(sidebar.isValidLink(link), link);
+  for (const link of ["javascript:alert(1)", "JAVASCRIPT:alert(1)", "data:text/html,x", "ftp://x", "//example.com", "https://", "https://exa mple.com",
+    "https://example.com/\nx", "java\tscript:alert(1)", "example.com", "", "https://example.com/" + "x".repeat(2000)]) {
+    assert.ok(!sidebar.isValidLink(link), JSON.stringify(link));
+  }
+  for (const image of ["isuzubook.webp", "sidebar/new-book.png", "sidebar/a.jpg"]) assert.ok(sidebar.isValidImage(image), image);
+  for (const image of ["../x.png", "sidebar/../x.png", "a/b.png", "sidebar/.png", "x.gif", "/etc/x.png", "sidebar\\x.png"]) assert.ok(!sidebar.isValidImage(image), image);
+
+  const valid = { heading: { ja: "", en: "" }, entries: [{ id: "a", image: "sidebar/a.png", link: null, description: { ja: "", en: "" } }] };
+  assert.doesNotThrow(() => sidebar.validateContent(valid));
+  assert.throws(() => sidebar.validateContent({ ...valid, entries: [...valid.entries, valid.entries[0]] }), /repeated/);
+  assert.throws(() => sidebar.validateContent({ ...valid, entries: [{ ...valid.entries[0], link: "javascript:alert(1)" }] }), /link/);
+
+  assert.deepEqual(sidebar.localized({ ja: "本", en: "  " }), { ja: "本", en: "本" });
+  assert.deepEqual(sidebar.localized({ ja: "", en: "Books" }), { ja: "Books", en: "Books" });
+  assert.deepEqual(sidebar.localized({ ja: "", en: "" }), { ja: "", en: "" });
 });
