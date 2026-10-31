@@ -1,15 +1,15 @@
 [
   {
-    "name": "2024",
-    "extension": "png",
-    "location": "carousel/2024.png",
-    "locationLarge": "carousel/large/2024.webp"
-  },
-  {
     "name": "21Year_of_the_Bull_isuZu",
     "extension": "png",
     "location": "carousel/21Year_of_the_Bull_isuZu.png",
     "locationLarge": "carousel/large/21Year_of_the_Bull_isuZu.webp"
+  },
+  {
+    "name": "2024",
+    "extension": "png",
+    "location": "carousel/2024.png",
+    "locationLarge": "carousel/large/2024.webp"
   },
   {
     "name": "30147",
