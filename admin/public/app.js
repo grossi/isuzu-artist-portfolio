@@ -533,6 +533,7 @@ function updateEntryPreview() {
   const error = link && !validLink(link) ? t("entryDialog.linkInvalid") : "";
   $("entry-link-error").textContent = error;
   $("entry-link-error").hidden = !error;
+  $("entry-link").setAttribute("aria-invalid", String(Boolean(error)));
 }
 
 function validLink(link) {
@@ -577,6 +578,7 @@ async function submitEntry(event) {
   if (submitting) return;
   const link = $("entry-link").value.trim();
   const fail = (error) => showEntryError(error);
+  showEntryError(null);
   // The field's own message already says what is wrong.
   if (link && !validLink(link)) return $("entry-link").focus();
   if (!editing && !entryImage) return fail({ code: "entry-needs-image" });
