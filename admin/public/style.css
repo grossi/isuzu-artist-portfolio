@@ -192,7 +192,7 @@ dialog.wide { width: min(900px, calc(100vw - 24px)); }
   position: relative;
 }
 .entry-image img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.entry-image img + span { position: absolute; bottom: 4px; left: 0; right: 0; font-size: 11px; background: rgba(255, 255, 255, 0.85); }
+.entry-image img:not([hidden]) + span { position: absolute; bottom: 4px; left: 0; right: 0; font-size: 11px; background: rgba(255, 255, 255, 0.85); }
 .entry-fields { display: flex; flex-direction: column; gap: 4px; }
 .entry-fields input { width: 100%; }
 .hint { color: var(--muted); font-size: 12px; margin: 4px 0; }

@@ -84,7 +84,8 @@
     </dialog>
 
     <dialog id="entry-dialog" class="wide">
-      <form id="entry-form">
+      <!-- novalidate: the link is checked by app.js, in the page's language, not by the browser. -->
+      <form id="entry-form" novalidate>
         <h3 id="entry-title"></h3>
         <div class="entry-top">
           <label class="entry-image" id="entry-drop" data-i18n-title="entryDialog.imageTitle">
