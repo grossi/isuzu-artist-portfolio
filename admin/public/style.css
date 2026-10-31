@@ -37,6 +37,11 @@ code { font-size: 0.92em; }
   border-bottom: 1px solid var(--line);
 }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+/* 日本語 / EN, like the site's header. */
+.lang-toggle { display: flex; align-items: center; margin-left: auto; font-size: 14px; color: var(--muted); white-space: nowrap; }
+.lang-toggle button { border: 0; background: none; padding: 4px; border-radius: 4px; font-size: inherit; color: inherit; }
+.lang-toggle button:hover { color: var(--ink); }
+.lang-toggle button[aria-pressed="true"] { color: var(--ink); font-weight: 700; }
 
 button, .button {
   font: inherit;
@@ -89,6 +94,7 @@ button.link { border: 0; background: none; color: var(--accent); padding: 0; }
 .job { margin-top: 12px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; }
 .job-head { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 14px; }
 .job-head #job-title { font-weight: 600; }
+.job-step { color: var(--muted); }
 .job.running #job-title::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 50%; border: 2px solid var(--accent); border-right-color: transparent; animation: spin 0.8s linear infinite; }
 .job.succeeded #job-title { color: var(--live); }
 .job.failed #job-title { color: var(--bad); }
@@ -235,6 +241,9 @@ dialog textarea { width: 100%; font: 13px ui-monospace, SFMono-Regular, Menlo, m
   body { padding: 0 10px 40px; }
   /* Two rows of buttons: sticky, they would cover a third of the screen. */
   .top { gap: 8px; position: static; }
+  /* The title and the language on the first row, the actions below. */
+  .lang-toggle { order: 1; }
+  .actions { order: 2; flex-basis: 100%; }
   .actions button, .actions .button { padding: 7px 10px; font-size: 13px; }
   .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
   .strip .tile { flex-basis: 120px; }

@@ -13,6 +13,25 @@ A small web app, reachable only on the tailnet, for managing the site's content 
 It is a plain Node server (`server.js`, `lib/`) with a build-free frontend (`public/`). It
 has its own `package.json` and is outside the site's bundle, `tsc` and lint scope.
 
+## Languages (日本語 / EN)
+
+The header has a "日本語 / EN" toggle, like the site's. The choice is saved in
+`localStorage`; a first visit follows the browser's languages and falls back to Japanese.
+Switching redraws the page in place: the draft, open dialogs and a running job are untouched.
+
+- Every string lives in `public/i18n/ja.js` and `public/i18n/en.js`, with the same keys and
+  `{placeholders}` (`yarn test` checks, and that every key the page and the server use
+  exists). Static markup names its key in `data-i18n` (or `data-i18n-title`,
+  `-aria-label`, `-placeholder`); `` `text` `` in a string is shown as code.
+- The server never sends prose the page has to show: errors are a stable code and its
+  parameters (`{ error, code, params }`, `error.<code>` in the tables; `error` is the
+  English text, the fallback for an unknown code). A job's failure (`errorCode`,
+  `errorParams`) and its current step (`step`) work the same way.
+- The preview port's "building" page follows the admin's choice through a cookie (cookies
+  are shared across the ports of one host), else the browser's `Accept-Language`.
+- Not translated: the raw build and deploy log, and the commit messages Save writes (the
+  git history stays in English).
+
 ## How it works
 
 The admin edits its **own clone** of the repo (the *workspace*, `~/isuzu-admin/workspace`),
