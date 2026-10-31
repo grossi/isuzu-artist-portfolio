@@ -141,18 +141,30 @@ function json(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-// Receives a multipart upload into the spool, then applies it under the lock.
+// Every draft edit: under the lock, against the draft version the browser
+// based it on (ANY_VERSION: an edit that can't overwrite anything, such as
+// adding uploads at the front).
+const ANY_VERSION = Symbol("any version");
+async function mutate(kind, seenVersion, apply) {
+  return jobs.withLock(kind, async () => {
+    await workspace.check();
+    if (seenVersion !== ANY_VERSION && seenVersion !== version) {
+      throw new HttpError(409, "The draft changed meanwhile (another tab?); reload the page");
+    }
+    const result = await apply();
+    edited();
+    return result;
+  });
+}
+
+// Receives a multipart upload into the spool, then applies it as an edit.
 // A busy lock is reported before the upload is read.
 async function withUpload(req, kind, limits, apply) {
   if (jobs.busy()) throw new HttpError(409, `Busy: ${jobs.busy()} is running. Try again when it finishes.`);
   const upload = await receiveUploads(req, { tempDir: uploadDir, maxBytes: config.maxUploadBytes, ...limits });
   try {
-    return await jobs.withLock(kind, async () => {
-      await workspace.check();
-      const result = apply(upload);
-      edited();
-      return result;
-    });
+    const { seenVersion = ANY_VERSION, apply: run } = apply(upload);
+    return await mutate(kind, seenVersion, run);
   } finally {
     removeTemp(upload.files);
   }
@@ -179,34 +191,26 @@ const routes = {
   "POST /api/upload": async (req, res) => {
     const added = await withUpload(req, "upload", { maxFiles: config.maxUploadFiles }, ({ files }) => {
       if (!files.length) throw new HttpError(400, "No files in the upload");
-      return workspace.addUploads(files);
+      return { apply: () => workspace.addUploads(files) };
     });
     json(res, 200, { added, version });
   },
 
   "PUT /api/order": async (req, res) => {
     const body = await readJson(req);
-    await jobs.withLock("reorder", async () => {
-      await workspace.check();
-      if (body.version !== version) throw new HttpError(409, "The draft changed meanwhile; reload the page");
-      workspace.setOrder(body);
-      edited();
-    });
+    await mutate("reorder", body.version, () => workspace.setOrder(body));
     json(res, 200, { version });
   },
 
   "POST /api/remove": async (req, res) => {
-    const { file } = await readJson(req);
-    await jobs.withLock("remove", async () => {
-      await workspace.check();
-      await workspace.removeUpload(file);
-      edited();
-    });
+    const body = await readJson(req);
+    await mutate("remove", body.version, () => workspace.removeUpload(body.file));
     json(res, 200, { version });
   },
 
-  // Multipart: an "entry" JSON field ({ id?, link, description }) and an
-  // optional "image" file (required for a new entry).
+  // Multipart: an "entry" JSON field ({ id?, link, description, version })
+  // and an optional "image" file (required for a new entry). Editing an
+  // entry needs the version its dialog was opened at; adding one doesn't.
   "POST /api/sidebar/entry": async (req, res) => {
     const saved = await withUpload(req, "sidebar", { maxFiles: 1, fieldNames: ["entry"] }, ({ files, fields }) => {
       let entry;
@@ -215,38 +219,29 @@ const routes = {
       } catch {
         throw new HttpError(400, "Invalid entry");
       }
-      return workspace.saveSidebarEntry(entry, files[0]);
+      return {
+        seenVersion: entry?.id === undefined ? ANY_VERSION : entry.version,
+        apply: () => workspace.saveSidebarEntry(entry, files[0]),
+      };
     });
     json(res, 200, { saved, version });
   },
 
   "PUT /api/sidebar": async (req, res) => {
     const body = await readJson(req);
-    await jobs.withLock("sidebar", async () => {
-      await workspace.check();
-      if (body.version !== version) throw new HttpError(409, "The draft changed meanwhile; reload the page");
-      workspace.setSidebar(body);
-      edited();
-    });
+    await mutate("sidebar", body.version, () => workspace.setSidebar(body));
     json(res, 200, { version });
   },
 
   "POST /api/sidebar/remove": async (req, res) => {
-    const { id } = await readJson(req);
-    await jobs.withLock("sidebar", async () => {
-      await workspace.check();
-      workspace.removeSidebarEntry(id);
-      edited();
-    });
+    const body = await readJson(req);
+    await mutate("sidebar", body.version, () => workspace.removeSidebarEntry(body.id));
     json(res, 200, { version });
   },
 
   "POST /api/discard": async (req, res) => {
-    await jobs.withLock("discard", async () => {
-      await workspace.check();
-      await workspace.discard();
-      edited();
-    });
+    const body = await readJson(req);
+    await mutate("discard", body.version, () => workspace.discard());
     json(res, 200, { version });
   },
 

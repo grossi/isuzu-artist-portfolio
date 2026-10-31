@@ -353,21 +353,25 @@ export class Workspace {
     if (await this.rebaseInProgress()) throw new Error("A rebase is in progress in the workspace; discard the draft first");
     await this.install(log);
     await this.buildImages(log);
-    await this.stageContent(log);
-    if (await gitOk(this.root, ["diff", "--cached", "--quiet"])) throw new Error("Nothing to save");
-    await runGit(this.root, ["commit", "--quiet", "-m", message], log);
+    await this.commitContent(log, message, () => {
+      throw new Error("Nothing to save");
+    });
     const sha = (await git(this.root, ["rev-parse", "--short", "HEAD"])).trim();
     log(`✓ Saved as ${sha}`);
     return { sha };
   }
 
-  async stageContent(log) {
+  // Stages and commits the content paths, and only them: anything else that
+  // happens to be in the index stays out of the commit.
+  async commitContent(log, message, onNothing = () => {}) {
     // A pathspec matching nothing (never created, never committed) is an error.
     const paths = [];
     for (const p of CONTENT_PATHS) {
       if (fs.existsSync(this.file(p)) || (OPTIONAL_PATHS.includes(p) && (await gitOk(this.root, ["ls-files", "--error-unmatch", "--", p])))) paths.push(p);
     }
     await runGit(this.root, ["add", "--all", "--", ...paths], log);
+    if (await gitOk(this.root, ["diff", "--cached", "--quiet", "--", ...paths])) return onNothing();
+    await runGit(this.root, ["commit", "--quiet", "-m", message, "--only", "--", ...paths], log);
   }
 
   async deploy(log) {
@@ -392,10 +396,7 @@ export class Workspace {
       // The rebased manifests may be stale if main changed the images too.
       log("== Regenerating the manifests on top of the new main");
       await this.buildImages(log);
-      await this.stageContent(log);
-      if (!(await gitOk(this.root, ["diff", "--cached", "--quiet"]))) {
-        await runGit(this.root, ["commit", "--quiet", "-m", "content: regenerate image manifests"], log);
-      }
+      await this.commitContent(log, "content: regenerate image manifests");
     }
 
     const head = (await git(this.root, ["rev-parse", "HEAD"])).trim();

@@ -408,6 +408,7 @@ async function removeEntry(entry) {
 
 // The add / edit dialog. entryImage: a newly chosen File, if any.
 let editing = null;
+let editingVersion = null; // the draft version the edited entry was read at
 let entryImage = null;
 
 function setEntryImage(file) {
@@ -454,6 +455,8 @@ function validLink(link) {
 
 function openEntry(entry = null) {
   editing = entry;
+  // After the edits already queued: the entry shown includes them.
+  editingVersion = edits.then(() => state.version);
   entryImage = null;
   $("entry-title").textContent = entry ? `Edit sidebar entry: ${entry.id}` : "Add a sidebar entry";
   $("entry-link").value = entry?.link ?? "";
@@ -475,7 +478,12 @@ async function submitEntry(event) {
   if (link && !validLink(link)) return fail("The link must start with https:// or http://.");
   if (!editing && !entryImage) return fail("Choose an image for the new entry.");
   const form = new FormData();
-  form.append("entry", JSON.stringify({ id: editing?.id, link, description: { ja: $("entry-ja").value, en: $("entry-en").value } }));
+  form.append("entry", JSON.stringify({
+    id: editing?.id,
+    version: await editingVersion,
+    link,
+    description: { ja: $("entry-ja").value, en: $("entry-en").value },
+  }));
   if (entryImage) form.append("image", entryImage, entryImage.name);
   $("entry-submit").disabled = true;
   try {
@@ -554,7 +562,7 @@ $("deploy-dialog").addEventListener("close", () => {
 
 function discard() {
   if (!confirm("Discard every unsaved change (uploads, order, carousel)? Saved commits are kept.")) return;
-  act(api("POST", "/api/discard"), "Draft discarded");
+  act(edit("POST", "/api/discard", {}), "Draft discarded");
 }
 
 $("preview").addEventListener("click", preview);
