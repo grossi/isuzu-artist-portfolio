@@ -1,12 +1,6 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-
-export class HttpError extends Error {
-  constructor(status, message) {
-    super(message);
-    this.status = status;
-  }
-}
+import { AdminError, HttpError, describeError } from "./errors.js";
 
 const MAX_LOG_LINES = 5000;
 
@@ -25,7 +19,7 @@ export class Jobs {
   }
 
   acquire(kind) {
-    if (this.holder) throw new HttpError(409, `Busy: ${this.holder.kind} is running. Try again when it finishes.`);
+    if (this.holder) throw new HttpError(409, "busy", { kind: this.holder.kind });
     const holder = { kind };
     this.holder = holder;
     return () => {
@@ -44,7 +38,9 @@ export class Jobs {
     }
   }
 
-  // Long operation: takes the lock, returns at once, streams its log.
+  // Long operation: takes the lock, returns at once, streams its log. fn gets
+  // log(line), and log.step(code, params) to name the step it is on
+  // ("step.<code>" in public/i18n/).
   start(kind, fn) {
     const release = this.acquire(kind);
     const job = { id: randomUUID(), kind, status: "running", startedAt: new Date().toISOString(), log: [] };
@@ -56,15 +52,21 @@ export class Jobs {
         this.emit("log", { id: job.id, line: part });
       }
     };
+    log.step = (code, params = {}) => {
+      job.step = { code, params };
+      this.emit("job", summary(job));
+    };
     (async () => {
       try {
         this.emit("job", summary(job));
         job.result = await fn(log);
         job.status = "succeeded";
       } catch (error) {
+        const { message, code, params } = describeError(error);
         job.status = "failed";
-        job.error = error.message;
-        log(`✗ ${error.message}`);
+        // error: the English text (the log, older tabs); the page shows the code.
+        Object.assign(job, { error: message, errorCode: code, errorParams: params });
+        log(`✗ ${message}`);
       } finally {
         job.finishedAt = new Date().toISOString();
         this.current = null;
@@ -143,8 +145,11 @@ export function run(command, args, { cwd, log, env, timeoutMs = 30 * 60 * 1000 }
     child.on("close", (code, signal) => {
       clearTimeout(timer);
       for (const rest of Object.values(pending)) if (rest) log(rest);
+      const name = `${command} ${args[0] ?? ""}`.trim();
       if (code === 0) resolve();
-      else reject(new Error(`${command} ${args[0] ?? ""} ${timedOut ? "timed out" : `failed (${signal ?? `exit code ${code}`})`}`));
+      else if (timedOut) reject(new AdminError("command-timeout", { command: name }));
+      else if (signal) reject(new AdminError("command-signal", { command: name, signal }));
+      else reject(new AdminError("command-exit", { command: name, code }));
     });
   });
 }
