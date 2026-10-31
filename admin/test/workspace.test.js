@@ -111,7 +111,13 @@ test("discard resets uploads and the order file but keeps ignored files", async 
 test("save commits the content paths only, then deploy pushes and records it", async () => {
   ws.addUploads([await upload("new", "white")]);
   fs.writeFileSync(ws.file("notes.txt"), "not content");
+  // Even if something else is already staged, Save commits only content.
+  fs.writeFileSync(ws.file("staged.txt"), "staged by hand");
+  sh(ws.root, "add", "staged.txt");
   const { sha } = await ws.save(log, "content: add new.png");
+  assert.equal(sh(ws.root, "diff", "--cached", "--name-only"), "staged.txt");
+  sh(ws.root, "rm", "--quiet", "--cached", "staged.txt");
+  fs.rmSync(ws.file("staged.txt"));
   assert.equal(sh(ws.root, "show", "--name-only", "--format=", "HEAD").split("\n").sort().join(","), "public/gallery/new.png,src/image-order.json");
   assert.ok(sh(ws.root, "rev-parse", "HEAD").startsWith(sha));
   await assert.rejects(ws.save(log, "again"), /Nothing to save/);

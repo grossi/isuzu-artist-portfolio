@@ -81,6 +81,11 @@ export async function receiveUploads(req, { tempDir, maxBytes, maxFiles, fieldNa
       if (!extension || !metadata.width || !metadata.height) {
         throw new HttpError(415, `${file.originalName} is not a JPEG, PNG or WebP image`);
       }
+      // The header alone passes for a truncated file: decode the whole image
+      // (sharp fails on decoder warnings and on more than 268 Mpx).
+      await sharp(file.path).resize(64, 64, { fit: "inside" }).toBuffer().catch(() => {
+        throw new HttpError(415, `${file.originalName} can't be read (damaged or cut short?)`);
+      });
       Object.assign(file, { extension, stem: sanitizeStem(file.originalName) });
     }
     return { files, fields };
