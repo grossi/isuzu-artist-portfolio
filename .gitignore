@@ -27,5 +27,6 @@ yarn-error.log*
 /public/gallery/small/
 /public/gallery/large/
 /public/carousel/large/
+/public/sidebar/large/
 /public/work-gallery/*/small/
 /public/work-gallery/*/large/

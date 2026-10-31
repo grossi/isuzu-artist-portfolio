@@ -1,6 +1,7 @@
 const fs = require("fs");
 const sharp = require('sharp');
 const { readOrder, listImages, orderGallery, orderCarousel, splitName } = require('./imageOrder');
+const sidebar = require('./sidebar');
 
 async function sizeOf(imagePath) {
   const { width, height } = await sharp(imagePath).metadata();
@@ -17,6 +18,9 @@ const LARGE_QUALITY = 85;
 // least 60 * BANNER_ASPECT_RATIO px wide, only a centred strip this many times
 // shorter than the image width is ever visible, so that is all we ship.
 const BANNER_ASPECT_RATIO = 4;
+
+// The sidebar column is at most ~560px wide; the hand-made covers are 600px.
+const SIDEBAR_WIDTH = 800;
 
 function rescale({ imagePath, width, destinationPath, quality, crop }) {
   const image = crop ? sharp(imagePath).extract(crop) : sharp(imagePath);
@@ -114,6 +118,33 @@ async function main() {
   });
 
   fs.writeFileSync('./src/carousel.json', JSON.stringify(carouselPictures, null, 2), 'utf-8'); 
+
+  /** Generates Sidebar json */
+
+  const sidebarContent = sidebar.readContent(require("path").join(__dirname, "../.."));
+
+  freshDir('public/sidebar/large');
+
+  const sidebarNames = new Set();
+  const sidebarEntries = sidebarContent.entries.map(({ id, image, link, description }) => {
+    if (!fs.existsSync(`public/${image}`)) throw new Error(`${sidebar.CONTENT_FILE}: ${id}: public/${image} does not exist`);
+    let shipped = image;
+    if (image.startsWith('sidebar/')) {
+      const name = require("path").parse(image).name;
+      if (sidebarNames.has(name)) throw new Error(`${sidebar.CONTENT_FILE}: two sidebar images are named "${name}"`);
+      sidebarNames.add(name);
+      rescaleJobs.push(rescale({
+        imagePath: `public/${image}`,
+        width: SIDEBAR_WIDTH,
+        destinationPath: `public/sidebar/large/${name}`,
+        quality: LARGE_QUALITY,
+      }));
+      shipped = `sidebar/large/${name}.webp`;
+    }
+    return { id, image: shipped, link, description: sidebar.localized(description) };
+  });
+
+  fs.writeFileSync('./src/sidebar.json', JSON.stringify({ heading: sidebar.localized(sidebarContent.heading), entries: sidebarEntries }, null, 2), 'utf-8');
 
   /** Generates Work Gallery json */
 

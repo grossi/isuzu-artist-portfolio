@@ -26,19 +26,31 @@ function MarkdownListItem(props: any) {
 
 function MarkdownImage(props: any) {
   const { classes } = useStyles();
-  console.log("props", props);
   return (
     <CardMedia
       className={classes.image}
       component="img"
-      src={`${import.meta.env.BASE_URL}isuzubook.webp`}
+      src={props.src}
       title={props.title}
       alt={props.alt}
     />
   );
 }
 
+// Links and images may only point to http(s), mailto or relative URLs.
+// markdown-to-jsx's default only blocks a few schemes (javascript:, ...).
+export function safeUrl(url: string): string | null {
+  // Browsers ignore control characters and whitespace inside a scheme ("java\tscript:").
+  const compact = Array.from(url).filter((c) => c.charCodeAt(0) > 0x20 && c.charCodeAt(0) !== 0x7f).join("");
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(compact);
+  return !scheme || ["http", "https", "mailto"].includes(scheme[1].toLowerCase()) ? url : null;
+}
+
+// Markdown text is written in the admin console: raw HTML is shown as text,
+// never turned into elements (no <script>, <iframe srcdoc>, onerror=...).
 const options = {
+  disableParsingRawHTML: true,
+  sanitizer: safeUrl,
   overrides: {
     h1: {
       component: Typography,
