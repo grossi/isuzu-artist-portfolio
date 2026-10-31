@@ -338,7 +338,7 @@ function renderJob() {
     job.status === "running" ? t("job.running", { name })
     : job.status === "succeeded" ? t("job.succeeded", { name, ago: ago(job.finishedAt) })
     : t("job.failed", { name, error: errorText({ code: job.errorCode, params: job.errorParams, message: job.error }) });
-  $("job-step").textContent = job.status === "running" && job.step ? label(`step.${job.step.code}`, "", job.step.params) : "";
+  $("job-step").textContent = job.status === "running" && job.step ? label(`step.${job.step.code}`, job.step.code, job.step.params) : "";
   const links = [];
   if (job.kind === "preview" && job.status === "succeeded") links.push(el("a", { href: previewUrl(), target: "isuzu-preview" }, t("common.openPreview")));
   $("job-links").replaceChildren(...links);
@@ -577,7 +577,8 @@ async function submitEntry(event) {
   if (submitting) return;
   const link = $("entry-link").value.trim();
   const fail = (error) => showEntryError(error);
-  if (link && !validLink(link)) return fail({ code: "invalid-link" });
+  // The field's own message already says what is wrong.
+  if (link && !validLink(link)) return $("entry-link").focus();
   if (!editing && !entryImage) return fail({ code: "entry-needs-image" });
   // Everything is read before waiting for queued edits: the dialog may be
   // closed and reopened on another entry meanwhile.
@@ -684,10 +685,11 @@ function discard() {
 // ---- Language --------------------------------------------------------------
 
 // A modal dialog makes the rest of the page inert: the 日本語 / EN toggle
-// goes along into it, and back to the header when it closes.
+// goes along into it (last, so the dialog still focuses its own first
+// field), and back to the header when it closes.
 const langToggle = document.querySelector(".lang-toggle");
 function showModal(dialog) {
-  dialog.prepend(langToggle);
+  dialog.append(langToggle);
   dialog.showModal();
 }
 for (const dialog of document.querySelectorAll("dialog")) {
@@ -760,7 +762,7 @@ window.addEventListener("drop", (e) => {
   dragDepth = 0;
   $("drop").hidden = true;
   if ($("entry-dialog").open) return setEntryImage(e.dataTransfer.files[0]);
-  if (busy()) return toast(() => (state.busy ? errorText({ code: "busy", params: { kind: state.busy } }) : t("toast.workspaceUnavailable")), true);
+  if (busy()) return toast(() => (state.busy ? errorText({ code: "busy", params: { kind: state.busy }, message: state.busy }) : t("toast.workspaceUnavailable")), true);
   upload(e.dataTransfer.files);
 });
 

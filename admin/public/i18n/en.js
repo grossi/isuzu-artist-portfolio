@@ -62,7 +62,7 @@ export default {
   "step.build": "Building the site",
   "step.commit": "Committing",
   "step.fetch": "Fetching from GitHub",
-  "step.rebase": "Rebasing onto {upstream}",
+  "step.rebase": "Rebasing onto the latest main",
   "step.push": "Pushing to GitHub",
   "step.deploy": "Building and uploading the site",
 
@@ -123,7 +123,7 @@ export default {
   "entryDialog.submit": "Save to draft",
 
   "saveDialog.title": "Save the draft",
-  "saveDialog.body": "Commits the draft to `main` in the workspace. Nothing is pushed or deployed yet.",
+  "saveDialog.body": "Commits the draft to main in the workspace. Nothing is pushed or deployed yet.",
   "saveDialog.message": "Commit message",
   "saveDialog.messageHint": "Recorded in the git history.",
   "saveDialog.submit": "Save",

@@ -62,7 +62,7 @@ export default {
   "step.build": "サイトを作成中",
   "step.commit": "変更履歴に記録中",
   "step.fetch": "GitHub から最新版を取得中",
-  "step.rebase": "最新版（{upstream}）と統合中",
+  "step.rebase": "GitHub の最新版と統合中",
   "step.push": "GitHub に送信中",
   "step.deploy": "サイトを作成して isuzu.work にアップロード中",
 
@@ -74,7 +74,7 @@ export default {
   "section.gallery": "ギャラリー",
   "section.galleryHint": "ドラッグで並べ替え · 新しい画像は先頭に追加されます",
   "section.extras": "カルーセル専用の画像",
-  "section.extrasHint": "public/carousel/ の画像。ギャラリーには表示されません",
+  "section.extrasHint": "ギャラリーには表示されない、カルーセル用の画像です",
   "drop.hint": "ドロップすると、ギャラリーの先頭に追加されます",
 
   "tile.new": "新規",
@@ -104,7 +104,7 @@ export default {
   "entry.edit": "編集",
   "entry.remove": "削除",
   "entry.emptyLang": "（空欄: サイトには{other}の文章が表示されます）",
-  "entry.confirmRemove": "サイドバーから「{id}」を削除しますか？\n\n保存して公開すると、サイトから消えます。ファイルは Git の履歴に残ります。",
+  "entry.confirmRemove": "サイドバーから「{id}」を削除しますか？\n\n保存して公開すると、サイトから消えます。画像などのファイルは変更履歴に残ります。",
 
   "entryDialog.addTitle": "サイドバーに項目を追加",
   "entryDialog.editTitle": "サイドバーの項目を編集: {id}",
@@ -123,7 +123,7 @@ export default {
   "entryDialog.submit": "下書きに反映",
 
   "saveDialog.title": "下書きを保存",
-  "saveDialog.body": "下書きを変更履歴（`main`）に記録します。この時点ではまだ GitHub への送信も、サイトへの公開もされません。",
+  "saveDialog.body": "下書きを変更履歴に記録します。この時点では、まだ GitHub への送信もサイトへの公開もされません。",
   "saveDialog.message": "変更の説明（コミットメッセージ）",
   "saveDialog.messageHint": "変更履歴に残る説明です。自動で入力された英語のままで構いません。",
   "saveDialog.submit": "保存",
@@ -160,7 +160,7 @@ export default {
 
   // サーバーのエラーコード（lib/errors.js）
   "error.request-failed": "処理に失敗しました（エラー {status}）",
-  "error.upload-failed": "アップロードに失敗しました（{status}）",
+  "error.upload-failed": "アップロードに失敗しました（エラー {status}）",
   "error.network": "通信エラー: 管理画面のサーバーに接続できません",
   "error.unexpected": "予期しないエラーが発生しました: {detail}",
   "error.unknown-host": "不明なホストです",
@@ -182,7 +182,7 @@ export default {
   "error.order-invalid": "ギャラリーとカルーセルはリストで指定してください。",
   "error.unknown-slide": "カルーセルのスライドが不明か、重複しています。",
   "error.unsaved-only": "削除できるのは、まだ保存していない画像だけです。",
-  "error.invalid-link": "リンクは http:// または https:// で始まる完全な URL にしてください。",
+  "error.invalid-link": "https://（または http://）で始まるリンクを入力してください。",
   "error.entry-needs-image": "新しい項目の画像を選んでください。",
   "error.invalid-entry": "項目のデータが正しくありません。",
   "error.heading-too-long": "見出しは {max} 文字以内にしてください。",
@@ -206,7 +206,7 @@ export default {
   "error.detached-head": "作業コピーがブランチから外れた状態（detached HEAD）で、{expected} ではありません。",
   "error.nothing-to-save": "保存する変更はありません。",
   "error.unsaved-changes": "保存していない変更があります（{files}）。先に下書きを保存するか、破棄してください。",
-  "error.push-failed": "GitHub への送信に失敗しました（ログを参照）。公開はされていません。もう一度「公開」を押すと、最初からやり直します。",
+  "error.push-failed": "GitHub への送信に失敗しました（詳しくはログをご覧ください）。公開はされていません。もう一度「公開」を押すと、最初からやり直します。",
   "error.rebase-conflict": "リベースに失敗しました（{files} で競合）。作業コピーで手動で解決してください（admin/README.md を参照）。送信も公開もされておらず、保存済みのコミットは変わっていません。",
   "error.rebase-failed": "リベースに失敗しました。作業コピーで手動で解決してください（admin/README.md を参照）。送信も公開もされておらず、保存済みのコミットは変わっていません。",
   "error.command-exit": "{command} が失敗しました（終了コード {code}）",
