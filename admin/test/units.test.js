@@ -24,6 +24,16 @@ test("deploy command is split, never run through a shell", () => {
   assert.deepEqual(loadConfig({ ADMIN_DEPLOY_CMD: " bash  /tmp/stub.sh " }).deployCommand, ["bash", "/tmp/stub.sh"]);
 });
 
+test("the live site URL defaults to isuzu.work and must be http(s)", () => {
+  assert.equal(loadConfig({}).siteUrl, "https://isuzu.work/");
+  assert.equal(loadConfig({ ADMIN_SITE_URL: "" }).siteUrl, "https://isuzu.work/");
+  assert.equal(loadConfig({ ADMIN_SITE_URL: " http://localhost:3000 " }).siteUrl, "http://localhost:3000/");
+  assert.equal(loadConfig({ ADMIN_SITE_URL: "https://staging.example.com/en" }).siteUrl, "https://staging.example.com/en");
+  for (const bad of ["javascript:alert(1)", "data:text/html,x", "ftp://isuzu.work/", "isuzu.work", "//isuzu.work"]) {
+    assert.throws(() => loadConfig({ ADMIN_SITE_URL: bad }), /ADMIN_SITE_URL/, bad);
+  }
+});
+
 test("upload names become safe, dot-free stems", () => {
   assert.equal(sanitizeStem("My Piece (final).PNG"), "my-piece-final");
   assert.equal(sanitizeStem("../../etc/passwd"), "passwd");

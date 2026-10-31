@@ -87,6 +87,7 @@ async function state() {
     preview: preview && { ...preview, stale: preview.version !== version },
     previewUrl: config.previewUrl,
     previewPort: config.previewPort,
+    siteUrl: config.siteUrl,
   };
   try {
     await workspace.check({ duringJob: Boolean(jobs.busy()) });
