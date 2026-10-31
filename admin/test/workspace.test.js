@@ -35,7 +35,7 @@ beforeEach(async () => {
   fs.mkdirSync(path.join(seed, "src"), { recursive: true });
   for (const [name, color] of [["b.png", "red"], ["a.png", "green"], ["c.jpg", "blue"]]) await png(path.join(seed, "public/gallery", name), color);
   await png(path.join(seed, "public/carousel/slide.png"), "black");
-  fs.writeFileSync(path.join(seed, ".gitignore"), "/public/gallery/small/\n");
+  fs.writeFileSync(path.join(seed, ".gitignore"), "/public/gallery/small/\n/public/sidebar/large/\n");
   fs.writeFileSync(path.join(seed, "src/gallery.json"), "[]\n");
   sh(dir, "init", "--quiet", "--bare", "--initial-branch=main", origin);
   sh(seed, "init", "--quiet", "--initial-branch=main");
@@ -111,6 +111,9 @@ test("discard resets uploads and the order file but keeps ignored files", async 
 test("save commits the content paths only, then deploy pushes and records it", async () => {
   ws.addUploads([await upload("new", "white")]);
   fs.writeFileSync(ws.file("notes.txt"), "not content");
+  // build-images leaves public/sidebar/ with only its ignored large/ inside.
+  fs.mkdirSync(ws.file("public/sidebar/large"), { recursive: true });
+  fs.writeFileSync(ws.file("public/sidebar/large/x.webp"), "x");
   // Even if something else is already staged, Save commits only content.
   fs.writeFileSync(ws.file("staged.txt"), "staged by hand");
   sh(ws.root, "add", "staged.txt");

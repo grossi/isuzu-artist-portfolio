@@ -302,6 +302,7 @@ function sendAsset(res, name, body) {
     "Content-Length": body.length,
     "Cache-Control": "no-cache",
     "Content-Security-Policy": CSP,
+    "X-Frame-Options": "DENY",
     "X-Content-Type-Options": "nosniff",
   });
   res.end(body);

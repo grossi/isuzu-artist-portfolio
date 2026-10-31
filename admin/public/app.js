@@ -21,10 +21,14 @@ async function api(method, url, body) {
 // Draft edits go one at a time, each with the version the previous one
 // returned, so quick successive edits don't trip the stale-tab check.
 let edits = Promise.resolve();
+let latestVersion = 0; // the newest draft version any response has shown
 function queue(send) {
   const next = edits.then(async () => {
     const result = await send();
-    if (typeof result?.version === "number") state.version = result.version;
+    if (typeof result?.version === "number") {
+      state.version = result.version;
+      latestVersion = Math.max(latestVersion, result.version);
+    }
     return result;
   });
   edits = next.catch(() => {});
@@ -43,6 +47,12 @@ function refresh() {
   }
   refreshing = api("GET", "/api/state")
     .then((next) => {
+      // Sent before an edit that has since answered: fetch again instead.
+      if (next.version < latestVersion) {
+        refreshAgain = true;
+        return;
+      }
+      latestVersion = next.version;
       state = next;
       render();
     })
@@ -200,7 +210,9 @@ function render() {
   for (const id of ["preview", "save", "deploy", "discard", "add-entry", "heading-ja", "heading-en"]) $(id).disabled = locked;
   $("add").classList.toggle("disabled", locked);
   $("save").disabled ||= !state.draft?.dirty;
-  $("discard").disabled ||= !state.draft?.dirty;
+  // Discard stays available when the workspace can't be read (say a
+  // hand-edited content file): resetting it is the way out.
+  $("discard").disabled = Boolean(state.busy) || !(state.draft?.dirty || state.error);
   const banner = state.error ??
     (state.restartNeeded ? "The admin's own code changed on main. Restart it to update: systemctl --user restart isuzu-admin (after yarn install in admin/ if its dependencies changed)." : null);
   $("error").hidden = !banner;
@@ -561,7 +573,7 @@ $("deploy-dialog").addEventListener("close", () => {
 });
 
 function discard() {
-  if (!confirm("Discard every unsaved change (uploads, order, carousel)? Saved commits are kept.")) return;
+  if (!confirm("Discard every unsaved change (uploads, gallery order, carousel, sidebar entries and heading)? Saved commits are kept.")) return;
   act(edit("POST", "/api/discard", {}), "Draft discarded");
 }
 

@@ -40,8 +40,9 @@ function MarkdownImage(props: any) {
 // Links and images may only point to http(s), mailto or relative URLs.
 // markdown-to-jsx's default only blocks a few schemes (javascript:, ...).
 export function safeUrl(url: string): string | null {
-  // Browsers ignore control characters and whitespace inside a scheme ("java\tscript:").
-  const compact = Array.from(url).filter((c) => c.charCodeAt(0) > 0x20 && c.charCodeAt(0) !== 0x7f).join("");
+  // Browsers ignore control characters and whitespace inside a scheme ("java\tscript:"),
+  // and an invisible format character (U+200B) must not hide one either.
+  const compact = Array.from(url).filter((c) => c.charCodeAt(0) > 0x20 && c.charCodeAt(0) !== 0x7f && !/\p{Cf}/u.test(c)).join("");
   const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(compact);
   return !scheme || ["http", "https", "mailto"].includes(scheme[1].toLowerCase()) ? url : null;
 }

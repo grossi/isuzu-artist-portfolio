@@ -56,9 +56,9 @@ export class Jobs {
         this.emit("log", { id: job.id, line: part });
       }
     };
-    this.emit("job", summary(job));
     (async () => {
       try {
+        this.emit("job", summary(job));
         job.result = await fn(log);
         job.status = "succeeded";
       } catch (error) {
@@ -86,8 +86,16 @@ export class Jobs {
     return () => this.listeners.delete(listener);
   }
 
+  // A failing listener (a dead SSE response) must never get between a job
+  // and the release of the lock.
   emit(event, data) {
-    for (const listener of this.listeners) listener(event, data);
+    for (const listener of this.listeners) {
+      try {
+        listener(event, data);
+      } catch (error) {
+        console.error("event listener failed", error);
+      }
+    }
   }
 }
 
