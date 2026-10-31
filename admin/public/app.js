@@ -1,3 +1,5 @@
+import { renderMarkdown } from "./markdown.js";
+
 const $ = (id) => document.getElementById(id);
 let state = null;
 let logLines = [];
@@ -161,7 +163,7 @@ function render() {
   renderJob();
   renderGrid();
   const locked = busy();
-  for (const id of ["preview", "save", "deploy", "discard"]) $(id).disabled = locked;
+  for (const id of ["preview", "save", "deploy", "discard", "add-entry", "heading-ja", "heading-en"]) $(id).disabled = locked;
   $("add").classList.toggle("disabled", locked);
   $("save").disabled ||= !state.draft?.dirty;
   $("discard").disabled ||= !state.draft?.dirty;
@@ -181,6 +183,11 @@ function renderStatus() {
     draft.slidesAdded.length && `carousel +${draft.slidesAdded.join(", +")}`,
     draft.slidesRemoved.length && `carousel −${draft.slidesRemoved.join(", −")}`,
     draft.carouselReordered && "carousel reordered",
+    draft.entriesAdded.length && `sidebar +${draft.entriesAdded.join(", +")}`,
+    draft.entriesEdited.length && `sidebar edited: ${draft.entriesEdited.join(", ")}`,
+    draft.entriesRemoved.length && `sidebar −${draft.entriesRemoved.join(", −")}`,
+    draft.entriesReordered && "sidebar reordered",
+    draft.headingChanged && "sidebar heading changed",
   ].filter(Boolean);
   const previewText = !preview
     ? "No preview built yet."
@@ -290,6 +297,7 @@ function extraTile(file) {
 
 function renderGrid() {
   if (!state.gallery) return;
+  renderSidebar();
   $("gallery").replaceChildren(...state.gallery.map(galleryTile));
   $("carousel").replaceChildren(...state.carousel.map(slideTile));
   $("carousel-empty").hidden = state.carousel.length > 0;
@@ -300,6 +308,163 @@ function renderGrid() {
     target?.focus({ preventScroll: false });
     pendingFocus = null;
   }
+}
+
+// ---- Sidebar entries -------------------------------------------------------
+
+const LANGS = { ja: "日本語", en: "English" };
+
+async function saveSidebar(heading, order, focus) {
+  pendingFocus = focus;
+  const byId = new Map(state.sidebar.entries.map((entry) => [entry.id, entry]));
+  state.sidebar = { heading, entries: order.map((id) => byId.get(id)) };
+  render();
+  await act(api("PUT", "/api/sidebar", { version: state.version, heading, order }));
+}
+
+const sidebarOrder = () => state.sidebar.entries.map((entry) => entry.id);
+const headingInputs = () => ({ ja: $("heading-ja").value, en: $("heading-en").value });
+
+function description(entry, lang) {
+  const other = lang === "ja" ? "en" : "ja";
+  const text = entry.description[lang];
+  return el("div", { class: "md-preview small" },
+    el("span", { class: "lang" }, LANGS[lang]),
+    text.trim() ? renderMarkdown(text) : el("p", { class: "muted" }, `(empty: the site shows the ${LANGS[other]} text)`));
+}
+
+function entryCard(entry, index) {
+  const order = sidebarOrder();
+  const moveTo = (to, key) => () => saveSidebar(state.sidebar.heading, move(order, entry.id, to), `entry:${entry.id}:${key}`);
+  return el("div", { class: "entry", "data-id": entry.id },
+    el("img", { class: "entry-thumb", src: `/thumb/sidebar/${entry.id}?v=${encodeURIComponent(entry.image)}`, alt: "", draggable: "false" }),
+    el("div", { class: "entry-body" },
+      el("div", { class: "entry-meta" },
+        el("span", { class: "index" }, `${index + 1}`),
+        el("strong", {}, entry.id),
+        entry.link
+          ? el("a", { href: entry.link, target: "_blank", rel: "noopener noreferrer" }, entry.link)
+          : el("span", { class: "muted" }, "no link")),
+      el("div", { class: "entry-langs" }, description(entry, "ja"), description(entry, "en"))),
+    el("div", { class: "entry-controls" },
+      controlButton("⤒", `Move ${entry.id} to the top`, moveTo(0, "top"), index === 0, `entry:${entry.id}:top`),
+      controlButton("↑", `Move ${entry.id} up`, moveTo(index - 1, "up"), index === 0, `entry:${entry.id}:up`),
+      controlButton("↓", `Move ${entry.id} down`, moveTo(index + 1, "down"), index === order.length - 1, `entry:${entry.id}:down`),
+      el("button", { type: "button", onclick: () => openEntry(entry), disabled: busy() }, "Edit"),
+      el("button", { type: "button", class: "danger", onclick: () => removeEntry(entry), disabled: busy() }, "Remove")));
+}
+
+function renderSidebar() {
+  const { heading, entries } = state.sidebar;
+  for (const lang of Object.keys(LANGS)) {
+    const input = $(`heading-${lang}`);
+    if (document.activeElement !== input) input.value = heading[lang];
+  }
+  $("entries").replaceChildren(...entries.map(entryCard));
+  $("entries-empty").hidden = entries.length > 0;
+}
+
+async function removeEntry(entry) {
+  if (!confirm(`Remove "${entry.id}" from the sidebar?\n\nIt disappears from the site once saved and deployed; the git history keeps its files.`)) return;
+  await act(api("POST", "/api/sidebar/remove", { id: entry.id }), `Removed ${entry.id}`);
+}
+
+// The add / edit dialog. entryImage: a newly chosen File, if any.
+let editing = null;
+let entryImage = null;
+
+function setEntryImage(file) {
+  if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) return toast("Choose a JPEG, PNG or WebP image", true);
+  entryImage = file;
+  showEntryImage(URL.createObjectURL(file));
+}
+
+function showEntryImage(src) {
+  const img = $("entry-image-preview");
+  if (img.src.startsWith("blob:")) URL.revokeObjectURL(img.src);
+  img.hidden = !src;
+  if (src) img.src = src;
+  else img.removeAttribute("src");
+  $("entry-image-hint").textContent = src ? "Drop or click to replace" : "";
+  if (!src) $("entry-image-hint").append("Drop an image here", el("br"), "or click to choose");
+}
+
+function updateEntryPreview() {
+  const texts = { ja: $("entry-ja").value, en: $("entry-en").value };
+  for (const lang of Object.keys(LANGS)) {
+    const other = lang === "ja" ? "en" : "ja";
+    const shown = texts[lang].trim() ? texts[lang] : texts[other];
+    $(`entry-${lang}-preview`).replaceChildren(
+      el("span", { class: "lang" }, `${LANGS[lang]} site`),
+      shown.trim()
+        ? [texts[lang].trim() ? null : el("p", { class: "muted" }, `(empty: showing the ${LANGS[other]} text)`), renderMarkdown(shown)]
+        : el("p", { class: "muted" }, "(no description)"));
+  }
+  const link = $("entry-link").value.trim();
+  const error = link && !validLink(link) ? "Enter a full link starting with https:// (or http://)." : "";
+  $("entry-link-error").textContent = error;
+  $("entry-link-error").hidden = !error;
+}
+
+function validLink(link) {
+  try {
+    const url = new URL(link);
+    return (url.protocol === "https:" || url.protocol === "http:") && !/\s/.test(link);
+  } catch {
+    return false;
+  }
+}
+
+function openEntry(entry = null) {
+  editing = entry;
+  entryImage = null;
+  $("entry-title").textContent = entry ? `Edit sidebar entry: ${entry.id}` : "Add a sidebar entry";
+  $("entry-link").value = entry?.link ?? "";
+  $("entry-ja").value = entry?.description.ja ?? "";
+  $("entry-en").value = entry?.description.en ?? "";
+  $("entry-error").hidden = true;
+  showEntryImage(entry ? `/thumb/sidebar/${entry.id}?v=${encodeURIComponent(entry.image)}` : null);
+  updateEntryPreview();
+  $("entry-dialog").showModal();
+}
+
+async function submitEntry(event) {
+  event.preventDefault();
+  const link = $("entry-link").value.trim();
+  const fail = (message) => {
+    $("entry-error").textContent = message;
+    $("entry-error").hidden = false;
+  };
+  if (link && !validLink(link)) return fail("The link must start with https:// or http://.");
+  if (!editing && !entryImage) return fail("Choose an image for the new entry.");
+  const form = new FormData();
+  form.append("entry", JSON.stringify({ id: editing?.id, link, description: { ja: $("entry-ja").value, en: $("entry-en").value } }));
+  if (entryImage) form.append("image", entryImage, entryImage.name);
+  $("entry-submit").disabled = true;
+  try {
+    const res = await fetch("/api/sidebar/entry", { method: "POST", headers: { "X-Isuzu-Admin": "1" }, body: form });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return fail(data.error || `Saving failed (${res.status})`);
+    $("entry-dialog").close();
+    toast(editing ? `Updated ${data.saved.id}` : `Added ${data.saved.id} at the top of the sidebar`);
+    await refresh();
+  } catch (error) {
+    fail(error.message);
+  } finally {
+    $("entry-submit").disabled = false;
+  }
+}
+
+$("add-entry").addEventListener("click", () => openEntry());
+$("entry-form").addEventListener("submit", submitEntry);
+$("entry-cancel").addEventListener("click", () => $("entry-dialog").close());
+$("entry-picker").addEventListener("change", (e) => {
+  setEntryImage(e.target.files[0]);
+  e.target.value = "";
+});
+for (const id of ["entry-ja", "entry-en", "entry-link"]) $(id).addEventListener("input", updateEntryPreview);
+for (const lang of Object.keys(LANGS)) {
+  $(`heading-${lang}`).addEventListener("change", () => saveSidebar(headingInputs(), sidebarOrder()));
 }
 
 // ---- Actions ---------------------------------------------------------------
@@ -380,7 +545,7 @@ window.addEventListener("dragend", () => {
 window.addEventListener("dragenter", (e) => {
   if (!hasFiles(e)) return;
   dragDepth++;
-  $("drop").hidden = busy();
+  $("drop").hidden = busy() || $("entry-dialog").open;
 });
 window.addEventListener("dragleave", (e) => {
   if (hasFiles(e) && --dragDepth <= 0) {
@@ -394,6 +559,7 @@ window.addEventListener("drop", (e) => {
   e.preventDefault();
   dragDepth = 0;
   $("drop").hidden = true;
+  if ($("entry-dialog").open) return setEntryImage(e.dataTransfer.files[0]);
   if (busy()) return toast(`Busy: ${state.busy || "workspace unavailable"}`, true);
   upload(e.dataTransfer.files);
 });
@@ -420,6 +586,7 @@ function sortable(container, onSort) {
 window.addEventListener("DOMContentLoaded", () => {
   sortable($("gallery"), (gallery) => saveOrder(gallery, state.carousel));
   sortable($("carousel"), (carousel) => saveOrder(state.gallery, carousel));
+  sortable($("entries"), (order) => saveSidebar(state.sidebar.heading, order));
   refresh();
   events();
   setInterval(() => state && renderStatus(), 60000); // keep the "… ago" labels fresh

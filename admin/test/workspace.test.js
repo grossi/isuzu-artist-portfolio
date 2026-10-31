@@ -181,3 +181,44 @@ test("a workspace off main is refused", async () => {
   sh(ws.root, "checkout", "--quiet", "-b", "other");
   await assert.rejects(ws.check(), /not main/);
 });
+
+test("sidebar: add at the top, edit, reorder, heading, remove", async () => {
+  // A committed entry whose image lives directly in public/, like the old covers.
+  await png(path.join(ws.root, "public/cover.png"), "red");
+  ws.writeSidebar({ heading: { ja: "著書", en: "My Books" }, entries: [{ id: "cover", image: "cover.png", link: "https://example.com/", description: { ja: "本", en: "Book" } }] });
+  sh(ws.root, "add", ".");
+  sh(ws.root, "commit", "--quiet", "-m", "sidebar");
+
+  assert.throws(() => ws.saveSidebarEntry({ link: "", description: { ja: "x" } }), /needs an image/);
+  const bad = await upload("x", "white");
+  assert.throws(() => ws.saveSidebarEntry({ link: "javascript:alert(1)", description: {} }, bad), /http/);
+  const added = ws.saveSidebarEntry({ link: "  ", description: { ja: "新刊", en: "" } }, await upload("new-book", "white"));
+  assert.deepEqual(added, { id: "new-book", image: "sidebar/new-book.png", link: null, description: { ja: "新刊", en: "" } });
+  const second = ws.saveSidebarEntry({ link: "https://shop.example/", description: { en: "Other" } }, await upload("new-book", "gray"));
+  assert.equal(second.image, "sidebar/new-book-2.png");
+  assert.deepEqual(ws.readSidebar().entries.map((e) => e.id), ["new-book-2", "new-book", "cover"]);
+
+  // Editing keeps the id; a new image replaces (and deletes) the unsaved old one.
+  ws.saveSidebarEntry({ id: "new-book", link: "https://example.com/b", description: { ja: "新刊", en: "New" } }, await upload("replaced", "blue"));
+  assert.ok(!fs.existsSync(ws.file("public/sidebar/new-book.png")));
+  assert.equal(ws.readSidebar().entries[1].image, "sidebar/replaced.png");
+  assert.throws(() => ws.saveSidebarEntry({ id: "gone", link: "", description: {} }), /no longer exists/);
+
+  assert.throws(() => ws.setSidebar({ heading: { ja: "", en: "" }, order: ["cover"] }), /changed meanwhile/);
+  ws.setSidebar({ heading: { ja: " 新しい  本 ", en: "" }, order: ["cover", "new-book", "new-book-2"] });
+  assert.deepEqual(ws.readSidebar().heading, { ja: "新しい 本", en: "" });
+
+  // Removing the committed entry keeps its image (outside public/sidebar/).
+  ws.removeSidebarEntry("cover");
+  assert.ok(fs.existsSync(ws.file("public/cover.png")));
+  ws.removeSidebarEntry("new-book-2");
+  assert.ok(!fs.existsSync(ws.file("public/sidebar/new-book-2.png")));
+
+  const draft = await ws.draft();
+  assert.deepEqual(draft.entriesAdded, ["new-book"]);
+  assert.deepEqual(draft.entriesRemoved, ["cover"]);
+  assert.equal(draft.headingChanged, true);
+  await ws.save(log, "content: sidebar");
+  const files = sh(ws.root, "show", "--name-only", "--format=", "HEAD").split("\n").sort();
+  assert.deepEqual(files, ["public/sidebar/replaced.png", "src/sidebar-content.json"]);
+});

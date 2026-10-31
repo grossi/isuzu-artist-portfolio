@@ -26,17 +26,23 @@ export function sanitizeStem(filename) {
 }
 
 // Streams a multipart upload into tempDir and checks every file is a real
-// jpg/png/webp. Returns [{ path, stem, extension, originalName }]; on any error
-// the temp files are deleted and an HttpError is thrown.
-export async function receiveUploads(req, { tempDir, maxBytes, maxFiles }) {
+// jpg/png/webp. Text parts are only accepted under the given field names.
+// Returns { files: [{ path, stem, extension, originalName }], fields }; on any
+// error the temp files are deleted and an HttpError is thrown.
+export async function receiveUploads(req, { tempDir, maxBytes, maxFiles, fieldNames = [] }) {
   fs.mkdirSync(tempDir, { recursive: true });
   const files = [];
+  const fields = {};
   try {
     await new Promise((resolve, reject) => {
       let parser;
       try {
         // Browsers send UTF-8 file names; busboy assumes latin1 otherwise.
-        parser = busboy({ headers: req.headers, defParamCharset: "utf8", limits: { fileSize: maxBytes, files: maxFiles, fields: 0, parts: maxFiles } });
+        parser = busboy({
+          headers: req.headers,
+          defParamCharset: "utf8",
+          limits: { fileSize: maxBytes, files: maxFiles, fields: fieldNames.length, parts: maxFiles + fieldNames.length, fieldSize: 256 * 1024 },
+        });
       } catch {
         return reject(new HttpError(400, "Expected a multipart/form-data upload"));
       }
@@ -47,15 +53,18 @@ export async function receiveUploads(req, { tempDir, maxBytes, maxFiles }) {
         stream.on("limit", () => reject(new HttpError(413, `${file.originalName} is larger than ${Math.round(maxBytes / 1048576)} MB`)));
         writes.push(pipeline(stream, fs.createWriteStream(file.path, { flags: "wx" })));
       });
-      parser.on("filesLimit", () => reject(new HttpError(413, `At most ${maxFiles} files per upload`)));
-      parser.on("partsLimit", () => reject(new HttpError(413, `At most ${maxFiles} files per upload`)));
+      parser.on("field", (name, value, info) => {
+        if (!fieldNames.includes(name) || info.valueTruncated) return reject(new HttpError(400, `Unexpected form field ${name}`));
+        fields[name] = value;
+      });
+      parser.on("filesLimit", () => reject(new HttpError(413, `At most ${maxFiles} file(s) per upload`)));
+      parser.on("partsLimit", () => reject(new HttpError(413, "Too many parts in the upload")));
       parser.on("fieldsLimit", () => reject(new HttpError(400, "Unexpected form fields")));
       parser.on("error", () => reject(new HttpError(400, "Malformed upload")));
       parser.on("close", () => Promise.all(writes).then(resolve, reject));
       req.on("aborted", () => reject(new HttpError(400, "Upload aborted")));
       req.pipe(parser);
     });
-    if (!files.length) throw new HttpError(400, "No files in the upload");
     for (const file of files) {
       const metadata = await sharp(file.path).metadata().catch(() => ({}));
       const extension = FORMATS[metadata.format];
@@ -64,7 +73,7 @@ export async function receiveUploads(req, { tempDir, maxBytes, maxFiles }) {
       }
       Object.assign(file, { extension, stem: sanitizeStem(file.originalName) });
     }
-    return files;
+    return { files, fields };
   } catch (error) {
     removeTemp(files);
     req.resume();
