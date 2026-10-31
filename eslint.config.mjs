@@ -8,7 +8,8 @@ import tseslint from "typescript-eslint";
 const unusedVars = ["warn", { args: "none", ignoreRestSiblings: true }];
 
 export default defineConfig([
-  { ignores: ["build"] },
+  // admin/ is a separate Node app with its own package.json
+  { ignores: ["build", "admin"] },
   {
     files: ["src/**/*.{ts,tsx}"],
     extends: [js.configs.recommended, tseslint.configs.recommended],
@@ -22,7 +23,7 @@ export default defineConfig([
     },
   },
   {
-    files: ["src/utils/loadImages.js"],
+    files: ["src/utils/*.js"],
     extends: [js.configs.recommended],
     languageOptions: { globals: globals.node, sourceType: "commonjs" },
     rules: { "no-unused-vars": unusedVars },
