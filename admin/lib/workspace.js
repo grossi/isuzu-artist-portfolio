@@ -400,20 +400,18 @@ export class Workspace {
 
     log("== Fetching");
     await runGit(this.root, ["fetch", "--quiet", remote, branch], log, { timeoutMs: NETWORK_TIMEOUT });
-    let upstreamChanged = false;
     if (!(await gitOk(this.root, ["merge-base", "--is-ancestor", upstream, "HEAD"]))) {
-      upstreamChanged = true;
       log(`== Rebasing the saved commits onto ${upstream}`);
       await this.rebase(upstream, log);
     }
 
+    // Every time, not only after a rebase in this run: a rebase whose deploy
+    // failed later leaves manifests from the conflict resolution behind.
+    // Nothing is committed when they are already right.
     await this.install(log);
-    if (upstreamChanged) {
-      // The rebased manifests may be stale if main changed the images too.
-      log("== Regenerating the manifests on top of the new main");
-      await this.buildImages(log);
-      await this.commitContent(log, "content: regenerate image manifests");
-    }
+    log("== Regenerating the manifests");
+    await this.buildImages(log);
+    await this.commitContent(log, "content: regenerate image manifests");
 
     const head = (await git(this.root, ["rev-parse", "HEAD"])).trim();
     if (head !== (await git(this.root, ["rev-parse", upstream])).trim()) {

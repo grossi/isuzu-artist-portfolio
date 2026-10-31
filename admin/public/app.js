@@ -31,7 +31,7 @@ function queue(send) {
       latestVersion = Math.max(latestVersion, result.version);
       // Each edit bumps the version by one: anything else means another tab
       // edited in between, and the refresh will bring its changes.
-      if (result.version === state.version + 1) state.version = result.version;
+      if (state && result.version === state.version + 1) state.version = result.version;
     }
     return result;
   });
@@ -491,8 +491,10 @@ function openEntry(entry = null) {
   $("entry-dialog").showModal();
 }
 
+let submitting = false;
 async function submitEntry(event) {
   event.preventDefault();
+  if (submitting) return;
   const link = $("entry-link").value.trim();
   const fail = (message) => {
     $("entry-error").textContent = message;
@@ -500,16 +502,18 @@ async function submitEntry(event) {
   };
   if (link && !validLink(link)) return fail("The link must start with https:// or http://.");
   if (!editing && !entryImage) return fail("Choose an image for the new entry.");
-  const form = new FormData();
-  form.append("entry", JSON.stringify({
-    id: editing?.id,
-    version: await editingVersion,
-    link,
-    description: { ja: $("entry-ja").value, en: $("entry-en").value },
-  }));
-  if (entryImage) form.append("image", entryImage, entryImage.name);
+  // Everything is read before waiting for queued edits: the dialog may be
+  // closed and reopened on another entry meanwhile.
+  submitting = true;
   $("entry-submit").disabled = true;
+  const entry = { id: editing?.id, link, description: { ja: $("entry-ja").value, en: $("entry-en").value } };
+  const image = entryImage;
+  const isEdit = Boolean(editing);
   try {
+    entry.version = await editingVersion;
+    const form = new FormData();
+    form.append("entry", JSON.stringify(entry));
+    if (image) form.append("image", image, image.name);
     const data = await queue(async () => {
       const res = await fetch("/api/sidebar/entry", { method: "POST", headers: { "X-Isuzu-Admin": "1" }, body: form });
       const data = await res.json().catch(() => ({}));
@@ -517,11 +521,12 @@ async function submitEntry(event) {
       return data;
     });
     $("entry-dialog").close();
-    toast(editing ? `Updated ${data.saved.id}` : `Added ${data.saved.id} at the top of the sidebar`);
+    toast(isEdit ? `Updated ${data.saved.id}` : `Added ${data.saved.id} at the top of the sidebar`);
     await refresh();
   } catch (error) {
     fail(error.message);
   } finally {
+    submitting = false;
     $("entry-submit").disabled = false;
   }
 }
