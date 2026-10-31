@@ -1,0 +1,19 @@
+{
+  "name": "isuzu-admin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tailnet-only admin console for the isuzu.work illustrations",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "busboy": "^1.6.0",
+    "sharp": "^0.35.5",
+    "sortablejs": "^1.15.7"
+  }
+}

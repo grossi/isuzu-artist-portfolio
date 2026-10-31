@@ -3,16 +3,11 @@ import { makeStyles } from "tss-react/mui";
 import Grid from "@mui/material/Grid";
 import Container from "@mui/material/Container";
 import Featured from "components/molecules/Featured";
-import Sidebar from "components/organisms/Sidebar";
+import Sidebar, { SidebarData } from "components/organisms/Sidebar";
 import Galery from 'components/organisms/Gallery';
 import aboutJa from "assets/md/about.ja.md?url";
 import aboutEn from "assets/md/about.en.md?url";
-import aboutBookJa from "assets/md/about_book.ja.md?url";
-import aboutBookEn from "assets/md/about_book.en.md?url";
-import aboutBook2Ja from "assets/md/about_book2.ja.md?url";
-import aboutBook2En from "assets/md/about_book2.en.md?url";
-import aboutBook3Ja from "assets/md/about_book3.ja.md?url";
-import aboutBook3En from "assets/md/about_book3.en.md?url";
+import sidebarData from "sidebar.json";
 import { SiX, SiPixiv, SiFiverr } from "react-icons/si";
 import { MdEmail } from "react-icons/md";
 import { Localized, useLanguage } from "i18n/LanguageContext";
@@ -50,23 +45,8 @@ const useStyles = makeStyles()((theme) => ({
 
 const about: Localized<string> = { ja: aboutJa, en: aboutEn };
 
-const books: Array<{ link: string; image: string; description: Localized<string> }> = [
-  {
-    link: "https://www.amazon.co.jp/dp/429713134X",
-    image: `${import.meta.env.BASE_URL}isuzubook.webp`,
-    description: { ja: aboutBookJa, en: aboutBookEn },
-  },
-  {
-    link: "https://www.amazon.co.jp/o/ASIN/4297128349/gihyojp-22",
-    image: `${import.meta.env.BASE_URL}isuzubook2.webp`,
-    description: { ja: aboutBook2Ja, en: aboutBook2En },
-  },
-  {
-    link: "https://amazon.co.jp/dp/4297149761",
-    image: `${import.meta.env.BASE_URL}isuzubook3.webp`,
-    description: { ja: aboutBook3Ja, en: aboutBook3En },
-  },
-];
+// Generated from src/sidebar-content.json by `yarn build-images`
+const sidebar: SidebarData = sidebarData;
 
 export default function Home() {
   const { classes } = useStyles();
@@ -89,10 +69,11 @@ export default function Home() {
             <Sidebar
               title={t("home.profile")}
               description={about[lang]}
-              booksHeader={t("home.books")}
-              books={books.map((book) => ({
-                ...book,
-                description: book.description[lang],
+              entriesHeader={sidebar.heading[lang] || t("home.books")}
+              entries={sidebar.entries.map((entry) => ({
+                ...entry,
+                image: `${import.meta.env.BASE_URL}${entry.image}`,
+                description: entry.description[lang],
               }))}
               socialLinks={socialLinks}
             />
