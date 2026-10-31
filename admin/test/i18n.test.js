@@ -59,7 +59,7 @@ test("every key the page and the server use exists", () => {
 
 test("translation helpers", () => {
   assert.equal(format("{n} of {total}, {n}", { n: 1 }), "1 of {total}, 1");
-  assert.equal(translate("ja", "error.busy", { kind: "保存" }), "保存の処理中です。終わってからもう一度お試しください。");
+  assert.equal(translate("ja", "error.busy", { kind: "保存" }), "現在「保存」を実行中です。終わってからもう一度お試しください。");
   assert.equal(translate("en", "nope.missing"), "nope.missing");
   assert.equal(matchLang(["en-US", "ja"]), "en");
   assert.equal(matchLang(["fr-FR", "ja-JP"]), "ja");
