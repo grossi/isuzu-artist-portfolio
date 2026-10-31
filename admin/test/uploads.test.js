@@ -63,3 +63,15 @@ test("non-images, truncated images, oversize files and stray fields are refused,
     assert.ok(spoolEmpty(), `temp files left after ${res.body.error}`);
   }
 });
+
+test("a write error fails the upload instead of crashing the server", { skip: process.getuid?.() === 0 }, async () => {
+  fs.mkdirSync(spool, { recursive: true });
+  fs.chmodSync(spool, 0o500); // the temp files can't be created
+  try {
+    const res = await post([["files", await png(), "a.png"]]);
+    assert.equal(res.status, 500);
+    assert.match(res.body.error, /Couldn't store a.png/);
+  } finally {
+    fs.chmodSync(spool, 0o700);
+  }
+});
