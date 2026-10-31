@@ -414,7 +414,7 @@ export class Workspace {
     await runGit(this.root, ["fetch", "--quiet", remote, branch], log, { timeoutMs: NETWORK_TIMEOUT });
     if (!(await gitOk(this.root, ["merge-base", "--is-ancestor", upstream, "HEAD"]))) {
       log(`== Rebasing the saved commits onto ${upstream}`);
-      step(log, "rebase", { upstream });
+      step(log, "rebase");
       await this.rebase(upstream, log);
     }
 
