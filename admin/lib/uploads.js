@@ -62,7 +62,11 @@ export async function receiveUploads(req, { tempDir, maxBytes, maxFiles, fieldNa
         const file = { path: path.join(tempDir, randomUUID()), originalName: info.filename || "upload" };
         files.push(file);
         stream.on("limit", () => fail(new HttpError(413, `${file.originalName} is larger than ${Math.round(maxBytes / 1048576)} MB`)));
-        writes.push(pipeline(stream, fs.createWriteStream(file.path, { flags: "wx" })));
+        // Handled at once: a write error (a full disk) must fail this upload,
+        // not crash the server as an unhandled rejection.
+        const write = pipeline(stream, fs.createWriteStream(file.path, { flags: "wx" }));
+        write.catch(() => fail(new HttpError(500, `Couldn't store ${file.originalName}`)));
+        writes.push(write);
       });
       parser.on("field", (name, value, info) => {
         if (!fieldNames.includes(name) || info.valueTruncated) return fail(new HttpError(400, `Unexpected form field ${name}`));

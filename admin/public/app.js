@@ -43,7 +43,10 @@ function queue(send) {
   });
   return next;
 }
-const edit = (method, url, body) => queue(() => api(method, url, { ...body, version: state.version }));
+// version: what the edit was based on, when that isn't simply the latest
+// state (a heading typed in while another tab changed it).
+const edit = (method, url, body, version) =>
+  queue(async () => api(method, url, { ...body, version: version === undefined ? state.version : await version }));
 
 // One state request at a time. A refresh asked for while one is in flight
 // runs again after it: the first may predate the edit that asked.
@@ -373,12 +376,12 @@ function renderGrid() {
 
 const LANGS = { ja: "日本語", en: "English" };
 
-async function saveSidebar(heading, order, focus) {
+async function saveSidebar(heading, order, focus, version) {
   pendingFocus = focus;
   const byId = new Map(state.sidebar.entries.map((entry) => [entry.id, entry]));
   state.sidebar = { heading, entries: order.map((id) => byId.get(id)) };
   render();
-  await act(edit("PUT", "/api/sidebar", { heading, order }));
+  await act(edit("PUT", "/api/sidebar", { heading, order }, version));
 }
 
 const sidebarOrder = () => state.sidebar.entries.map((entry) => entry.id);
@@ -539,8 +542,13 @@ $("entry-picker").addEventListener("change", (e) => {
   e.target.value = "";
 });
 for (const id of ["entry-ja", "entry-en", "entry-link"]) $(id).addEventListener("input", updateEntryPreview);
+// A heading is based on the version it was focused at (after this tab's
+// queued edits): a refresh while typing keeps the typed text on screen, and
+// must not let it overwrite another tab's newer heading.
+let headingVersion;
 for (const lang of Object.keys(LANGS)) {
-  $(`heading-${lang}`).addEventListener("change", () => saveSidebar(headingInputs(), sidebarOrder()));
+  $(`heading-${lang}`).addEventListener("focus", () => (headingVersion = edits.then(() => state.version)));
+  $(`heading-${lang}`).addEventListener("change", () => saveSidebar(headingInputs(), sidebarOrder(), undefined, headingVersion));
 }
 
 // ---- Actions ---------------------------------------------------------------
