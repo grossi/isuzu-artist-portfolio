@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>isuZu admin</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/vendor/Sortable.min.js" defer></script>
+    <script src="/app.js" type="module"></script>
+  </head>
+  <body>
+    <header class="top">
+      <h1>isuZu <span>admin</span></h1>
+      <nav class="actions">
+        <label class="button primary" id="add">
+          Add illustrations
+          <input type="file" id="picker" accept="image/jpeg,image/png,image/webp" multiple hidden />
+        </label>
+        <button id="preview">Preview</button>
+        <button id="save">Save…</button>
+        <button id="deploy">Deploy…</button>
+        <button id="discard" class="danger">Discard draft</button>
+      </nav>
+    </header>
+
+    <section class="cards" id="status"></section>
+    <div class="banner error" id="error" hidden></div>
+
+    <section class="job" id="job" hidden>
+      <div class="job-head">
+        <span id="job-title"></span>
+        <span class="job-links" id="job-links"></span>
+        <button class="link" id="job-toggle">Show log</button>
+      </div>
+      <pre id="job-log" hidden></pre>
+    </section>
+
+    <main>
+      <section>
+        <h2>Carousel <small>slides in order · drag or use the arrows</small></h2>
+        <div class="strip" id="carousel"></div>
+        <p class="empty" id="carousel-empty" hidden>No slides: tap ☆ on an image to add it.</p>
+      </section>
+      <section>
+        <h2>Gallery <small id="gallery-hint">drag to reorder · new uploads go first</small></h2>
+        <div class="grid" id="gallery"></div>
+      </section>
+      <section>
+        <h2>Carousel-only images <small>public/carousel/, not shown in the gallery</small></h2>
+        <div class="grid" id="extras"></div>
+      </section>
+    </main>
+
+    <div class="drop" id="drop" hidden><div>Drop images to add them to the front of the gallery</div></div>
+    <div class="toast" id="toast" hidden></div>
+
+    <dialog id="save-dialog">
+      <form method="dialog">
+        <h3>Save the draft</h3>
+        <p>Commits the draft to <code>main</code> in the workspace. Nothing is pushed or deployed yet.</p>
+        <label for="save-message">Commit message</label>
+        <textarea id="save-message" rows="10" spellcheck="false"></textarea>
+        <div class="dialog-actions">
+          <button value="cancel">Cancel</button>
+          <button value="save" class="primary">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="deploy-dialog">
+      <form method="dialog">
+        <h3>Deploy to isuzu.work</h3>
+        <div id="deploy-body"></div>
+        <div class="dialog-actions">
+          <button value="cancel">Cancel</button>
+          <button value="deploy" class="primary" id="deploy-confirm">Push and deploy</button>
+        </div>
+      </form>
+    </dialog>
+  </body>
+</html>
