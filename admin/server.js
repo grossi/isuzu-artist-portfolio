@@ -224,6 +224,7 @@ async function handleAdmin(req, res) {
     return sendFile(res, await thumbnail(source, thumbDir), { cache: "private, max-age=3600" });
   }
 
+  if (pathname === "/favicon.ico") return res.writeHead(204).end();
   if (pathname === "/vendor/Sortable.min.js") {
     return sendFile(res, path.join(here, "node_modules/sortablejs/Sortable.min.js"), { cache: "private, max-age=86400" });
   }

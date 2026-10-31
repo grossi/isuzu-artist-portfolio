@@ -54,6 +54,7 @@ function events() {
       logJobId = job.id;
       logLines = [];
       showLog = true;
+      renderLog();
     }
     if (state) state.job = job;
     renderJob();
@@ -332,9 +333,7 @@ function deploy() {
   const { draft, history, deployCommand } = state;
   const commits = history.notDeployed;
   $("deploy-body").replaceChildren(
-    draft.dirty
-      ? el("p", { class: "banner error" }, "The draft has unsaved changes. Save or discard them first.")
-      : null,
+    ...(draft.dirty ? [el("p", { class: "banner error" }, "The draft has unsaved changes. Save or discard them first.")] : []),
     commits.length
       ? el("div", {}, el("p", {}, "These saved commits will go live:"), el("ul", {}, commits.map((c) => el("li", {}, `${short(c.sha)} ${c.subject}`))))
       : el("p", {}, "Nothing new is saved; this re-deploys the current main."),
