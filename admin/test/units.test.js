@@ -98,3 +98,23 @@ test("a timeout stops the whole process tree", async () => {
   await assert.rejects(run("sh", ["-c", "sleep 30 & sleep 30; wait"], { cwd: "/tmp", log: () => {}, timeoutMs: 200 }), /timed out/);
   assert.ok(Date.now() - started < 5000, `took ${Date.now() - started} ms`);
 });
+
+test("a job reports its steps, and a failure as a code", async () => {
+  const { Jobs } = await import("../lib/jobs.js");
+  const jobs = new Jobs();
+  const events = [];
+  jobs.subscribe((event, data) => event === "job" && events.push(data));
+  jobs.start("deploy", async (log) => {
+    log.step("push");
+    log.step("rebase");
+    const { AdminError } = await import("../lib/errors.js");
+    throw new AdminError("push-failed");
+  });
+  assert.throws(() => jobs.start("save", async () => {}), { code: "busy", status: 409, params: { kind: "deploy" } });
+  await new Promise((resolve) => jobs.subscribe((event) => event === "state" && resolve()));
+  assert.deepEqual(events.map((job) => job.step), [undefined, { code: "push", params: {} }, { code: "rebase", params: {} }, { code: "rebase", params: {} }]);
+  const last = events.at(-1);
+  assert.equal(last.status, "failed");
+  assert.deepEqual([last.errorCode, last.errorParams], ["push-failed", {}]);
+  assert.match(last.error, /^Push failed/);
+});
