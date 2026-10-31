@@ -1,26 +1,30 @@
 <!doctype html>
-<html lang="en">
+<html lang="ja">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>isuZu admin</title>
+    <title>isuZu</title>
     <link rel="stylesheet" href="/style.css" />
     <script src="/vendor/Sortable.min.js" defer></script>
     <script src="/app.js" type="module"></script>
   </head>
   <body>
     <header class="top">
-      <h1>isuZu <span>admin</span></h1>
+      <h1>isuZu <span data-i18n="header.admin"></span></h1>
       <nav class="actions">
         <label class="button primary" id="add">
-          Add illustrations
+          <span data-i18n="actions.add"></span>
           <input type="file" id="picker" accept="image/jpeg,image/png,image/webp" multiple hidden />
         </label>
-        <button id="preview">Preview</button>
-        <button id="save">Save…</button>
-        <button id="deploy">Deploy…</button>
-        <button id="discard" class="danger">Discard draft</button>
+        <button id="preview" data-i18n="actions.preview"></button>
+        <button id="save" data-i18n="actions.save"></button>
+        <button id="deploy" data-i18n="actions.deploy"></button>
+        <button id="discard" class="danger" data-i18n="actions.discard"></button>
       </nav>
+      <!-- Each language is labelled in its own language, as on the site. -->
+      <div class="lang-toggle" role="group" data-i18n-aria-label="header.language">
+        <button type="button" lang="ja" data-lang="ja">日本語</button><span aria-hidden="true">/</span><button type="button" lang="en" data-lang="en" aria-label="English">EN</button>
+      </div>
     </header>
 
     <section class="cards" id="status"></section>
@@ -29,98 +33,100 @@
     <section class="job" id="job" hidden>
       <div class="job-head">
         <span id="job-title"></span>
+        <span class="job-step" id="job-step"></span>
         <span class="job-links" id="job-links"></span>
-        <button class="link" id="job-toggle">Show log</button>
+        <button class="link" id="job-toggle"></button>
       </div>
       <pre id="job-log" hidden></pre>
     </section>
 
     <main>
       <section>
-        <h2>Carousel <small>slides in order · drag or use the arrows</small></h2>
+        <h2><span data-i18n="section.carousel"></span> <small data-i18n="section.carouselHint"></small></h2>
         <div class="strip" id="carousel"></div>
-        <p class="empty" id="carousel-empty" hidden>No slides: tap ☆ on an image to add it.</p>
+        <p class="empty" id="carousel-empty" data-i18n="section.carouselEmpty" hidden></p>
       </section>
       <section>
-        <h2>Sidebar <small>the box under the profile (著書 / My Books) · new entries go first</small></h2>
+        <h2><span data-i18n="section.sidebar"></span> <small data-i18n="section.sidebarHint"></small></h2>
         <div class="heading-row">
-          <label>Heading (日本語) <input id="heading-ja" maxlength="200" placeholder="著書" /></label>
-          <label>Heading (English) <input id="heading-en" maxlength="200" placeholder="My Books" /></label>
-          <button id="add-entry" class="primary">Add entry…</button>
+          <label><span data-i18n="sidebar.headingJa"></span> <input id="heading-ja" maxlength="200" placeholder="著書" lang="ja" /></label>
+          <label><span data-i18n="sidebar.headingEn"></span> <input id="heading-en" maxlength="200" placeholder="My Books" lang="en" /></label>
+          <button id="add-entry" class="primary" data-i18n="sidebar.addEntry"></button>
         </div>
         <div class="entries" id="entries"></div>
-        <p class="empty" id="entries-empty" hidden>No entries: the box is hidden on the site.</p>
+        <p class="empty" id="entries-empty" data-i18n="sidebar.empty" hidden></p>
       </section>
       <section>
-        <h2>Gallery <small id="gallery-hint">drag to reorder · new uploads go first</small></h2>
+        <h2><span data-i18n="section.gallery"></span> <small data-i18n="section.galleryHint"></small></h2>
         <div class="grid" id="gallery"></div>
       </section>
       <section>
-        <h2>Carousel-only images <small>public/carousel/, not shown in the gallery</small></h2>
+        <h2><span data-i18n="section.extras"></span> <small data-i18n="section.extrasHint"></small></h2>
         <div class="grid" id="extras"></div>
       </section>
     </main>
 
-    <div class="drop" id="drop" hidden><div>Drop images to add them to the front of the gallery</div></div>
+    <div class="drop" id="drop" hidden><div data-i18n="drop.hint"></div></div>
     <div class="toast" id="toast" hidden></div>
 
     <dialog id="save-dialog">
       <form method="dialog">
-        <h3>Save the draft</h3>
-        <p>Commits the draft to <code>main</code> in the workspace. Nothing is pushed or deployed yet.</p>
-        <label for="save-message">Commit message</label>
-        <textarea id="save-message" rows="10" spellcheck="false"></textarea>
+        <h3 data-i18n="saveDialog.title"></h3>
+        <p data-i18n="saveDialog.body"></p>
+        <label for="save-message" data-i18n="saveDialog.message"></label>
+        <textarea id="save-message" rows="10" spellcheck="false" lang="en"></textarea>
+        <p class="hint" data-i18n="saveDialog.messageHint"></p>
         <div class="dialog-actions">
-          <button value="cancel">Cancel</button>
-          <button value="save" class="primary">Save</button>
+          <button value="cancel" data-i18n="common.cancel"></button>
+          <button value="save" class="primary" data-i18n="saveDialog.submit"></button>
         </div>
       </form>
     </dialog>
 
     <dialog id="entry-dialog" class="wide">
       <form id="entry-form">
-        <h3 id="entry-title">Add a sidebar entry</h3>
+        <h3 id="entry-title"></h3>
         <div class="entry-top">
-          <label class="entry-image" id="entry-drop" title="Drop an image here or click to choose one">
+          <label class="entry-image" id="entry-drop" data-i18n-title="entryDialog.imageTitle">
             <img id="entry-image-preview" alt="" hidden />
-            <span id="entry-image-hint">Drop an image here<br />or click to choose</span>
+            <span id="entry-image-hint"></span>
             <input type="file" id="entry-picker" accept="image/jpeg,image/png,image/webp" hidden />
           </label>
           <div class="entry-fields">
-            <label for="entry-link">Link when the image is clicked (optional)</label>
+            <label for="entry-link" data-i18n="entryDialog.link"></label>
             <input id="entry-link" type="url" inputmode="url" placeholder="https://…" maxlength="2000" />
-            <p class="hint">Leave empty for an image without a link. Only http:// and https:// links.</p>
+            <p class="hint" data-i18n="entryDialog.linkHint"></p>
             <p class="field-error" id="entry-link-error" hidden></p>
           </div>
         </div>
         <div class="entry-langs">
           <div>
-            <label for="entry-ja">Description, 日本語 (markdown)</label>
-            <textarea id="entry-ja" rows="7" spellcheck="false"></textarea>
+            <label for="entry-ja" data-i18n="entryDialog.descriptionJa"></label>
+            <textarea id="entry-ja" rows="7" spellcheck="false" lang="ja"></textarea>
             <div class="md-preview" id="entry-ja-preview"></div>
           </div>
           <div>
-            <label for="entry-en">Description, English (markdown)</label>
-            <textarea id="entry-en" rows="7" spellcheck="false"></textarea>
+            <label for="entry-en" data-i18n="entryDialog.descriptionEn"></label>
+            <textarea id="entry-en" rows="7" spellcheck="false" lang="en"></textarea>
             <div class="md-preview" id="entry-en-preview"></div>
           </div>
         </div>
-        <p class="hint">An empty language shows the other one on the site. <code>**bold**</code>, <code>[text](https://…)</code>, <code>- list</code>; HTML is shown as text.</p>
+        <p class="hint" data-i18n="entryDialog.markdownHint"></p>
         <p class="banner error" id="entry-error" hidden></p>
         <div class="dialog-actions">
-          <button type="button" id="entry-cancel">Cancel</button>
-          <button type="submit" class="primary" id="entry-submit">Save to draft</button>
+          <button type="button" id="entry-cancel" data-i18n="common.cancel"></button>
+          <button type="submit" class="primary" id="entry-submit" data-i18n="entryDialog.submit"></button>
         </div>
       </form>
     </dialog>
 
     <dialog id="deploy-dialog">
       <form method="dialog">
-        <h3>Deploy to isuzu.work</h3>
+        <h3 data-i18n="deployDialog.title"></h3>
         <div id="deploy-body"></div>
         <div class="dialog-actions">
-          <button value="cancel">Cancel</button>
-          <button value="deploy" class="primary" id="deploy-confirm">Push and deploy</button>
+          <button value="cancel" data-i18n="common.cancel"></button>
+          <button value="deploy" class="primary" id="deploy-confirm" data-i18n="deployDialog.submit"></button>
         </div>
       </form>
     </dialog>
