@@ -156,7 +156,7 @@ export class Workspace {
       // Saved but not live: commits since the last deploy from this admin (or,
       // before the first one, since origin/main).
       notDeployed: base ? await this.commits(`${base}..HEAD`) : [],
-      notDeployedBase: deployed && !deployed.diverged ? "last deploy" : upstream,
+      notDeployedBase: deployed && !deployed.diverged ? "the last deploy" : upstream,
       notPushed: hasUpstream ? (await this.commits(`${upstream}..HEAD`)).length : null,
       behind: hasUpstream ? (await this.commits(`HEAD..${upstream}`)).length : null,
     };

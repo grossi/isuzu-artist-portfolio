@@ -35,7 +35,8 @@ export async function receiveUploads(req, { tempDir, maxBytes, maxFiles }) {
     await new Promise((resolve, reject) => {
       let parser;
       try {
-        parser = busboy({ headers: req.headers, limits: { fileSize: maxBytes, files: maxFiles, fields: 0, parts: maxFiles } });
+        // Browsers send UTF-8 file names; busboy assumes latin1 otherwise.
+        parser = busboy({ headers: req.headers, defParamCharset: "utf8", limits: { fileSize: maxBytes, files: maxFiles, fields: 0, parts: maxFiles } });
       } catch {
         return reject(new HttpError(400, "Expected a multipart/form-data upload"));
       }

@@ -200,7 +200,7 @@ function renderStatus() {
       history.notDeployed.length
         ? el("ul", {}, history.notDeployed.slice(0, 6).map((c) => el("li", {}, `${short(c.sha)} ${c.subject}`)),
             history.notDeployed.length > 6 ? el("li", {}, `… ${history.notDeployed.length - 6} more`) : null)
-        : el("div", { class: "muted" }, `Nothing waiting since the ${history.notDeployedBase}.`),
+        : el("div", { class: "muted" }, `Nothing saved since ${history.notDeployedBase}.`),
       history.notPushed ? el("div", { class: "muted" }, `${history.notPushed} commit(s) not on GitHub yet.`) : null),
     el("div", { class: `card ${history.deployed ? "live" : "idle"}` },
       el("h3", {}, "Live on isuzu.work"),
@@ -308,12 +308,14 @@ async function remove(file) {
   await act(api("POST", "/api/remove", { file }), `Removed ${file}`);
 }
 
-function preview() {
-  // Opened in the click so pop-up blockers allow it; the preview server shows
-  // a "building" page until the build is done.
-  const fresh = state.preview && !state.preview.stale;
-  window.open(previewUrl(), "isuzu-preview");
-  if (!fresh) act(api("POST", "/api/preview"));
+async function preview() {
+  if (state.preview && !state.preview.stale) return window.open(previewUrl(), "isuzu-preview");
+  // Opened in the click so pop-up blockers allow it, pointed at the preview
+  // once the build has started: it shows a "building" page until it is done.
+  const tab = window.open("", "isuzu-preview");
+  const started = await act(api("POST", "/api/preview"));
+  if (started && tab) tab.location = previewUrl();
+  else tab?.close();
 }
 
 function save() {
@@ -365,9 +367,17 @@ $("job-toggle").addEventListener("click", () => {
   renderLog();
 });
 
-// Dropping files anywhere on the page uploads them.
+// Dropping files anywhere on the page uploads them. Drags that start in the
+// page (reordering) never show the drop zone.
 let dragDepth = 0;
-const hasFiles = (e) => [...(e.dataTransfer?.types ?? [])].includes("Files");
+let internalDrag = false;
+const hasFiles = (e) => !internalDrag && [...(e.dataTransfer?.types ?? [])].includes("Files");
+window.addEventListener("dragstart", () => (internalDrag = true));
+window.addEventListener("dragend", () => {
+  internalDrag = false;
+  dragDepth = 0;
+  $("drop").hidden = true;
+});
 window.addEventListener("dragenter", (e) => {
   if (!hasFiles(e)) return;
   dragDepth++;
