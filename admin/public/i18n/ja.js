@@ -4,7 +4,7 @@ export default {
   "meta.title": "isuZu 管理画面",
   "header.admin": "管理画面",
   "header.language": "表示言語",
-  "header.liveSite": "公開中のサイトを見る",
+  "header.liveSite": "公開サイトを見る",
   "header.liveSiteShort": "公開サイト",
 
   "actions.add": "イラストを追加",
@@ -14,7 +14,7 @@ export default {
   "actions.discard": "下書きを破棄",
   "common.cancel": "キャンセル",
   "common.openPreview": "プレビューを開く ↗",
-  "common.openLiveSite": "公開中のサイトを見る ↗",
+  "common.openLiveSite": "公開サイトを見る ↗",
   "common.listSeparator": "、",
   "lang.ja": "日本語",
   "lang.en": "英語",
