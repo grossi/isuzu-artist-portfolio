@@ -115,7 +115,7 @@ export class Workspace {
 
   readOrder() {
     const file = this.file(ORDER_FILE);
-    return fs.existsSync(file) ? parseOrder(fs.readFileSync(file, "utf-8")) : {};
+    return fs.existsSync(file) ? readable(ORDER_FILE, () => parseOrder(fs.readFileSync(file, "utf-8"))) : {};
   }
 
   // The draft as the build will see it.
@@ -271,7 +271,7 @@ export class Workspace {
   // ---- Sidebar entries (callers hold the lock) ---------------------------
 
   readSidebar() {
-    return sidebarRules.readContent(this.root);
+    return readable(SIDEBAR_FILE, () => sidebarRules.readContent(this.root));
   }
 
   writeSidebar(content) {
@@ -551,6 +551,16 @@ export function commitMessage(changes) {
     ...(headingChanged ? ["Sidebar heading changed."] : []),
   ];
   return `content: ${subject.length ? subject.join(", ") : "update the image manifests"}${body.length ? `\n\n${body.join("\n")}` : ""}\n`;
+}
+
+// A content file that doesn't parse (edited by hand, say): its code names the
+// file, the parser's own text is the detail.
+function readable(file, read) {
+  try {
+    return read();
+  } catch (error) {
+    throw new AdminError("content-unreadable", { file, detail: error.message.replace(`${file}: `, "") });
+  }
 }
 
 function cleanHeading(text) {

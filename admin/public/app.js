@@ -11,18 +11,25 @@ let pendingFocus = null;
 // ---- Server ----------------------------------------------------------------
 
 // A server error ({ error, code, params }) shown in the page's language. The
-// English message is the fallback for a code this page doesn't know.
+// English message is the fallback for a code this page doesn't know. An answer
+// without one (a proxy's error page) gets fallbackCode.
 class ApiError extends Error {
-  constructor(data, fallbackKey, status) {
-    super(data.error || t(fallbackKey, { status }));
-    this.code = data.code;
-    this.params = data.params;
+  constructor(data, fallbackCode, status) {
+    const coded = data.code || data.error ? data : { code: fallbackCode, params: { status } };
+    super(data.error || t(`error.${fallbackCode}`, { status }));
+    this.code = coded.code;
+    this.params = coded.params;
   }
 }
+
+// A translated label, or fallback when this page doesn't know the key (a tab
+// from before the server was updated).
+const label = (key, fallback, params) => (t.has(key) ? t(key, params) : fallback);
 
 function errorText({ code, params = {}, message }) {
   if (!code || !t.has(`error.${code}`)) return message;
   // The lock holder is a job kind: name it in this language too.
+  if (params.kind && !t.has(`kind.${params.kind}`)) return message;
   const shown = params.kind ? { ...params, kind: t(`kind.${params.kind}`) } : params;
   return t(`error.${code}`, shown);
 }
@@ -30,14 +37,16 @@ function errorText({ code, params = {}, message }) {
 // Fetch's own failure (the server is down) is a TypeError in English.
 const networkError = () => new ApiError({ code: "network", error: t("error.network") });
 
+// body: an object sent as JSON, or FormData (a multipart upload).
 async function api(method, url, body) {
   const headers = { "X-Isuzu-Admin": "1" };
-  if (body !== undefined) headers["Content-Type"] = "application/json";
-  const res = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }).catch(() => {
+  const form = body instanceof FormData;
+  if (body !== undefined && !form) headers["Content-Type"] = "application/json";
+  const res = await fetch(url, { method, headers, body: body === undefined || form ? body : JSON.stringify(body) }).catch(() => {
     throw networkError();
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(data, "error.request-failed", res.status);
+  if (!res.ok) throw new ApiError(data, "request-failed", res.status);
   return data;
 }
 
@@ -93,7 +102,7 @@ function refresh() {
       state = next;
       render();
     })
-    .catch((error) => toast(errorText(error), true))
+    .catch((error) => toast(() => errorText(error), true))
     .finally(() => {
       refreshing = null;
       if (refreshAgain) {
@@ -104,13 +113,14 @@ function refresh() {
   return refreshing;
 }
 
+// done: the toast for a success (see toast()).
 async function act(promise, done) {
   try {
     const result = await promise;
     if (done) toast(done);
     return result;
   } catch (error) {
-    toast(errorText(error), true);
+    toast(() => errorText(error), true);
   } finally {
     await refresh();
   }
@@ -161,14 +171,21 @@ function el(tag, attrs = {}, ...children) {
   return node;
 }
 
+// message: a function returning the text, so a language switch can redraw it.
 let toastTimer;
+let toastMessage = null;
 function toast(message, bad = false) {
   const node = $("toast");
-  node.textContent = message;
+  toastMessage = message;
+  node.textContent = message();
   node.className = `toast${bad ? " bad" : ""}`;
   node.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => (node.hidden = true), bad ? 7000 : 3000);
+}
+
+function renderToast() {
+  if (!$("toast").hidden && toastMessage) $("toast").textContent = toastMessage();
 }
 
 const busy = () => Boolean(state?.busy) || Boolean(state?.error);
@@ -214,8 +231,9 @@ function toggleSlide(ref) {
 
 function upload(fileList) {
   const files = [...fileList].filter((file) => /^image\/(jpeg|png|webp)$/.test(file.type));
-  if (!files.length) return toast(t("toast.onlyImages"), true);
-  if (files.length < fileList.length) toast(t("toast.skipping", { n: fileList.length - files.length }), true);
+  if (!files.length) return toast(() => t("toast.onlyImages"), true);
+  const skipped = fileList.length - files.length;
+  if (skipped) toast(() => t("toast.skipping", { n: skipped }), true);
   const form = new FormData();
   for (const file of files) form.append("files", file, file.name);
   // XHR for the upload progress, which fetch doesn't report.
@@ -223,7 +241,10 @@ function upload(fileList) {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/upload");
     xhr.setRequestHeader("X-Isuzu-Admin", "1");
-    xhr.upload.onprogress = (e) => e.lengthComputable && toast(t("toast.uploading", { n: files.length, percent: Math.round((e.loaded / e.total) * 100) }));
+    xhr.upload.onprogress = (e) => {
+      const percent = Math.round((e.loaded / e.total) * 100);
+      if (e.lengthComputable) toast(() => t("toast.uploading", { n: files.length, percent }));
+    };
     xhr.onload = () => {
       let data = {};
       try {
@@ -232,12 +253,12 @@ function upload(fileList) {
         // not JSON (a proxy error page)
       }
       if (xhr.status === 200) resolve(data);
-      else reject(new ApiError(data, "error.upload-failed", xhr.status));
+      else reject(new ApiError(data, "upload-failed", xhr.status));
     };
     xhr.onerror = () => reject(networkError());
     xhr.send(form);
   });
-  queue(send).then((data) => toast(t("toast.added", { list: list(data.added) })), (error) => toast(errorText(error), true)).finally(refresh);
+  queue(send).then((data) => toast(() => t("toast.added", { list: list(data.added) })), (error) => toast(() => errorText(error), true)).finally(refresh);
 }
 
 // ---- Rendering -------------------------------------------------------------
@@ -312,12 +333,12 @@ function renderJob() {
   $("job").hidden = !job;
   if (!job) return;
   $("job").className = `job ${job.status}`;
-  const name = t(`job.${job.kind}`);
+  const name = label(`job.${job.kind}`, job.kind);
   $("job-title").textContent =
     job.status === "running" ? t("job.running", { name })
     : job.status === "succeeded" ? t("job.succeeded", { name, ago: ago(job.finishedAt) })
     : t("job.failed", { name, error: errorText({ code: job.errorCode, params: job.errorParams, message: job.error }) });
-  $("job-step").textContent = job.status === "running" && job.step ? t(`step.${job.step.code}`, job.step.params) : "";
+  $("job-step").textContent = job.status === "running" && job.step ? label(`step.${job.step.code}`, "", job.step.params) : "";
   const links = [];
   if (job.kind === "preview" && job.status === "succeeded") links.push(el("a", { href: previewUrl(), target: "isuzu-preview" }, t("common.openPreview")));
   $("job-links").replaceChildren(...links);
@@ -470,7 +491,7 @@ function renderSidebar() {
 
 async function removeEntry(entry) {
   if (!confirm(t("entry.confirmRemove", { id: entry.id }))) return;
-  await act(edit("POST", "/api/sidebar/remove", { id: entry.id }), t("toast.removed", { name: entry.id }));
+  await act(edit("POST", "/api/sidebar/remove", { id: entry.id }), () => t("toast.removed", { name: entry.id }));
 }
 
 // The add / edit dialog. entryImage: a newly chosen File, if any.
@@ -479,7 +500,7 @@ let editingVersion = null; // the draft version the edited entry was read at
 let entryImage = null;
 
 function setEntryImage(file) {
-  if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) return toast(t("toast.chooseImage"), true);
+  if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) return toast(() => t("toast.chooseImage"), true);
   entryImage = file;
   showEntryImage(URL.createObjectURL(file));
 }
@@ -547,7 +568,7 @@ function openEntry(entry = null) {
   showEntryError(null);
   showEntryImage(entry ? `/thumb/sidebar/${entry.id}?v=${encodeURIComponent(entry.image)}` : null);
   updateEntryPreview();
-  $("entry-dialog").showModal();
+  showModal($("entry-dialog"));
 }
 
 let submitting = false;
@@ -570,16 +591,9 @@ async function submitEntry(event) {
     const form = new FormData();
     form.append("entry", JSON.stringify(entry));
     if (image) form.append("image", image, image.name);
-    const data = await queue(async () => {
-      const res = await fetch("/api/sidebar/entry", { method: "POST", headers: { "X-Isuzu-Admin": "1" }, body: form }).catch(() => {
-        throw networkError();
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new ApiError(data, "error.request-failed", res.status);
-      return data;
-    });
+    const data = await queue(() => api("POST", "/api/sidebar/entry", form));
     $("entry-dialog").close();
-    toast(t(isEdit ? "toast.entryUpdated" : "toast.entryAdded", { id: data.saved.id }));
+    toast(() => t(isEdit ? "toast.entryUpdated" : "toast.entryAdded", { id: data.saved.id }));
     await refresh();
   } catch (error) {
     fail(error);
@@ -610,7 +624,7 @@ for (const code of LANGS) {
 
 async function remove(file) {
   if (!confirm(t("confirm.removeUpload", { file }))) return;
-  await act(edit("POST", "/api/remove", { file }), t("toast.removed", { name: file }));
+  await act(edit("POST", "/api/remove", { file }), () => t("toast.removed", { name: file }));
 }
 
 async function preview() {
@@ -628,7 +642,7 @@ function save() {
   // A reopened dialog keeps its last returnValue, and Esc doesn't reset it
   // everywhere (Firefox): without this, Esc could save.
   $("save-dialog").returnValue = "";
-  $("save-dialog").showModal();
+  showModal($("save-dialog"));
 }
 
 $("save-dialog").addEventListener("close", () => {
@@ -640,7 +654,7 @@ function deploy() {
   renderDeploy();
   $("deploy-confirm").disabled = state.draft.dirty;
   $("deploy-dialog").returnValue = ""; // see save()
-  $("deploy-dialog").showModal();
+  showModal($("deploy-dialog"));
 }
 
 // What the dialog shows is fixed when it opens (the state may refresh behind
@@ -664,10 +678,21 @@ $("deploy-dialog").addEventListener("close", () => {
 
 function discard() {
   if (!confirm(t("confirm.discard"))) return;
-  act(edit("POST", "/api/discard", {}), t("toast.discarded"));
+  act(edit("POST", "/api/discard", {}), () => t("toast.discarded"));
 }
 
 // ---- Language --------------------------------------------------------------
+
+// A modal dialog makes the rest of the page inert: the 日本語 / EN toggle
+// goes along into it, and back to the header when it closes.
+const langToggle = document.querySelector(".lang-toggle");
+function showModal(dialog) {
+  dialog.prepend(langToggle);
+  dialog.showModal();
+}
+for (const dialog of document.querySelectorAll("dialog")) {
+  dialog.addEventListener("close", () => document.querySelector(".top").append(langToggle));
+}
 
 // Redraws every text in place: the draft, dialogs and a running job are
 // untouched (the log is raw output and stays as it is).
@@ -676,6 +701,7 @@ function renderLang() {
     button.setAttribute("aria-pressed", String(button.dataset.lang === lang));
   }
   translatePage();
+  renderToast();
   renderEntryImageHint();
   if ($("entry-dialog").open) {
     renderEntryTitle();
@@ -734,7 +760,7 @@ window.addEventListener("drop", (e) => {
   dragDepth = 0;
   $("drop").hidden = true;
   if ($("entry-dialog").open) return setEntryImage(e.dataTransfer.files[0]);
-  if (busy()) return toast(state.busy ? errorText({ code: "busy", params: { kind: state.busy } }) : t("toast.workspaceUnavailable"), true);
+  if (busy()) return toast(() => (state.busy ? errorText({ code: "busy", params: { kind: state.busy } }) : t("toast.workspaceUnavailable")), true);
   upload(e.dataTransfer.files);
 });
 

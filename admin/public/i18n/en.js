@@ -64,7 +64,7 @@ export default {
   "step.fetch": "Fetching from GitHub",
   "step.rebase": "Rebasing onto {upstream}",
   "step.push": "Pushing to GitHub",
-  "step.deploy": "Running the deploy command",
+  "step.deploy": "Building and uploading the site",
 
   "section.carousel": "Carousel",
   "section.carouselHint": "slides in order · drag or use the arrows",
@@ -147,7 +147,7 @@ export default {
   "toast.entryUpdated": "Updated {id}",
   "toast.entryAdded": "Added {id} at the top of the sidebar",
   "toast.discarded": "Draft discarded",
-  "toast.workspaceUnavailable": "Busy: the workspace can't be read",
+  "toast.workspaceUnavailable": "Not available right now: see the error above.",
 
   "kind.upload": "upload",
   "kind.reorder": "reorder",
@@ -200,7 +200,7 @@ export default {
   "error.not-an-image": "{name} is not a JPEG, PNG or WebP image.",
   "error.damaged-image": "{name} can't be read (damaged or cut short?).",
   "error.not-a-clone": "{path} is not a git clone (see admin/README.md).",
-  "error.workspace-unreadable": "The workspace can't be read: {detail}. Fix the file there, or press Discard draft to reset it.",
+  "error.content-unreadable": "{file} can't be read ({detail}). Fix it in the workspace, or press Discard draft to go back to the saved version.",
   "error.rebase-in-progress": "A rebase is in progress in the workspace: finish it there, or press Discard draft to abort it.",
   "error.wrong-branch": "The workspace is on \"{branch}\", not {expected}.",
   "error.detached-head": "The workspace is on a detached HEAD, not {expected}.",

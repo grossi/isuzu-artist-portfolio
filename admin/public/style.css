@@ -42,6 +42,10 @@ code { font-size: 0.92em; }
 .lang-toggle button { border: 0; background: none; padding: 4px; border-radius: 4px; font-size: inherit; color: inherit; }
 .lang-toggle button:hover { color: var(--ink); }
 .lang-toggle button[aria-pressed="true"] { color: var(--ink); font-weight: 700; }
+dialog .lang-toggle { position: absolute; top: 14px; right: 16px; }
+dialog h3 { padding-right: 90px; }
+/* Tracking reads well on uppercase Latin, not on Japanese. */
+:lang(ja) .card h3, :lang(ja) .md-preview .lang { letter-spacing: 0; }
 
 button, .button {
   font: inherit;

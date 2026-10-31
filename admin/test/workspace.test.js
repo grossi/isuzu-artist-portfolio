@@ -324,3 +324,10 @@ test("sidebar: add at the top, edit, reorder, heading, remove", async () => {
   const files = sh(ws.root, "show", "--name-only", "--format=", "HEAD").split("\n").sort();
   assert.deepEqual(files, ["public/sidebar/replaced.png", "src/sidebar-content.json"]);
 });
+
+test("a content file that doesn't parse is reported by name", async () => {
+  fs.writeFileSync(ws.file("src/image-order.json"), '{ "gallery": 123 }\n');
+  assert.throws(() => ws.current(), { code: "content-unreadable", params: { file: "src/image-order.json", detail: '"gallery" must be a list of file names' } });
+  fs.writeFileSync(ws.file("src/sidebar-content.json"), "{ broken");
+  assert.throws(() => ws.readSidebar(), (error) => error.code === "content-unreadable" && error.params.file === "src/sidebar-content.json");
+});
