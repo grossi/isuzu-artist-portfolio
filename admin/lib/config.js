@@ -16,6 +16,8 @@ export function loadConfig(env = process.env) {
     previewPort: port(env.ADMIN_PREVIEW_PORT, 8972),
     // Where the browser opens the preview; empty means "same host, preview port".
     previewUrl: env.ADMIN_PREVIEW_URL || "",
+    // The public site, linked from the header and after a deploy.
+    siteUrl: siteUrl(env.ADMIN_SITE_URL),
     // Host headers the admin answers to (DNS-rebinding guard); ports are ignored.
     allowedHosts: new Set(
       ["127.0.0.1", "localhost", "[::1]", isIP(host) === 6 ? `[${host}]` : host, tailnetName, ...(env.ADMIN_ALLOWED_HOSTS || "").split(",")]
@@ -33,6 +35,21 @@ export function loadConfig(env = process.env) {
     maxUploadBytes: 40 * 1024 * 1024,
     maxUploadFiles: 20,
   };
+}
+
+// http(s) only: the value ends up in an href. Empty means the real site.
+export const DEFAULT_SITE_URL = "https://isuzu.work/";
+export function siteUrl(value) {
+  const text = (value ?? "").trim();
+  if (!text) return DEFAULT_SITE_URL;
+  let url;
+  try {
+    url = new URL(text);
+  } catch {
+    throw new Error(`Invalid ADMIN_SITE_URL: ${value}`);
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error(`Invalid ADMIN_SITE_URL (http or https only): ${value}`);
+  return url.href;
 }
 
 function port(value, fallback) {

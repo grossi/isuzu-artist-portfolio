@@ -27,6 +27,9 @@ Switching redraws the page in place: the draft, open dialogs and a running job a
   parameters (`{ error, code, params }`, `error.<code>` in the tables; `error` is the
   English text, the fallback for an unknown code). A job's failure (`errorCode`,
   `errorParams`) and its current step (`step`) work the same way.
+- The live-site links (header, and after a successful deploy) open `ADMIN_SITE_URL` in a new
+  tab with `rel="noopener noreferrer"`; the admin's address is never sent as a referrer. The
+  CSP needs no change: it restricts what the page loads, not where links go.
 - The preview port's "building" page follows the admin's choice through a cookie (cookies
   are shared across the ports of one host), else the browser's `Accept-Language`.
 - Not translated: the raw build and deploy log, and the commit messages Save writes (the
@@ -167,6 +170,7 @@ The service runs the admin code from the workspace itself, so a deploy that brin
 | `ADMIN_PORT` / `ADMIN_PREVIEW_PORT` | `8970` / `8972` | |
 | `ADMIN_PREVIEW_URL` | same host, preview port | where the browser opens the preview |
 | `ADMIN_TAILNET_NAME`, `ADMIN_ALLOWED_HOSTS` | | extra accepted `Host` names |
+| `ADMIN_SITE_URL` | `https://isuzu.work/` | the public site: the header's "View live site" link and the one after a deploy. `http(s)` only (the server refuses to start otherwise). An existing env file needs no change |
 | `ADMIN_DEPLOY_CMD` | `yarn deploy` | split on spaces, run without a shell in the workspace |
 
 ## Development and tests
