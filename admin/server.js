@@ -4,10 +4,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "./lib/config.js";
 import { HttpError, Jobs, summary } from "./lib/jobs.js";
-import { sendFile, serveStatic } from "./lib/static.js";
+import { contentType, sendFile, serveStatic } from "./lib/static.js";
 import { thumbnail } from "./lib/thumbs.js";
 import { receiveUploads, removeTemp } from "./lib/uploads.js";
-import { CAROUSEL_DIR, GALLERY_DIR, Workspace, commitMessage } from "./lib/workspace.js";
+import { CAROUSEL_DIR, GALLERY_DIR, Workspace, commitMessage, git } from "./lib/workspace.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const config = loadConfig();
@@ -18,12 +18,49 @@ const thumbDir = path.join(config.stateDir, "thumbs");
 const uploadDir = path.join(config.stateDir, "uploads");
 fs.mkdirSync(config.stateDir, { recursive: true });
 
+// Housekeeping before anything can take the lock.
+await workspace.recover();
+fs.rmSync(uploadDir, { recursive: true, force: true });
+pruneThumbs();
+
 // Bumped by every draft edit: stale browser tabs get a 409 instead of
 // overwriting newer changes, and the preview knows when it is out of date.
-let version = 1;
+// Seeded from the clock so a tab from before a restart never matches.
+let version = Date.now();
 let preview = fs.existsSync(path.join(previewDir, "index.html"))
   ? { version: 0, builtAt: fs.statSync(path.join(previewDir, "index.html")).mtime.toISOString() }
   : null;
+
+function pruneThumbs() {
+  const monthAgo = Date.now() - 30 * 24 * 3600 * 1000;
+  for (const name of fs.existsSync(thumbDir) ? fs.readdirSync(thumbDir) : []) {
+    const file = path.join(thumbDir, name);
+    if (fs.statSync(file).mtimeMs < monthAgo) fs.rmSync(file, { force: true });
+  }
+}
+
+// The frontend as it was when this server started: a deploy that brings a
+// newer admin/ from main must not serve new pages to the old server.
+const ASSETS = new Map(
+  fs.readdirSync(path.join(here, "public")).map((name) => [`/${name}`, fs.readFileSync(path.join(here, "public", name))])
+);
+ASSETS.set("/", ASSETS.get("/index.html"));
+ASSETS.set("/vendor/Sortable.min.js", fs.readFileSync(path.join(here, "node_modules/sortablejs/Sortable.min.js")));
+
+// The live markdown preview uses the site's own markdown-to-jsx (the
+// workspace's node_modules), its "react" import pointed at a stub.
+function markdownModule() {
+  const source = fs.readFileSync(workspace.file("node_modules/markdown-to-jsx/dist/index.modern.js"), "utf-8");
+  const patched = source.replace(/from\s*"react"/, 'from"/react-shim.js"');
+  if (patched === source) throw new HttpError(500, "Unexpected markdown-to-jsx build: no react import");
+  return Buffer.from(patched);
+}
+
+// When the admin runs from the workspace, a deploy can update its code.
+const adminPath = path.relative(config.workspace, here);
+const runsFromWorkspace = !adminPath.startsWith("..") && !path.isAbsolute(adminPath);
+const adminTree = () => git(config.workspace, ["rev-parse", `HEAD:${adminPath}`]).then((out) => out.trim(), () => null);
+const startedAdminTree = runsFromWorkspace ? await adminTree() : null;
 
 async function state() {
   const base = {
@@ -37,7 +74,7 @@ async function state() {
     previewPort: config.previewPort,
   };
   try {
-    await workspace.check();
+    await workspace.check({ duringJob: Boolean(jobs.busy()) });
     const now = workspace.current();
     const [draft, history] = await Promise.all([workspace.draft(), workspace.history()]);
     return {
@@ -48,6 +85,7 @@ async function state() {
       sidebar: workspace.readSidebar(),
       draft: { ...draft, message: commitMessage(draft) },
       history,
+      restartNeeded: Boolean(startedAdminTree) && (await adminTree()) !== startedAdminTree,
     };
   } catch (error) {
     return { ...base, error: error.message };
@@ -60,9 +98,11 @@ function edited() {
 
 // ---- Request guards ----------------------------------------------------
 
-function hostAllowed(req) {
+function assertAllowed(req) {
   const host = (req.headers.host || "").toLowerCase().replace(/:\d+$/, "");
-  return config.allowedHosts.has(host);
+  if (!config.allowedHosts.has(host)) throw new HttpError(421, "Unknown host");
+  const user = (req.headers["tailscale-user-login"] || "").toLowerCase();
+  if (config.allowedUsers.size && !config.allowedUsers.has(user)) throw new HttpError(403, "Not allowed");
 }
 
 // Cross-site pages can't set a custom header without a CORS preflight, which
@@ -70,9 +110,14 @@ function hostAllowed(req) {
 function assertSameOrigin(req) {
   if (req.headers["x-isuzu-admin"] !== "1") throw new HttpError(403, "Missing X-Isuzu-Admin header");
   const origin = req.headers.origin;
-  if (origin && new URL(origin).host.toLowerCase() !== (req.headers.host || "").toLowerCase()) {
-    throw new HttpError(403, "Cross-origin request refused");
+  if (origin === undefined) return;
+  let host = null;
+  try {
+    host = new URL(origin).host.toLowerCase();
+  } catch {
+    // "null" (sandboxed frames, some redirects) or garbage
   }
+  if (host !== (req.headers.host || "").toLowerCase()) throw new HttpError(403, "Cross-origin request refused");
 }
 
 async function readJson(req) {
@@ -96,6 +141,23 @@ function json(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
+// Receives a multipart upload into the spool, then applies it under the lock.
+// A busy lock is reported before the upload is read.
+async function withUpload(req, kind, limits, apply) {
+  if (jobs.busy()) throw new HttpError(409, `Busy: ${jobs.busy()} is running. Try again when it finishes.`);
+  const upload = await receiveUploads(req, { tempDir: uploadDir, maxBytes: config.maxUploadBytes, ...limits });
+  try {
+    return await jobs.withLock(kind, async () => {
+      await workspace.check();
+      const result = apply(upload);
+      edited();
+      return result;
+    });
+  } finally {
+    removeTemp(upload.files);
+  }
+}
+
 // ---- Routes ------------------------------------------------------------
 
 const routes = {
@@ -115,20 +177,11 @@ const routes = {
   },
 
   "POST /api/upload": async (req, res) => {
-    if (jobs.busy()) throw new HttpError(409, `Busy: ${jobs.busy()} is running. Try again when it finishes.`);
-    const { files } = await receiveUploads(req, { tempDir: uploadDir, maxBytes: config.maxUploadBytes, maxFiles: config.maxUploadFiles });
-    try {
+    const added = await withUpload(req, "upload", { maxFiles: config.maxUploadFiles }, ({ files }) => {
       if (!files.length) throw new HttpError(400, "No files in the upload");
-      const names = await jobs.withLock("upload", async () => {
-        await workspace.check();
-        const names = workspace.addUploads(files);
-        edited();
-        return names;
-      });
-      json(res, 200, { added: names });
-    } finally {
-      removeTemp(files);
-    }
+      return workspace.addUploads(files);
+    });
+    json(res, 200, { added, version });
   },
 
   "PUT /api/order": async (req, res) => {
@@ -155,25 +208,16 @@ const routes = {
   // Multipart: an "entry" JSON field ({ id?, link, description }) and an
   // optional "image" file (required for a new entry).
   "POST /api/sidebar/entry": async (req, res) => {
-    if (jobs.busy()) throw new HttpError(409, `Busy: ${jobs.busy()} is running. Try again when it finishes.`);
-    const { files, fields } = await receiveUploads(req, { tempDir: uploadDir, maxBytes: config.maxUploadBytes, maxFiles: 1, fieldNames: ["entry"] });
-    try {
+    const saved = await withUpload(req, "sidebar", { maxFiles: 1, fieldNames: ["entry"] }, ({ files, fields }) => {
       let entry;
       try {
         entry = JSON.parse(fields.entry ?? "");
       } catch {
         throw new HttpError(400, "Invalid entry");
       }
-      const saved = await jobs.withLock("sidebar", async () => {
-        await workspace.check();
-        const saved = workspace.saveSidebarEntry(entry, files[0]);
-        edited();
-        return saved;
-      });
-      json(res, 200, { saved, version });
-    } finally {
-      removeTemp(files);
-    }
+      return workspace.saveSidebarEntry(entry, files[0]);
+    });
+    json(res, 200, { saved, version });
   },
 
   "PUT /api/sidebar": async (req, res) => {
@@ -246,18 +290,30 @@ const routes = {
 
 const IMAGE_ROUTE = /^\/(?:thumb|image)\/(gallery|carousel)\/([^/]+)$/;
 const ENTRY_IMAGE_ROUTE = /^\/(?:thumb|image)\/sidebar\/([a-z0-9-]+)$/;
-const VENDOR = {
-  "/vendor/Sortable.min.js": "node_modules/sortablejs/Sortable.min.js",
-  "/vendor/markdown-to-jsx.js": "node_modules/markdown-to-jsx/dist/index.modern.js",
-};
 
 async function sendImage(res, pathname, source) {
   if (pathname.startsWith("/image/")) return sendFile(res, source);
   return sendFile(res, await thumbnail(source, thumbDir), { cache: "private, max-age=3600" });
 }
 
+// The admin's pages run only their own scripts: nothing inline, nothing
+// from elsewhere. Images may come from https (markdown in the preview).
+const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: https:; connect-src 'self'; " +
+  "object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
+
+function sendAsset(res, name, body) {
+  res.writeHead(200, {
+    "Content-Type": contentType(name === "/" ? "/index.html" : name),
+    "Content-Length": body.length,
+    "Cache-Control": "no-cache",
+    "Content-Security-Policy": CSP,
+    "X-Content-Type-Options": "nosniff",
+  });
+  res.end(body);
+}
+
 async function handleAdmin(req, res) {
-  if (!hostAllowed(req)) throw new HttpError(421, "Unknown host");
+  assertAllowed(req);
   const { pathname } = new URL(req.url, "http://localhost");
   if (req.method !== "GET" && req.method !== "HEAD") assertSameOrigin(req);
 
@@ -288,8 +344,9 @@ async function handleAdmin(req, res) {
   }
 
   if (pathname === "/favicon.ico") return res.writeHead(204).end();
-  if (VENDOR[pathname]) return sendFile(res, path.join(here, VENDOR[pathname]), { cache: "private, max-age=86400" });
-  return serveStatic(path.join(here, "public"), req, res);
+  if (req.method === "GET" && pathname === "/vendor/markdown-to-jsx.js") return sendAsset(res, pathname, markdownModule());
+  if ((req.method === "GET" || req.method === "HEAD") && ASSETS.has(pathname)) return sendAsset(res, pathname, ASSETS.get(pathname));
+  throw new HttpError(404, "Not found");
 }
 
 function handler(handle) {
@@ -307,7 +364,7 @@ const WAIT_PAGE = (message) => `<!doctype html><meta charset="utf-8"><meta http-
 <body style="font:16px system-ui;display:grid;place-items:center;height:90vh;color:#555">${message}</body>`;
 
 function handlePreview(req, res) {
-  if (!hostAllowed(req)) throw new HttpError(421, "Unknown host");
+  assertAllowed(req);
   // Page loads (not assets) wait while a build replaces the files.
   const pageLoad = req.method === "GET" && (req.headers.accept || "").includes("text/html");
   const waiting = jobs.busy() === "preview" ? "Building the preview… this page reloads when it is ready."

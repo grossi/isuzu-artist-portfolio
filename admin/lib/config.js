@@ -18,10 +18,13 @@ export function loadConfig(env = process.env) {
     previewUrl: env.ADMIN_PREVIEW_URL || "",
     // Host headers the admin answers to (DNS-rebinding guard); ports are ignored.
     allowedHosts: new Set(
-      ["127.0.0.1", "localhost", "[::1]", host, tailnetName, ...(env.ADMIN_ALLOWED_HOSTS || "").split(",")]
+      ["127.0.0.1", "localhost", "[::1]", isIP(host) === 6 ? `[${host}]` : host, tailnetName, ...(env.ADMIN_ALLOWED_HOSTS || "").split(",")]
         .map((name) => name.trim().toLowerCase())
         .filter(Boolean)
     ),
+    // Tailscale logins allowed in, from the Tailscale-User-Login header that
+    // `tailscale serve` adds. Empty: anyone who can reach the tailnet port.
+    allowedUsers: new Set((env.ADMIN_ALLOWED_USERS || "").split(",").map((name) => name.trim().toLowerCase()).filter(Boolean)),
     // Split on whitespace and run without a shell, e.g. "yarn deploy" or
     // "bash /tmp/stub-deploy.sh". It comes from the operator, never from a request.
     deployCommand: (env.ADMIN_DEPLOY_CMD || "yarn deploy").trim().split(/\s+/),

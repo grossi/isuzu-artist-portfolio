@@ -145,20 +145,59 @@ test("deploy rebases onto a newer origin/main", async () => {
   assert.equal(sh(ws.root, "log", "--format=%s", "-2"), "content: add new.png\nupstream change");
 });
 
-test("a rebase conflict aborts cleanly and deploys nothing", async () => {
-  fs.writeFileSync(path.join(other, "src/gallery.json"), "[\"upstream\"]\n");
-  sh(other, "commit", "--quiet", "-am", "upstream manifest");
+test("a conflict in a source file aborts the rebase and deploys nothing", async () => {
+  fs.writeFileSync(path.join(other, "src/image-order.json"), '{ "gallery": ["c.jpg"] }\n');
+  sh(other, "add", ".");
+  sh(other, "commit", "--quiet", "-m", "upstream order");
   sh(other, "push", "--quiet", "origin", "main");
 
-  fs.writeFileSync(ws.file("src/gallery.json"), "[\"local\"]\n");
-  await ws.save(log, "content: local manifest");
+  ws.writeOrder({ gallery: ["b.png"] });
+  await ws.save(log, "content: local order");
   const before = sh(ws.root, "rev-parse", "HEAD");
-  await assert.rejects(ws.deploy(log), /Rebase onto origin\/main failed \(conflicts in src\/gallery.json\)/);
+  await assert.rejects(ws.deploy(log), /Rebase onto origin\/main failed \(conflicts in src\/image-order.json\)/);
   assert.equal(sh(ws.root, "rev-parse", "HEAD"), before);
   assert.equal(await ws.rebaseInProgress(), false);
   assert.equal((await ws.draft()).dirty, false);
   assert.ok(!logs.includes("stub-deployed"));
   assert.equal(ws.readDeployed(), null);
+});
+
+test("conflicts only in generated manifests are resolved and regenerated", async () => {
+  // Every Save commits the manifests, so main and the admin both touch them.
+  fs.writeFileSync(path.join(other, "src/gallery.json"), '["upstream"]\n');
+  sh(other, "commit", "--quiet", "-am", "upstream manifest");
+  sh(other, "push", "--quiet", "origin", "main");
+
+  ws.addUploads([await upload("new", "white")]);
+  fs.writeFileSync(ws.file("src/gallery.json"), '["local"]\n');
+  await ws.save(log, "content: add new.png");
+  // The stubbed build regenerates the manifest from the (rebased) sources.
+  ws.buildImages = async () => fs.writeFileSync(ws.file("src/gallery.json"), '["regenerated"]\n');
+  const deployed = await ws.deploy(log);
+  assert.ok(logs.includes("stub-deployed"));
+  assert.equal(sh(origin, "rev-parse", "main"), deployed.sha);
+  assert.equal(sh(ws.root, "log", "--format=%s", "-3"), "content: regenerate image manifests\ncontent: add new.png\nupstream manifest");
+  assert.equal(fs.readFileSync(ws.file("src/gallery.json"), "utf-8"), '["regenerated"]\n');
+  assert.ok(fs.existsSync(ws.file("public/gallery/new.png")));
+});
+
+test("a rebase interrupted by a restart is reported, then aborted at startup", async () => {
+  fs.writeFileSync(path.join(other, "src/image-order.json"), '{ "gallery": ["c.jpg"] }\n');
+  sh(other, "add", ".");
+  sh(other, "commit", "--quiet", "-m", "upstream order");
+  sh(other, "push", "--quiet", "origin", "main");
+  ws.writeOrder({ gallery: ["b.png"] });
+  await ws.save(log, "content: local order");
+  const before = sh(ws.root, "rev-parse", "HEAD");
+  sh(ws.root, "fetch", "--quiet");
+  assert.throws(() => sh(ws.root, "rebase", "origin/main"));
+
+  await assert.rejects(ws.check(), /rebase is in progress/);
+  await ws.check({ duringJob: true });
+  await ws.recover();
+  assert.equal(await ws.rebaseInProgress(), false);
+  assert.equal(sh(ws.root, "rev-parse", "HEAD"), before);
+  await ws.check();
 });
 
 test("a rejected push deploys nothing", async () => {

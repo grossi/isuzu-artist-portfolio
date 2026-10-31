@@ -21,25 +21,39 @@ async function api(method, url, body) {
 // Draft edits go one at a time, each with the version the previous one
 // returned, so quick successive edits don't trip the stale-tab check.
 let edits = Promise.resolve();
-function edit(method, url, body) {
+function queue(send) {
   const next = edits.then(async () => {
-    const result = await api(method, url, { ...body, version: state.version });
-    if (typeof result.version === "number") state.version = result.version;
+    const result = await send();
+    if (typeof result?.version === "number") state.version = result.version;
     return result;
   });
   edits = next.catch(() => {});
   return next;
 }
+const edit = (method, url, body) => queue(() => api(method, url, { ...body, version: state.version }));
 
+// One state request at a time. A refresh asked for while one is in flight
+// runs again after it: the first may predate the edit that asked.
 let refreshing = null;
+let refreshAgain = false;
 function refresh() {
-  refreshing ??= api("GET", "/api/state")
+  if (refreshing) {
+    refreshAgain = true;
+    return refreshing;
+  }
+  refreshing = api("GET", "/api/state")
     .then((next) => {
       state = next;
       render();
     })
     .catch((error) => toast(error.message, true))
-    .finally(() => (refreshing = null));
+    .finally(() => {
+      refreshing = null;
+      if (refreshAgain) {
+        refreshAgain = false;
+        refresh();
+      }
+    });
   return refreshing;
 }
 
@@ -155,18 +169,25 @@ function upload(fileList) {
   const form = new FormData();
   for (const file of files) form.append("files", file, file.name);
   // XHR for the upload progress, which fetch doesn't report.
-  const xhr = new XMLHttpRequest();
-  xhr.open("POST", "/api/upload");
-  xhr.setRequestHeader("X-Isuzu-Admin", "1");
-  xhr.upload.onprogress = (e) => e.lengthComputable && toast(`Uploading ${files.length} file(s)… ${Math.round((e.loaded / e.total) * 100)}%`);
-  xhr.onload = () => {
-    const data = JSON.parse(xhr.responseText || "{}");
-    if (xhr.status === 200) toast(`Added ${data.added.join(", ")}`);
-    else toast(data.error || `Upload failed (${xhr.status})`, true);
-    refresh();
-  };
-  xhr.onerror = () => toast("Upload failed: network error", true);
-  xhr.send(form);
+  const send = () => new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/upload");
+    xhr.setRequestHeader("X-Isuzu-Admin", "1");
+    xhr.upload.onprogress = (e) => e.lengthComputable && toast(`Uploading ${files.length} file(s)… ${Math.round((e.loaded / e.total) * 100)}%`);
+    xhr.onload = () => {
+      let data = {};
+      try {
+        data = JSON.parse(xhr.responseText || "{}");
+      } catch {
+        // not JSON (a proxy error page)
+      }
+      if (xhr.status === 200) resolve(data);
+      else reject(new Error(data.error || `Upload failed (${xhr.status})`));
+    };
+    xhr.onerror = () => reject(new Error("Upload failed: network error"));
+    xhr.send(form);
+  });
+  queue(send).then((data) => toast(`Added ${data.added.join(", ")}`), (error) => toast(error.message, true)).finally(refresh);
 }
 
 // ---- Rendering -------------------------------------------------------------
@@ -180,8 +201,10 @@ function render() {
   $("add").classList.toggle("disabled", locked);
   $("save").disabled ||= !state.draft?.dirty;
   $("discard").disabled ||= !state.draft?.dirty;
-  $("error").hidden = !state.error;
-  $("error").textContent = state.error ?? "";
+  const banner = state.error ??
+    (state.restartNeeded ? "The admin's own code changed on main. Restart it to update: systemctl --user restart isuzu-admin (after yarn install in admin/ if its dependencies changed)." : null);
+  $("error").hidden = !banner;
+  $("error").textContent = banner ?? "";
   document.body.classList.toggle("locked", locked);
   for (const sortable of sortables) sortable.option("disabled", locked);
 }
@@ -456,9 +479,12 @@ async function submitEntry(event) {
   if (entryImage) form.append("image", entryImage, entryImage.name);
   $("entry-submit").disabled = true;
   try {
-    const res = await fetch("/api/sidebar/entry", { method: "POST", headers: { "X-Isuzu-Admin": "1" }, body: form });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) return fail(data.error || `Saving failed (${res.status})`);
+    const data = await queue(async () => {
+      const res = await fetch("/api/sidebar/entry", { method: "POST", headers: { "X-Isuzu-Admin": "1" }, body: form });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Saving failed (${res.status})`);
+      return data;
+    });
     $("entry-dialog").close();
     toast(editing ? `Updated ${data.saved.id}` : `Added ${data.saved.id} at the top of the sidebar`);
     await refresh();

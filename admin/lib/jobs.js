@@ -98,11 +98,19 @@ export function summary(job) {
 }
 
 // Runs a program without a shell, streaming its output to log. Rejects on a
-// non-zero exit.
-export function run(command, args, { cwd, log, env }) {
+// non-zero exit, or kills it after timeoutMs so a hung step can't hold the
+// lock forever.
+export function run(command, args, { cwd, log, env, timeoutMs = 30 * 60 * 1000 }) {
   log(`$ ${[command, ...args].join(" ")}`);
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { cwd, env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] });
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      log(`✗ Still running after ${Math.round(timeoutMs / 60000)} min: stopping it`);
+      child.kill("SIGTERM");
+      setTimeout(() => child.kill("SIGKILL"), 10000).unref();
+    }, timeoutMs);
     const pending = { stdout: "", stderr: "" };
     const forward = (stream) => (chunk) => {
       const text = pending[stream] + chunk.toString();
@@ -112,11 +120,15 @@ export function run(command, args, { cwd, log, env }) {
     };
     child.stdout.on("data", forward("stdout"));
     child.stderr.on("data", forward("stderr"));
-    child.on("error", reject);
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
     child.on("close", (code, signal) => {
+      clearTimeout(timer);
       for (const rest of Object.values(pending)) if (rest) log(rest);
       if (code === 0) resolve();
-      else reject(new Error(`${command} ${args[0] ?? ""} failed (${signal ?? `exit code ${code}`})`));
+      else reject(new Error(`${command} ${args[0] ?? ""} ${timedOut ? "timed out" : `failed (${signal ?? `exit code ${code}`})`}`));
     });
   });
 }
