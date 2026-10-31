@@ -90,3 +90,11 @@ test("sidebar entries: links, images and fallbacks", () => {
   assert.deepEqual(sidebar.localized({ ja: "", en: "Books" }), { ja: "Books", en: "Books" });
   assert.deepEqual(sidebar.localized({ ja: "", en: "" }), { ja: "", en: "" });
 });
+
+test("a timeout stops the whole process tree", async () => {
+  const { run } = await import("../lib/jobs.js");
+  const started = Date.now();
+  // The shell's sleeping child would keep the output pipe open after the shell dies.
+  await assert.rejects(run("sh", ["-c", "sleep 30 & sleep 30; wait"], { cwd: "/tmp", log: () => {}, timeoutMs: 200 }), /timed out/);
+  assert.ok(Date.now() - started < 5000, `took ${Date.now() - started} ms`);
+});

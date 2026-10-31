@@ -38,6 +38,7 @@ export async function git(cwd, args) {
     cwd,
     env: { ...process.env, ...GIT_ENV },
     maxBuffer: 64 * 1024 * 1024,
+    timeout: 2 * 60 * 1000, // local, read-mostly commands; network steps use run()
   });
   return stdout;
 }
