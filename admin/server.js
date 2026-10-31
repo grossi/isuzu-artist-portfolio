@@ -7,7 +7,7 @@ import { HttpError, Jobs, summary } from "./lib/jobs.js";
 import { contentType, sendFile, serveStatic } from "./lib/static.js";
 import { thumbnail } from "./lib/thumbs.js";
 import { receiveUploads, removeTemp } from "./lib/uploads.js";
-import { CAROUSEL_DIR, GALLERY_DIR, Workspace, commitMessage, git } from "./lib/workspace.js";
+import { CAROUSEL_DIR, GALLERY_DIR, Workspace, commitMessage, git, isImageFile } from "./lib/workspace.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const config = loadConfig();
@@ -48,19 +48,30 @@ ASSETS.set("/", ASSETS.get("/index.html"));
 ASSETS.set("/vendor/Sortable.min.js", fs.readFileSync(path.join(here, "node_modules/sortablejs/Sortable.min.js")));
 
 // The live markdown preview uses the site's own markdown-to-jsx (the
-// workspace's node_modules), its "react" import pointed at a stub.
+// workspace's node_modules), its "react" import pointed at a stub. Kept from
+// the first read, so a yarn install during a job can't break the page.
+let markdownSource = null;
 function markdownModule() {
-  const source = fs.readFileSync(workspace.file("node_modules/markdown-to-jsx/dist/index.modern.js"), "utf-8");
-  const patched = source.replace(/from\s*"react"/, 'from"/react-shim.js"');
-  if (patched === source) throw new HttpError(500, "Unexpected markdown-to-jsx build: no react import");
-  return Buffer.from(patched);
+  if (!markdownSource) {
+    const source = fs.readFileSync(workspace.file("node_modules/markdown-to-jsx/dist/index.modern.js"), "utf-8");
+    const patched = source.replace(/from\s*"react"/, 'from"/react-shim.js"');
+    if (patched === source) throw new HttpError(500, "Unexpected markdown-to-jsx build: no react import");
+    markdownSource = Buffer.from(patched);
+  }
+  return markdownSource;
 }
 
-// When the admin runs from the workspace, a deploy can update its code.
+// When the admin runs from the workspace, a deploy can update its code, or
+// the site's rules it loaded at startup (src/utils/).
 const adminPath = path.relative(config.workspace, here);
 const runsFromWorkspace = !adminPath.startsWith("..") && !path.isAbsolute(adminPath);
-const adminTree = () => git(config.workspace, ["rev-parse", `HEAD:${adminPath}`]).then((out) => out.trim(), () => null);
-const startedAdminTree = runsFromWorkspace ? await adminTree() : null;
+const codeVersion = () =>
+  git(config.workspace, ["rev-parse", `HEAD:${adminPath}`, "HEAD:src/utils/imageOrder.js", "HEAD:src/utils/sidebar.js"])
+    .then((out) => out.trim(), () => null);
+const startedCodeVersion = runsFromWorkspace ? await codeVersion() : null;
+if (config.allowedUsers.size && config.host !== "127.0.0.1" && config.host !== "::1" && config.host !== "localhost") {
+  console.warn("ADMIN_ALLOWED_USERS only means something behind tailscale serve: on a tailnet address any peer can send Tailscale-User-Login");
+}
 
 async function state() {
   const base = {
@@ -85,7 +96,7 @@ async function state() {
       sidebar: workspace.readSidebar(),
       draft: { ...draft, message: commitMessage(draft) },
       history,
-      restartNeeded: Boolean(startedAdminTree) && (await adminTree()) !== startedAdminTree,
+      restartNeeded: Boolean(startedCodeVersion) && (await codeVersion()) !== startedCodeVersion,
     };
   } catch (error) {
     return { ...base, error: error.message };
@@ -145,15 +156,24 @@ function json(res, status, body) {
 // based it on (ANY_VERSION: an edit that can't overwrite anything, such as
 // adding uploads at the front).
 const ANY_VERSION = Symbol("any version");
-async function mutate(kind, seenVersion, apply) {
+async function mutate(kind, seenVersion, apply, checkOptions = {}) {
   return jobs.withLock(kind, async () => {
-    await workspace.check();
+    await workspace.check(checkOptions);
     if (seenVersion !== ANY_VERSION && seenVersion !== version) {
       throw new HttpError(409, "The draft changed meanwhile (another tab?); reload the page");
     }
     const result = await apply();
     edited();
     return result;
+  });
+}
+
+// A long job: takes the lock (a second one gets "Busy"), then checks the
+// workspace, so a running deploy's rebase is never mistaken for a stuck one.
+function startJob(kind, run) {
+  return jobs.start(kind, async (log) => {
+    await workspace.check();
+    return run(log);
   });
 }
 
@@ -241,14 +261,14 @@ const routes = {
 
   "POST /api/discard": async (req, res) => {
     const body = await readJson(req);
-    await mutate("discard", body.version, () => workspace.discard());
+    // Discard also gets the workspace out of a rebase left in progress.
+    await mutate("discard", body.version, () => workspace.discard(), { allowRebase: true });
     json(res, 200, { version });
   },
 
   "POST /api/preview": async (req, res) => {
-    await workspace.check();
     const built = version;
-    json(res, 202, jobs.start("preview", async (log) => {
+    json(res, 202, startJob("preview", async (log) => {
       // Built aside and swapped in, so a failed build keeps the last preview.
       const next = `${previewDir}.next`;
       const old = `${previewDir}.old`;
@@ -265,13 +285,11 @@ const routes = {
   "POST /api/save": async (req, res) => {
     const { message } = await readJson(req);
     if (typeof message !== "string" || !message.trim() || message.length > 10000) throw new HttpError(400, "A commit message is required");
-    await workspace.check();
-    json(res, 202, jobs.start("save", (log) => workspace.save(log, message.trim())));
+    json(res, 202, startJob("save", (log) => workspace.save(log, message.trim())));
   },
 
   "POST /api/deploy": async (req, res) => {
-    await workspace.check();
-    json(res, 202, jobs.start("deploy", async (log) => {
+    json(res, 202, startJob("deploy", async (log) => {
       // A rebase onto a newer main changes the files the preview was built from.
       const tree = await workspace.tree();
       try {
@@ -327,7 +345,7 @@ async function handleAdmin(req, res) {
     }
     // Only a file that is listed in the folder: no separators, no dot names.
     const list = fs.readdirSync(workspace.file(folder), { withFileTypes: true });
-    if (!list.some((entry) => entry.isFile() && entry.name === name)) throw new HttpError(404, "No such image");
+    if (!isImageFile(name) || !list.some((entry) => entry.isFile() && entry.name === name)) throw new HttpError(404, "No such image");
     return sendImage(res, pathname, workspace.file(folder, name));
   }
 

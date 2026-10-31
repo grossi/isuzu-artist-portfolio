@@ -42,6 +42,8 @@ from_env_file() {
 }
 port="$(from_env_file ADMIN_PORT "$port")"
 preview_port="$(from_env_file ADMIN_PREVIEW_PORT "$preview_port")"
+https_port="$(from_env_file ADMIN_HTTPS_PORT "$https_port")"
+preview_https_port="$(from_env_file ADMIN_PREVIEW_HTTPS_PORT "$preview_https_port")"
 workspace="$(from_env_file ADMIN_WORKSPACE "$workspace")"
 state_dir="$(from_env_file ADMIN_STATE_DIR "$state_dir")"
 
@@ -54,7 +56,12 @@ done
 
 node_bin="$(command -v node)" || { echo "node is not on PATH" >&2; exit 1; }
 yarn_bin="$(command -v yarn)" || { echo "yarn is not on PATH" >&2; exit 1; }
-aws_bin="$(command -v aws)" || { echo "aws (the AWS CLI, for yarn deploy) is not on PATH" >&2; exit 1; }
+aws_dir=""
+if aws_bin="$(command -v aws)"; then
+  aws_dir="$(dirname "$aws_bin"):"
+else
+  echo "Warning: aws (the AWS CLI) is not on PATH; the default deploy command (yarn deploy) needs it" >&2
+fi
 
 tailnet_name() {
   local name
@@ -89,7 +96,12 @@ mkdir -p "$(dirname "$env_file")"
 if [ -f "$env_file" ]; then
   echo "(kept the existing file)"
 else
-  name="$(tailnet_name)"
+  name=""
+  preview_url=""
+  if [ -n "$serve" ]; then
+    name="$(tailnet_name)"
+    preview_url="https://$name:$preview_https_port/"
+  fi
   cat > "$env_file" <<EOF
 # isuzu-admin settings, read by $unit_file. Restart the service after editing:
 #   systemctl --user restart isuzu-admin
@@ -100,7 +112,10 @@ ADMIN_HOST=127.0.0.1
 ADMIN_PORT=$port
 ADMIN_PREVIEW_PORT=$preview_port
 ADMIN_TAILNET_NAME=$name
-ADMIN_PREVIEW_URL=https://$name:$preview_https_port/
+ADMIN_PREVIEW_URL=$preview_url
+# The tailnet HTTPS ports tailscale serve publishes (read by install-service.sh only).
+ADMIN_HTTPS_PORT=$https_port
+ADMIN_PREVIEW_HTTPS_PORT=$preview_https_port
 # Optional: only these Tailscale logins (comma-separated) may use the admin.
 #ADMIN_ALLOWED_USERS=
 # Split on spaces and run without a shell, in the workspace.
@@ -119,7 +134,7 @@ Type=simple
 WorkingDirectory=$workspace/admin
 EnvironmentFile=$env_file
 # yarn (corepack), node and aws (for yarn deploy).
-Environment=PATH=$(dirname "$yarn_bin"):$(dirname "$node_bin"):$(dirname "$aws_bin"):/usr/local/bin:/usr/bin:/bin
+Environment=PATH=$(dirname "$yarn_bin"):$(dirname "$node_bin"):${aws_dir}/usr/local/bin:/usr/bin:/bin
 ExecStart=$node_bin $workspace/admin/server.js
 Restart=always
 RestartSec=5
