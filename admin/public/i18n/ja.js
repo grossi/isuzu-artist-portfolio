@@ -33,7 +33,7 @@ export default {
   "status.live": "isuzu.work で公開中",
   "status.deployedAt": "この管理画面から公開（{ago}）",
   "status.notDeployedYet": "この管理画面からはまだ公開していません。",
-  "status.diverged": "このコミットは main の履歴にもうありません。",
+  "status.diverged": "この変更は GitHub の main の履歴にもうありません。",
 
   "change.added": "{n} 点追加: {list}",
   "change.removed": "{n} 点削除: {list}",
@@ -52,7 +52,7 @@ export default {
   "job.preview": "プレビューの作成",
   "job.save": "保存",
   "job.deploy": "公開",
-  "job.running": "{name}を実行中…",
+  "job.running": "{name}中…",
   "job.succeeded": "✓ {name}が完了しました（{ago}）",
   "job.failed": "✗ {name}に失敗しました: {error}",
   "job.showLog": "ログを表示",
@@ -74,7 +74,7 @@ export default {
   "section.gallery": "ギャラリー",
   "section.galleryHint": "ドラッグで並べ替え · 新しい画像は先頭に追加されます",
   "section.extras": "カルーセル専用の画像",
-  "section.extrasHint": "ギャラリーには表示されない、カルーセル用の画像です",
+  "section.extrasHint": "ギャラリーには表示されません",
   "drop.hint": "ドロップすると、ギャラリーの先頭に追加されます",
 
   "tile.new": "新規",
@@ -119,7 +119,7 @@ export default {
   "entryDialog.sitePreview": "{lang}版サイトでの表示",
   "entryDialog.noDescription": "（説明文なし）",
   "entryDialog.showingOther": "（空欄のため{other}の文章を表示）",
-  "entryDialog.markdownHint": "説明文が空欄の場合、サイトにはもう一方の言語の文章が表示されます。`**太字**`（太字）、`[文字](https://…)`（リンク）、`- 項目`（箇条書き）が使えます。HTML はタグのまま文字として表示されます。",
+  "entryDialog.markdownHint": "説明文が空欄の場合、サイトにはもう一方の言語の文章が表示されます。`**太字**` で太字、`[文字](https://…)` でリンク、`- 項目` で箇条書きになります。HTML はタグのまま文字として表示されます。",
   "entryDialog.submit": "下書きに反映",
 
   "saveDialog.title": "下書きを保存",
@@ -136,7 +136,7 @@ export default {
   "deployDialog.submit": "送信して公開",
 
   "confirm.removeUpload": "保存前の画像 {file} を削除しますか？",
-  "confirm.discard": "保存していない変更（追加した画像、ギャラリーの順番、カルーセル、サイドバーの項目と見出し）をすべて破棄しますか？保存済みの変更は残ります。",
+  "confirm.discard": "保存していない変更（追加した画像、ギャラリーの順番、カルーセル、サイドバーの項目と見出し）をすべて破棄しますか？\n\n保存済みの変更は残ります。",
 
   "toast.onlyImages": "追加できるのは JPEG・PNG・WebP の画像だけです",
   "toast.skipping": "対応していないファイル {n} 件を除外しました",

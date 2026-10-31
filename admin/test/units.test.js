@@ -106,13 +106,13 @@ test("a job reports its steps, and a failure as a code", async () => {
   jobs.subscribe((event, data) => event === "job" && events.push(data));
   jobs.start("deploy", async (log) => {
     log.step("push");
-    log.step("rebase", { upstream: "origin/main" });
+    log.step("rebase");
     const { AdminError } = await import("../lib/errors.js");
     throw new AdminError("push-failed");
   });
   assert.throws(() => jobs.start("save", async () => {}), { code: "busy", status: 409, params: { kind: "deploy" } });
   await new Promise((resolve) => jobs.subscribe((event) => event === "state" && resolve()));
-  assert.deepEqual(events.map((job) => job.step), [undefined, { code: "push", params: {} }, { code: "rebase", params: { upstream: "origin/main" } }, { code: "rebase", params: { upstream: "origin/main" } }]);
+  assert.deepEqual(events.map((job) => job.step), [undefined, { code: "push", params: {} }, { code: "rebase", params: {} }, { code: "rebase", params: {} }]);
   const last = events.at(-1);
   assert.equal(last.status, "failed");
   assert.deepEqual([last.errorCode, last.errorParams], ["push-failed", {}]);
