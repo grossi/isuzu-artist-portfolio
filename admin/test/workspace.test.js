@@ -84,13 +84,13 @@ test("uploads go first with unique names; order and carousel are validated", asy
   assert.deepEqual(ws.current().gallery, gallery);
   assert.deepEqual(ws.current().carousel, ["gallery/new.png", "carousel/slide.png"]);
 
-  assert.throws(() => ws.setOrder({ gallery: gallery.slice(1), carousel: [] }), /changed meanwhile/);
-  assert.throws(() => ws.setOrder({ gallery: [...gallery.slice(1), "../x.png"], carousel: [] }), /changed meanwhile/);
-  assert.throws(() => ws.setOrder({ gallery, carousel: ["gallery/../../etc/passwd"] }), /Unknown/);
-  assert.throws(() => ws.setOrder({ gallery, carousel: ["carousel/slide.png", "carousel/slide.png"] }), /repeated/);
+  assert.throws(() => ws.setOrder({ gallery: gallery.slice(1), carousel: [] }), { code: "gallery-changed", status: 409 });
+  assert.throws(() => ws.setOrder({ gallery: [...gallery.slice(1), "../x.png"], carousel: [] }), { code: "gallery-changed" });
+  assert.throws(() => ws.setOrder({ gallery, carousel: ["gallery/../../etc/passwd"] }), { code: "unknown-slide" });
+  assert.throws(() => ws.setOrder({ gallery, carousel: ["carousel/slide.png", "carousel/slide.png"] }), { code: "unknown-slide" });
 
-  await assert.rejects(ws.removeUpload("a.png"), /unsaved uploads/);
-  await assert.rejects(ws.removeUpload("../../order.json"), /unsaved uploads/);
+  await assert.rejects(ws.removeUpload("a.png"), { code: "unsaved-only" });
+  await assert.rejects(ws.removeUpload("../../order.json"), { code: "unsaved-only" });
   await ws.removeUpload("new.png");
   assert.deepEqual(ws.current().carousel, ["carousel/slide.png"]);
   assert.ok(!fs.existsSync(ws.file("public/gallery/new.png")));
@@ -122,10 +122,10 @@ test("save commits the content paths only, then deploy pushes and records it", a
   fs.rmSync(ws.file("staged.txt"));
   assert.equal(sh(ws.root, "show", "--name-only", "--format=", "HEAD").split("\n").sort().join(","), "public/gallery/new.png,src/image-order.json");
   assert.ok(sh(ws.root, "rev-parse", "HEAD").startsWith(sha));
-  await assert.rejects(ws.save(log, "again"), /Nothing to save/);
+  await assert.rejects(ws.save(log, "again"), { code: "nothing-to-save" });
 
   // notes.txt is still dirty: deploy refuses.
-  await assert.rejects(ws.deploy(log), /unsaved changes/);
+  await assert.rejects(ws.deploy(log), { code: "unsaved-changes", params: { files: "notes.txt" } });
   fs.rmSync(ws.file("notes.txt"));
 
   const history = await ws.history();
@@ -162,7 +162,11 @@ test("a conflict in a source file aborts the rebase and deploys nothing", async 
   ws.writeOrder({ gallery: ["b.png"] });
   await ws.save(log, "content: local order");
   const before = sh(ws.root, "rev-parse", "HEAD");
-  await assert.rejects(ws.deploy(log), /Rebase failed \(conflicts in src\/image-order.json\).*Nothing was pushed/);
+  await assert.rejects(ws.deploy(log), {
+    code: "rebase-conflict",
+    params: { files: "src/image-order.json" },
+    message: /^Rebase failed \(conflicts in src\/image-order.json\).*Nothing was pushed/,
+  });
   assert.ok(!fs.existsSync(ws.rebaseMarker));
   assert.equal(sh(ws.root, "rev-parse", "HEAD"), before);
   assert.equal(await ws.rebaseInProgress(), false);
@@ -218,7 +222,7 @@ test("an interrupted rebase: the admin's own is aborted at startup, one by hand 
   assert.throws(() => sh(ws.root, "rebase", "origin/main"));
   await ws.recover();
   assert.equal(await ws.rebaseInProgress(), true);
-  await assert.rejects(ws.check(), /rebase is in progress/);
+  await assert.rejects(ws.check(), { code: "rebase-in-progress" });
   await ws.check({ duringJob: true });
   await ws.check({ allowRebase: true });
   await ws.discard();
@@ -261,20 +265,22 @@ test("a rejected push deploys nothing", async () => {
   await ws.save(log, "content: add new.png");
   // A pre-receive hook on the "GitHub" side rejects every push.
   fs.writeFileSync(path.join(origin, "hooks/pre-receive"), "#!/bin/sh\necho rejected >&2\nexit 1\n", { mode: 0o755 });
-  await assert.rejects(ws.deploy(log), /Push failed/);
+  await assert.rejects(ws.deploy(log), { code: "push-failed" });
   assert.ok(!logs.includes("stub-deployed"));
   assert.equal(ws.readDeployed(), null);
 });
 
 test("a failing deploy command is reported and not recorded", async () => {
   ws.config.deployCommand = ["node", "-e", "process.exit(3)"];
-  await assert.rejects(ws.deploy(log), /exit code 3/);
+  await assert.rejects(ws.deploy(log), { code: "command-exit", params: { command: "node -e", code: 3 } });
   assert.equal(ws.readDeployed(), null);
 });
 
 test("a workspace off main is refused", async () => {
   sh(ws.root, "checkout", "--quiet", "-b", "other");
-  await assert.rejects(ws.check(), /not main/);
+  await assert.rejects(ws.check(), { code: "wrong-branch", params: { branch: "other", expected: "main" } });
+  sh(ws.root, "checkout", "--quiet", "--detach");
+  await assert.rejects(ws.check(), { code: "detached-head" });
 });
 
 test("sidebar: add at the top, edit, reorder, heading, remove", async () => {
@@ -284,9 +290,9 @@ test("sidebar: add at the top, edit, reorder, heading, remove", async () => {
   sh(ws.root, "add", ".");
   sh(ws.root, "commit", "--quiet", "-m", "sidebar");
 
-  assert.throws(() => ws.saveSidebarEntry({ link: "", description: { ja: "x" } }), /needs an image/);
+  assert.throws(() => ws.saveSidebarEntry({ link: "", description: { ja: "x" } }), { code: "entry-needs-image" });
   const bad = await upload("x", "white");
-  assert.throws(() => ws.saveSidebarEntry({ link: "javascript:alert(1)", description: {} }, bad), /http/);
+  assert.throws(() => ws.saveSidebarEntry({ link: "javascript:alert(1)", description: {} }, bad), { code: "invalid-link", status: 400 });
   const added = ws.saveSidebarEntry({ link: "  ", description: { ja: "新刊", en: "" } }, await upload("new-book", "white"));
   assert.deepEqual(added, { id: "new-book", image: "sidebar/new-book.png", link: null, description: { ja: "新刊", en: "" } });
   const second = ws.saveSidebarEntry({ link: "https://shop.example/", description: { en: "Other" } }, await upload("new-book", "gray"));
@@ -297,9 +303,10 @@ test("sidebar: add at the top, edit, reorder, heading, remove", async () => {
   ws.saveSidebarEntry({ id: "new-book", link: "https://example.com/b", description: { ja: "新刊", en: "New" } }, await upload("replaced", "blue"));
   assert.ok(!fs.existsSync(ws.file("public/sidebar/new-book.png")));
   assert.equal(ws.readSidebar().entries[1].image, "sidebar/replaced.png");
-  assert.throws(() => ws.saveSidebarEntry({ id: "gone", link: "", description: {} }), /no longer exists/);
+  assert.throws(() => ws.saveSidebarEntry({ id: "gone", link: "", description: {} }), { code: "entry-gone" });
 
-  assert.throws(() => ws.setSidebar({ heading: { ja: "", en: "" }, order: ["cover"] }), /changed meanwhile/);
+  assert.throws(() => ws.setSidebar({ heading: { ja: "", en: "" }, order: ["cover"] }), { code: "sidebar-changed" });
+  assert.throws(() => ws.setSidebar({ heading: { ja: "x".repeat(201), en: "" }, order: ["cover", "new-book", "new-book-2"] }), { code: "heading-too-long", params: { max: 200 } });
   ws.setSidebar({ heading: { ja: " 新しい  本 ", en: "" }, order: ["cover", "new-book", "new-book-2"] });
   assert.deepEqual(ws.readSidebar().heading, { ja: "新しい 本", en: "" });
 

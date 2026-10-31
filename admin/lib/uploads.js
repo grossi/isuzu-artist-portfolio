@@ -4,7 +4,7 @@ import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import busboy from "busboy";
 import sharp from "sharp";
-import { HttpError } from "./jobs.js";
+import { HttpError } from "./errors.js";
 
 // Detected format → file extension. The client's name and type are not trusted.
 const FORMATS = { jpeg: "jpg", png: "png", webp: "webp" };
@@ -55,40 +55,40 @@ export async function receiveUploads(req, { tempDir, maxBytes, maxFiles, fieldNa
           limits: { fileSize: maxBytes, files: maxFiles, fields: fieldNames.length, fieldSize: 256 * 1024 },
         });
       } catch {
-        return reject(new HttpError(400, "Expected a multipart/form-data upload"));
+        return reject(new HttpError(400, "not-multipart"));
       }
       parser.on("file", (_field, stream, info) => {
         if (failed) return stream.resume();
         const file = { path: path.join(tempDir, randomUUID()), originalName: info.filename || "upload" };
         files.push(file);
-        stream.on("limit", () => fail(new HttpError(413, `${file.originalName} is larger than ${Math.round(maxBytes / 1048576)} MB`)));
+        stream.on("limit", () => fail(new HttpError(413, "file-too-large", { name: file.originalName, mb: Math.round(maxBytes / 1048576) })));
         // Handled at once: a write error (a full disk) must fail this upload,
         // not crash the server as an unhandled rejection.
         const write = pipeline(stream, fs.createWriteStream(file.path, { flags: "wx" }));
-        write.catch(() => fail(new HttpError(500, `Couldn't store ${file.originalName}`)));
+        write.catch(() => fail(new HttpError(500, "store-failed", { name: file.originalName })));
         writes.push(write);
       });
       parser.on("field", (name, value, info) => {
-        if (!fieldNames.includes(name) || info.valueTruncated) return fail(new HttpError(400, `Unexpected form field ${name}`));
+        if (!fieldNames.includes(name) || info.valueTruncated) return fail(new HttpError(400, "unexpected-field", { name }));
         fields[name] = value;
       });
-      parser.on("filesLimit", () => fail(new HttpError(413, `At most ${maxFiles} file(s) per upload`)));
-      parser.on("fieldsLimit", () => fail(new HttpError(400, "Unexpected form fields")));
-      parser.on("error", () => fail(new HttpError(400, "Malformed upload")));
+      parser.on("filesLimit", () => fail(new HttpError(413, "too-many-files", { max: maxFiles })));
+      parser.on("fieldsLimit", () => fail(new HttpError(400, "unexpected-fields")));
+      parser.on("error", () => fail(new HttpError(400, "malformed-upload")));
       parser.on("close", () => Promise.all(writes).then(resolve, fail));
-      req.on("aborted", () => fail(new HttpError(400, "Upload aborted")));
+      req.on("aborted", () => fail(new HttpError(400, "upload-aborted")));
       req.pipe(parser);
     });
     for (const file of files) {
       const metadata = await sharp(file.path).metadata().catch(() => ({}));
       const extension = FORMATS[metadata.format];
       if (!extension || !metadata.width || !metadata.height) {
-        throw new HttpError(415, `${file.originalName} is not a JPEG, PNG or WebP image`);
+        throw new HttpError(415, "not-an-image", { name: file.originalName });
       }
       // The header alone passes for a truncated file: decode the whole image
       // (sharp fails on decoder warnings and on more than 268 Mpx).
       await sharp(file.path).resize(64, 64, { fit: "inside" }).toBuffer().catch(() => {
-        throw new HttpError(415, `${file.originalName} can't be read (damaged or cut short?)`);
+        throw new HttpError(415, "damaged-image", { name: file.originalName });
       });
       Object.assign(file, { extension, stem: sanitizeStem(file.originalName) });
     }

@@ -3,7 +3,8 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { promisify } from "node:util";
-import { HttpError, run } from "./jobs.js";
+import { AdminError, HttpError } from "./errors.js";
+import { run } from "./jobs.js";
 
 // The ordering rule shared with the site's build (src/utils/loadImages.js).
 const require = createRequire(import.meta.url);
@@ -47,6 +48,10 @@ async function gitOk(cwd, args) {
   return git(cwd, args).then(() => true, () => false);
 }
 
+// Names the step a job is on, for its progress line ("step.<code>" in
+// public/i18n/). Tests pass a plain log function.
+const step = (log, code, params) => log.step?.(code, params);
+
 function runGit(cwd, args, log, options = {}) {
   return run("git", args, { cwd, log, env: GIT_ENV, ...options });
 }
@@ -69,15 +74,15 @@ export class Workspace {
   // duringJob: a running deploy may be in the middle of its own rebase.
   // allowRebase: Discard, which aborts one.
   async check({ duringJob = false, allowRebase = false } = {}) {
-    if (!fs.existsSync(this.file(".git"))) throw new Error(`${this.root} is not a git clone (see admin/README.md)`);
+    if (!fs.existsSync(this.file(".git"))) throw new AdminError("not-a-clone", { path: this.root });
     if (duringJob) return;
     if (await this.rebaseInProgress()) {
       if (allowRebase) return;
-      throw new HttpError(409, "A rebase is in progress in the workspace: finish it there, or press Discard draft to abort it.");
+      throw new HttpError(409, "rebase-in-progress");
     }
     const branch = (await git(this.root, ["symbolic-ref", "--quiet", "--short", "HEAD"]).catch(() => "")).trim();
     if (branch !== this.config.branch) {
-      throw new HttpError(409, `The workspace is on "${branch || "a detached HEAD"}", not ${this.config.branch}`);
+      throw new HttpError(409, branch ? "wrong-branch" : "detached-head", { branch, expected: this.config.branch });
     }
   }
 
@@ -196,7 +201,8 @@ export class Workspace {
       // Saved but not live: commits since the last deploy from this admin (or,
       // before the first one, since origin/main).
       notDeployed: base ? await this.commits(`${base}..HEAD`) : [],
-      notDeployedBase: deployed && !deployed.diverged ? "the last deploy" : upstream,
+      // null: since the last deploy.
+      notDeployedBase: deployed && !deployed.diverged ? null : upstream,
       notPushed: hasUpstream ? (await this.commits(`${upstream}..HEAD`)).length : null,
       behind: hasUpstream ? (await this.commits(`HEAD..${upstream}`)).length : null,
     };
@@ -214,13 +220,13 @@ export class Workspace {
   // gallery: every gallery file, in the new order. carousel: the slides.
   setOrder({ gallery, carousel }) {
     const now = this.current();
-    if (!Array.isArray(gallery) || !Array.isArray(carousel)) throw new HttpError(400, "gallery and carousel must be lists");
+    if (!Array.isArray(gallery) || !Array.isArray(carousel)) throw new HttpError(400, "order-invalid");
     if (gallery.length !== now.gallery.length || new Set(gallery).size !== gallery.length || !gallery.every((file) => now.gallery.includes(file))) {
-      throw new HttpError(409, "The gallery changed meanwhile; reload the page");
+      throw new HttpError(409, "gallery-changed");
     }
     const candidates = new Set([...now.carouselFiles.map((f) => `carousel/${f}`), ...now.gallery.map((f) => `gallery/${f}`)]);
     if (new Set(carousel).size !== carousel.length || !carousel.every((ref) => candidates.has(ref))) {
-      throw new HttpError(400, "Unknown or repeated carousel slide");
+      throw new HttpError(400, "unknown-slide");
     }
     this.writeOrder({ ...now.order, gallery, carousel });
   }
@@ -254,7 +260,7 @@ export class Workspace {
   // Only an upload that was never saved (not in HEAD) can be removed.
   async removeUpload(file) {
     const { added } = describeChanges(await this.committed(), { ...this.current(), sidebar: this.readSidebar() });
-    if (typeof file !== "string" || !added.includes(file)) throw new HttpError(400, "Only unsaved uploads can be removed");
+    if (typeof file !== "string" || !added.includes(file)) throw new HttpError(400, "unsaved-only");
     const now = this.current();
     fs.unlinkSync(this.file(GALLERY_DIR, file));
     const order = { ...now.order, gallery: now.gallery.filter((f) => f !== file) };
@@ -280,7 +286,7 @@ export class Workspace {
     const content = this.readSidebar();
     const ids = content.entries.map((entry) => entry.id);
     if (!Array.isArray(order) || order.length !== ids.length || new Set(order).size !== ids.length || !order.every((id) => ids.includes(id))) {
-      throw new HttpError(409, "The sidebar changed meanwhile; reload the page");
+      throw new HttpError(409, "sidebar-changed");
     }
     this.writeSidebar({
       heading: { ja: cleanHeading(heading?.ja), en: cleanHeading(heading?.en) },
@@ -293,11 +299,11 @@ export class Workspace {
   saveSidebarEntry(entry, image) {
     const content = this.readSidebar();
     const link = typeof entry?.link === "string" && entry.link.trim() ? entry.link.trim() : null;
-    if (link !== null && !sidebarRules.isValidLink(link)) throw new HttpError(400, "The link must be a full http:// or https:// URL");
+    if (link !== null && !sidebarRules.isValidLink(link)) throw new HttpError(400, "invalid-link");
     const description = { ja: cleanDescription(entry?.description?.ja), en: cleanDescription(entry?.description?.en) };
     const existing = entry?.id === undefined ? null : content.entries.find((e) => e.id === entry.id);
-    if (entry?.id !== undefined && !existing) throw new HttpError(409, "That entry no longer exists; reload the page");
-    if (!existing && !image) throw new HttpError(400, "A new entry needs an image");
+    if (entry?.id !== undefined && !existing) throw new HttpError(409, "entry-gone");
+    if (!existing && !image) throw new HttpError(400, "entry-needs-image");
 
     let imagePath = existing?.image;
     if (image) {
@@ -324,7 +330,7 @@ export class Workspace {
   removeSidebarEntry(id) {
     const content = this.readSidebar();
     const entry = content.entries.find((e) => e.id === id);
-    if (!entry) throw new HttpError(409, "That entry no longer exists; reload the page");
+    if (!entry) throw new HttpError(409, "entry-gone");
     const entries = content.entries.filter((e) => e !== entry);
     this.writeSidebar({ ...content, entries });
     this.dropSidebarImage(entry.image, entries);
@@ -347,16 +353,19 @@ export class Workspace {
   // ---- Jobs (callers hold the lock) --------------------------------------
 
   async install(log) {
+    step(log, "install");
     await run("yarn", ["install", "--frozen-lockfile", "--non-interactive", "--prefer-offline"], { cwd: this.root, log });
   }
 
   async buildImages(log) {
+    step(log, "images");
     await run("yarn", ["build-images"], { cwd: this.root, log });
   }
 
   async preview(log, outDir) {
     await this.install(log);
     await this.buildImages(log);
+    step(log, "build");
     await run(this.file("node_modules/.bin/vite"), ["build", "--outDir", outDir, "--emptyOutDir"], { cwd: this.root, log });
   }
 
@@ -364,7 +373,7 @@ export class Workspace {
     await this.install(log);
     await this.buildImages(log);
     await this.commitContent(log, message, () => {
-      throw new Error("Nothing to save");
+      throw new AdminError("nothing-to-save");
     });
     const sha = (await git(this.root, ["rev-parse", "--short", "HEAD"])).trim();
     log(`✓ Saved as ${sha}`);
@@ -387,6 +396,7 @@ export class Workspace {
       if ((await git(this.root, ["ls-files", "--", p])).trim() || (await git(this.root, ["ls-tree", "--name-only", "HEAD", "--", p])).trim()) known.push(p);
     }
     if (!known.length || (await gitOk(this.root, ["diff", "--cached", "--quiet", "--", ...known]))) return onNothing();
+    step(log, "commit");
     await runGit(this.root, ["commit", "--quiet", "-m", message, "--only", "--", ...known], log);
   }
 
@@ -395,13 +405,16 @@ export class Workspace {
     const upstream = `${remote}/${branch}`;
     const status = await this.status();
     if (status.length) {
-      throw new Error(`The workspace has unsaved changes (${status.slice(0, 5).map((e) => e.file).join(", ")}${status.length > 5 ? ", …" : ""}). Save or discard the draft first.`);
+      const files = `${status.slice(0, 5).map((e) => e.file).join(", ")}${status.length > 5 ? ", …" : ""}`;
+      throw new AdminError("unsaved-changes", { files });
     }
 
     log("== Fetching");
+    step(log, "fetch");
     await runGit(this.root, ["fetch", "--quiet", remote, branch], log, { timeoutMs: NETWORK_TIMEOUT });
     if (!(await gitOk(this.root, ["merge-base", "--is-ancestor", upstream, "HEAD"]))) {
       log(`== Rebasing the saved commits onto ${upstream}`);
+      step(log, "rebase", { upstream });
       await this.rebase(upstream, log);
     }
 
@@ -416,16 +429,18 @@ export class Workspace {
     const head = (await git(this.root, ["rev-parse", "HEAD"])).trim();
     if (head !== (await git(this.root, ["rev-parse", upstream])).trim()) {
       log(`== Pushing ${branch}`);
+      step(log, "push");
       try {
         await runGit(this.root, ["push", "--porcelain", remote, `HEAD:refs/heads/${branch}`], log, { timeoutMs: NETWORK_TIMEOUT });
       } catch {
-        throw new Error("Push failed (see above); nothing was deployed. Try Deploy again, it fetches and rebases first.");
+        throw new AdminError("push-failed");
       }
     } else {
       log("== Nothing new to push");
     }
 
     log(`== Deploying: ${deployCommand.join(" ")}`);
+    step(log, "deploy");
     await run(deployCommand[0], deployCommand.slice(1), { cwd: this.root, log });
 
     const subject = (await git(this.root, ["log", "-1", "--format=%s", head])).trim();
@@ -453,7 +468,8 @@ export class Workspace {
       }
     } catch (error) {
       await runGit(this.root, ["rebase", "--abort"], log).catch(() => {});
-      throw new Error(`${error.message} Nothing was pushed or deployed and the saved commits are unchanged.`);
+      // Both messages say nothing was pushed or deployed.
+      throw error.code === "rebase-conflict" ? error : new AdminError("rebase-failed");
     } finally {
       fs.rmSync(this.rebaseMarker, { force: true });
     }
@@ -464,9 +480,7 @@ export class Workspace {
   async resolveManifestConflicts(log) {
     const conflicts = (await git(this.root, ["diff", "--name-only", "--diff-filter=U"]).catch(() => "")).trim().split("\n").filter(Boolean);
     if (!conflicts.length || !conflicts.every((file) => MANIFESTS.includes(file))) {
-      throw new Error(
-        `Rebase failed${conflicts.length ? ` (conflicts in ${conflicts.join(", ")})` : ""}: resolve it in the workspace by hand (see admin/README.md).`
-      );
+      throw conflicts.length ? new AdminError("rebase-conflict", { files: conflicts.join(", ") }) : new AdminError("rebase-failed");
     }
     log(`Conflict only in generated manifests (${conflicts.join(", ")}): taking main's version, they are regenerated next`);
     for (const file of conflicts) {
@@ -540,12 +554,12 @@ export function commitMessage(changes) {
 }
 
 function cleanHeading(text) {
-  if (typeof text !== "string" || text.length > MAX_HEADING) throw new HttpError(400, `The heading must be text of at most ${MAX_HEADING} characters`);
+  if (typeof text !== "string" || text.length > MAX_HEADING) throw new HttpError(400, "heading-too-long", { max: MAX_HEADING });
   return text.replace(/\s+/g, " ").trim();
 }
 
 function cleanDescription(text) {
   if (text === undefined) return "";
-  if (typeof text !== "string" || text.length > MAX_DESCRIPTION) throw new HttpError(400, `A description must be at most ${MAX_DESCRIPTION} characters`);
+  if (typeof text !== "string" || text.length > MAX_DESCRIPTION) throw new HttpError(400, "description-too-long", { max: MAX_DESCRIPTION });
   return text.replace(/\r\n?/g, "\n");
 }
