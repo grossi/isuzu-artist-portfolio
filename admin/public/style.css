@@ -153,7 +153,8 @@ input:not([type="file"]) { font: inherit; font-size: 14px; padding: 7px 10px; bo
   user-select: none;
   -webkit-user-select: none;
 }
-.entry-thumb { width: 110px; height: 140px; object-fit: contain; background: #ecebe8; border-radius: 6px; pointer-events: none; }
+.entry-handle { cursor: grab; touch-action: none; }
+.entry-thumb { display: block; width: 110px; height: 140px; object-fit: contain; background: #ecebe8; border-radius: 6px; pointer-events: none; }
 .entry-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 13px; margin-bottom: 6px; min-width: 0; }
 .entry-meta a { color: var(--accent); overflow-wrap: anywhere; }
 .entry-meta .index { color: var(--muted); }

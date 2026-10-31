@@ -41,7 +41,8 @@ export async function receiveUploads(req, { tempDir, maxBytes, maxFiles, fieldNa
         parser = busboy({
           headers: req.headers,
           defParamCharset: "utf8",
-          limits: { fileSize: maxBytes, files: maxFiles, fields: fieldNames.length, parts: maxFiles + fieldNames.length, fieldSize: 256 * 1024 },
+          // (No "parts" limit: busboy signals it on reaching the limit, not on going over.)
+          limits: { fileSize: maxBytes, files: maxFiles, fields: fieldNames.length, fieldSize: 256 * 1024 },
         });
       } catch {
         return reject(new HttpError(400, "Expected a multipart/form-data upload"));
@@ -58,7 +59,6 @@ export async function receiveUploads(req, { tempDir, maxBytes, maxFiles, fieldNa
         fields[name] = value;
       });
       parser.on("filesLimit", () => reject(new HttpError(413, `At most ${maxFiles} file(s) per upload`)));
-      parser.on("partsLimit", () => reject(new HttpError(413, "Too many parts in the upload")));
       parser.on("fieldsLimit", () => reject(new HttpError(400, "Unexpected form fields")));
       parser.on("error", () => reject(new HttpError(400, "Malformed upload")));
       parser.on("close", () => Promise.all(writes).then(resolve, reject));

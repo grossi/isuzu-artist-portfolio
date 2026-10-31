@@ -18,6 +18,19 @@ async function api(method, url, body) {
   return data;
 }
 
+// Draft edits go one at a time, each with the version the previous one
+// returned, so quick successive edits don't trip the stale-tab check.
+let edits = Promise.resolve();
+function edit(method, url, body) {
+  const next = edits.then(async () => {
+    const result = await api(method, url, { ...body, version: state.version });
+    if (typeof result.version === "number") state.version = result.version;
+    return result;
+  });
+  edits = next.catch(() => {});
+  return next;
+}
+
 let refreshing = null;
 function refresh() {
   refreshing ??= api("GET", "/api/state")
@@ -127,7 +140,7 @@ async function saveOrder(gallery, carousel, focus) {
   // Optimistic: show the new order at once, the server confirms it.
   Object.assign(state, { gallery, carousel });
   render();
-  await act(api("PUT", "/api/order", { version: state.version, gallery, carousel }));
+  await act(edit("PUT", "/api/order", { gallery, carousel }));
 }
 
 function toggleSlide(ref) {
@@ -319,7 +332,7 @@ async function saveSidebar(heading, order, focus) {
   const byId = new Map(state.sidebar.entries.map((entry) => [entry.id, entry]));
   state.sidebar = { heading, entries: order.map((id) => byId.get(id)) };
   render();
-  await act(api("PUT", "/api/sidebar", { version: state.version, heading, order }));
+  await act(edit("PUT", "/api/sidebar", { heading, order }));
 }
 
 const sidebarOrder = () => state.sidebar.entries.map((entry) => entry.id);
@@ -337,7 +350,8 @@ function entryCard(entry, index) {
   const order = sidebarOrder();
   const moveTo = (to, key) => () => saveSidebar(state.sidebar.heading, move(order, entry.id, to), `entry:${entry.id}:${key}`);
   return el("div", { class: "entry", "data-id": entry.id },
-    el("img", { class: "entry-thumb", src: `/thumb/sidebar/${entry.id}?v=${encodeURIComponent(entry.image)}`, alt: "", draggable: "false" }),
+    el("div", { class: "entry-handle", title: "Drag to reorder" },
+      el("img", { class: "entry-thumb", src: `/thumb/sidebar/${entry.id}?v=${encodeURIComponent(entry.image)}`, alt: "", draggable: "false" })),
     el("div", { class: "entry-body" },
       el("div", { class: "entry-meta" },
         el("span", { class: "index" }, `${index + 1}`),
@@ -366,7 +380,7 @@ function renderSidebar() {
 
 async function removeEntry(entry) {
   if (!confirm(`Remove "${entry.id}" from the sidebar?\n\nIt disappears from the site once saved and deployed; the git history keeps its files.`)) return;
-  await act(api("POST", "/api/sidebar/remove", { id: entry.id }), `Removed ${entry.id}`);
+  await act(edit("POST", "/api/sidebar/remove", { id: entry.id }), `Removed ${entry.id}`);
 }
 
 // The add / edit dialog. entryImage: a newly chosen File, if any.
@@ -394,11 +408,11 @@ function updateEntryPreview() {
   for (const lang of Object.keys(LANGS)) {
     const other = lang === "ja" ? "en" : "ja";
     const shown = texts[lang].trim() ? texts[lang] : texts[other];
+    const note = !shown.trim() ? "(no description)" : !texts[lang].trim() ? `(empty: showing the ${LANGS[other]} text)` : null;
     $(`entry-${lang}-preview`).replaceChildren(
       el("span", { class: "lang" }, `${LANGS[lang]} site`),
-      shown.trim()
-        ? [texts[lang].trim() ? null : el("p", { class: "muted" }, `(empty: showing the ${LANGS[other]} text)`), renderMarkdown(shown)]
-        : el("p", { class: "muted" }, "(no description)"));
+      ...(note ? [el("p", { class: "muted" }, note)] : []),
+      ...(shown.trim() ? [renderMarkdown(shown)] : []));
   }
   const link = $("entry-link").value.trim();
   const error = link && !validLink(link) ? "Enter a full link starting with https:// (or http://)." : "";
@@ -471,7 +485,7 @@ for (const lang of Object.keys(LANGS)) {
 
 async function remove(file) {
   if (!confirm(`Remove the unsaved upload ${file}?`)) return;
-  await act(api("POST", "/api/remove", { file }), `Removed ${file}`);
+  await act(edit("POST", "/api/remove", { file }), `Removed ${file}`);
 }
 
 async function preview() {
@@ -566,9 +580,10 @@ window.addEventListener("drop", (e) => {
 
 // Drag to reorder, with touch: a short press starts a drag so the page still scrolls.
 const sortables = [];
-function sortable(container, onSort) {
+function sortable(container, onSort, options = {}) {
   sortables.push(
     window.Sortable.create(container, {
+      ...options,
       animation: 150,
       delay: 180,
       delayOnTouchOnly: true,
@@ -586,7 +601,8 @@ function sortable(container, onSort) {
 window.addEventListener("DOMContentLoaded", () => {
   sortable($("gallery"), (gallery) => saveOrder(gallery, state.carousel));
   sortable($("carousel"), (carousel) => saveOrder(state.gallery, carousel));
-  sortable($("entries"), (order) => saveSidebar(state.sidebar.heading, order));
+  // Entries are mostly text and links: drag them by the image.
+  sortable($("entries"), (order) => saveSidebar(state.sidebar.heading, order), { handle: ".entry-handle" });
   refresh();
   events();
   setInterval(() => state && renderStatus(), 60000); // keep the "… ago" labels fresh
