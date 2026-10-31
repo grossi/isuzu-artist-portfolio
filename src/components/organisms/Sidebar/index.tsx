@@ -9,7 +9,7 @@ import CardMedia from "@mui/material/CardMedia";
 import Avatar from "@mui/material/Avatar";
 import SocialLinks, { SocialLink } from "components/molecules/SocialLinks";
 import useMarkdown from "hooks/useMarkdown";
-import { useLanguage } from "i18n/LanguageContext";
+import { Localized, useLanguage } from "i18n/LanguageContext";
 
 const useStyles = makeStyles()((theme) => ({
   sidebarAboutBox: {
@@ -36,35 +36,40 @@ const useStyles = makeStyles()((theme) => ({
   },
 }));
 
-interface Book {
-  link: string;
+// The shape of src/sidebar.json
+export interface SidebarData {
+  heading: Localized<string>;
+  entries: Array<{ id: string; image: string; link: string | null; description: Localized<string> }>;
+}
+
+interface Entry {
+  id: string;
   image: string;
+  link: string | null;
   description: string;
 }
 
 interface SidebarProps {
   title: string;
   description: string;
-  booksHeader: string;
-  books: Book[];
+  entriesHeader: string;
+  entries: Entry[];
   socialLinks: SocialLink[];
 }
 
-function BookEntry(props: Book) {
-  const description = useMarkdown(props.description);
+function SidebarEntry(props: Entry) {
+  const image = <CardMedia component="img" src={props.image} />;
   return (
     <React.Fragment>
-      <Link href={props.link}>
-        <CardMedia component="img" src={props.image} />
-      </Link>
-      <Markdown>{description}</Markdown>
+      {props.link ? <Link href={props.link}>{image}</Link> : image}
+      {props.description.trim() && <Markdown>{props.description}</Markdown>}
     </React.Fragment>
   );
 }
 
 export default function Sidebar(props: SidebarProps) {
   const { classes } = useStyles();
-  const { title, description, booksHeader, books, socialLinks } = props;
+  const { title, description, entriesHeader, entries, socialLinks } = props;
   const { t } = useLanguage();
   const loadedAbout = useMarkdown(description);
 
@@ -85,14 +90,16 @@ export default function Sidebar(props: SidebarProps) {
         <Markdown>{loadedAbout}</Markdown>
         <SocialLinks socialLinks={socialLinks} />
       </Paper>
-      <Paper elevation={0} className={classes.sidebarAboutBox}>
-        <Typography variant="h4" gutterBottom>
-          {booksHeader}
-        </Typography>
-        {books.map((book) => (
-          <BookEntry key={book.link} {...book} />
-        ))}
-      </Paper>
+      {entries.length > 0 && (
+        <Paper elevation={0} className={classes.sidebarAboutBox}>
+          <Typography variant="h4" gutterBottom>
+            {entriesHeader}
+          </Typography>
+          {entries.map((entry) => (
+            <SidebarEntry key={entry.id} {...entry} />
+          ))}
+        </Paper>
+      )}
     </Grid>
   );
 }

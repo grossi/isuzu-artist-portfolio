@@ -18,6 +18,12 @@ This reads the images inside the `/public` folder to create the json who are use
 
 `public/carousel` -> Main page hero carousel images
 
+`src/image-order.json` -> Gallery order and carousel slides (optional)
+
+`src/sidebar-content.json` -> The home sidebar's 著書 / My Books box (entries in `public/sidebar/`)
+
+These are normally edited with the admin console, see [`admin/README.md`](admin/README.md).
+
 `public/work-gallery` -> Work page, each folder representing a work card with `about.ja.md` / `about.en.md` as the Japanese / English description, `banner.png` as the card banner and the rest as the work card gallery.
 
 
