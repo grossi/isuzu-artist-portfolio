@@ -22,12 +22,14 @@ yarn deploy         # Full deployment pipeline (build → push-s3)
 The `yarn build-images` command processes images from:
 - `/public/gallery/` → Main page gallery with automatic thumbnails
 - `/public/carousel/` → Hero carousel images  
+- `src/image-order.json` (optional) → Gallery order and carousel slides (see `src/utils/imageOrder.js`): listed gallery files first, then the rest in byte order; carousel slides may be `carousel/<file>` or `gallery/<file>`. Without it, the whole gallery in byte order and every image in `public/carousel/`
+- `src/sidebar-content.json` → The home sidebar's second box (著書 / My Books): heading plus ordered entries with image, optional http(s) link and ja/en markdown (see `src/utils/sidebar.js`). Images in `/public/sidebar/` get a sidebar-sized webp; images directly in `public/` (the original `isuzubook*.webp` covers) ship as they are. Generates `src/sidebar.json`
 - `/public/work-gallery/` → Work portfolios (each folder = one work card)
   - `banner.png` → Card banner image
   - `about.ja.md` / `about.en.md` → Work description per language
   - Other images → Gallery images for that work
 
-For each source image it writes WebP derivatives next to it: `small/` (grid thumbnails and the cropped work-card banner strip) and `large/` (hero slides and the click-to-enlarge viewer, max 2048px wide). These folders are gitignored and regenerated on every `yarn start`/`yarn build`; only the originals and the `src/*.json` manifests are committed.
+For each source image it writes WebP derivatives next to it: `small/` (grid thumbnails and the cropped work-card banner strip) and `large/` (hero slides and the click-to-enlarge viewer, max 2048px wide; sidebar images, max 800px). These folders are gitignored and regenerated on every `yarn start`/`yarn build`; only the originals and the `src/*.json` manifests are committed.
 
 ## Architecture
 
@@ -58,7 +60,8 @@ components/
 - `src/index.tsx` - React entry point
 - `src/App.tsx` - Main routing setup
 - `src/theme.ts` - MUI theme
-- `src/utils/loadImages.js` - Image processing script that generates JSON and WebP versions
+- `src/utils/loadImages.js` - Image processing script that generates JSON and WebP versions (`imageOrder.js` and `sidebar.js` hold the shared rules, also used by the admin)
+- `admin/` - Tailnet-only admin console (own `package.json`, outside the site's build and lint): uploads, gallery/carousel order, sidebar entries, preview, save to `main` and deploy. See `admin/README.md`
 - `src/components/molecules/PhotoRows/` - Justified photo rows shared by the galleries: react-photo-gallery's row layout rendered with react-photo-album, lazy-loaded photos that open the viewer
 - `src/pages/` - Page components for each route
 - `src/assets/md/` - Markdown content files, one per language (`name.ja.md`, `name.en.md`)
@@ -78,6 +81,11 @@ Images are processed at build time to create:
 3. Automatic thumbnails for galleries
 
 Always run `yarn build-images` after adding/modifying images (and commit the updated `src/*.json`). The generated WebP folders are build-only and never committed.
+
+Content changes usually come from the admin console, which commits straight to `main` and deploys. Expect commits titled `content: …` on `main`.
+
+### Markdown
+`components/molecules/Markdown` never parses raw HTML and only allows http(s), mailto and relative URLs, because sidebar descriptions are written in the admin console. Keep it that way.
 
 ### Imports and Assets
 - Bare imports resolve from `src/` (`components/...`, `pages/...`, `gallery.json`) through the `paths` mapping in `tsconfig.json` (Vite's `resolve.tsconfigPaths`).
