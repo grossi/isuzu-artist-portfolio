@@ -106,18 +106,26 @@ export function summary(job) {
 }
 
 // Runs a program without a shell, streaming its output to log. Rejects on a
-// non-zero exit, or kills it after timeoutMs so a hung step can't hold the
-// lock forever.
+// non-zero exit, or stops it after timeoutMs so a hung step can't hold the
+// lock forever. It runs in its own process group, so the whole tree is
+// stopped (yarn and git start children that would keep the pipes open).
 export function run(command, args, { cwd, log, env, timeoutMs = 30 * 60 * 1000 }) {
   log(`$ ${[command, ...args].join(" ")}`);
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(command, args, { cwd, env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"], detached: true });
+    const killGroup = (signal) => {
+      try {
+        process.kill(-child.pid, signal);
+      } catch {
+        // already gone
+      }
+    };
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
-      log(`✗ Still running after ${Math.round(timeoutMs / 60000)} min: stopping it`);
-      child.kill("SIGTERM");
-      setTimeout(() => child.kill("SIGKILL"), 10000).unref();
+      log(`✗ Still running after ${Math.max(1, Math.round(timeoutMs / 60000))} min: stopping it`);
+      killGroup("SIGTERM");
+      setTimeout(() => killGroup("SIGKILL"), 10000).unref();
     }, timeoutMs);
     const pending = { stdout: "", stderr: "" };
     const forward = (stream) => (chunk) => {
