@@ -78,7 +78,6 @@ test("uploads go first with unique names; order and carousel are validated", asy
 
   const draft = await ws.draft();
   assert.deepEqual(draft.added, ["a-2.png", "new.png", "new-2.png"]);
-  assert.deepEqual(draft.untracked.sort(), ["a-2.png", "new-2.png", "new.png"]);
 
   const gallery = ["c.jpg", "a.png", "b.png", "new.png", "a-2.png", "new-2.png"];
   ws.setOrder({ gallery, carousel: ["gallery/new.png", "carousel/slide.png"] });
@@ -163,7 +162,8 @@ test("a conflict in a source file aborts the rebase and deploys nothing", async 
   ws.writeOrder({ gallery: ["b.png"] });
   await ws.save(log, "content: local order");
   const before = sh(ws.root, "rev-parse", "HEAD");
-  await assert.rejects(ws.deploy(log), /Rebase onto origin\/main failed \(conflicts in src\/image-order.json\)/);
+  await assert.rejects(ws.deploy(log), /Rebase failed \(conflicts in src\/image-order.json\).*Nothing was pushed/);
+  assert.ok(!fs.existsSync(ws.rebaseMarker));
   assert.equal(sh(ws.root, "rev-parse", "HEAD"), before);
   assert.equal(await ws.rebaseInProgress(), false);
   assert.equal((await ws.draft()).dirty, false);
@@ -190,7 +190,21 @@ test("conflicts only in generated manifests are resolved and regenerated", async
   assert.ok(fs.existsSync(ws.file("public/gallery/new.png")));
 });
 
-test("a rebase interrupted by a restart is reported, then aborted at startup", async () => {
+test("a manifest main deleted and the admin changed is resolved too", async () => {
+  sh(other, "rm", "--quiet", "src/gallery.json");
+  sh(other, "commit", "--quiet", "-m", "upstream drops the manifest");
+  sh(other, "push", "--quiet", "origin", "main");
+
+  ws.addUploads([await upload("new", "white")]);
+  fs.writeFileSync(ws.file("src/gallery.json"), '["local"]\n');
+  await ws.save(log, "content: add new.png");
+  ws.buildImages = async () => fs.writeFileSync(ws.file("src/gallery.json"), '["regenerated"]\n');
+  const deployed = await ws.deploy(log);
+  assert.equal(sh(origin, "rev-parse", "main"), deployed.sha);
+  assert.equal(fs.readFileSync(ws.file("src/gallery.json"), "utf-8"), '["regenerated"]\n');
+});
+
+test("an interrupted rebase: the admin's own is aborted at startup, one by hand is kept until Discard", async () => {
   fs.writeFileSync(path.join(other, "src/image-order.json"), '{ "gallery": ["c.jpg"] }\n');
   sh(other, "add", ".");
   sh(other, "commit", "--quiet", "-m", "upstream order");
@@ -199,12 +213,24 @@ test("a rebase interrupted by a restart is reported, then aborted at startup", a
   await ws.save(log, "content: local order");
   const before = sh(ws.root, "rev-parse", "HEAD");
   sh(ws.root, "fetch", "--quiet");
-  assert.throws(() => sh(ws.root, "rebase", "origin/main"));
 
+  // By hand: startup leaves it alone, edits are refused, Discard aborts it.
+  assert.throws(() => sh(ws.root, "rebase", "origin/main"));
+  await ws.recover();
+  assert.equal(await ws.rebaseInProgress(), true);
   await assert.rejects(ws.check(), /rebase is in progress/);
   await ws.check({ duringJob: true });
+  await ws.check({ allowRebase: true });
+  await ws.discard();
+  assert.equal(await ws.rebaseInProgress(), false);
+  assert.equal(sh(ws.root, "rev-parse", "HEAD"), before);
+
+  // The admin's own (its marker is there): aborted at startup.
+  assert.throws(() => sh(ws.root, "rebase", "origin/main"));
+  fs.writeFileSync(ws.rebaseMarker, "origin/main");
   await ws.recover();
   assert.equal(await ws.rebaseInProgress(), false);
+  assert.ok(!fs.existsSync(ws.rebaseMarker));
   assert.equal(sh(ws.root, "rev-parse", "HEAD"), before);
   await ws.check();
 });

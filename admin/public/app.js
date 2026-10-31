@@ -21,17 +21,26 @@ async function api(method, url, body) {
 // Draft edits go one at a time, each with the version the previous one
 // returned, so quick successive edits don't trip the stale-tab check.
 let edits = Promise.resolve();
+let pendingEdits = 0; // queued or in flight: refreshes wait for them
 let latestVersion = 0; // the newest draft version any response has shown
 function queue(send) {
+  pendingEdits++;
   const next = edits.then(async () => {
     const result = await send();
     if (typeof result?.version === "number") {
-      state.version = result.version;
       latestVersion = Math.max(latestVersion, result.version);
+      // Each edit bumps the version by one: anything else means another tab
+      // edited in between, and the refresh will bring its changes.
+      if (result.version === state.version + 1) state.version = result.version;
     }
     return result;
   });
-  edits = next.catch(() => {});
+  edits = next.catch(() => {}).finally(() => {
+    if (--pendingEdits === 0 && refreshAgain) {
+      refreshAgain = false;
+      refresh();
+    }
+  });
   return next;
 }
 const edit = (method, url, body) => queue(() => api(method, url, { ...body, version: state.version }));
@@ -41,14 +50,16 @@ const edit = (method, url, body) => queue(() => api(method, url, { ...body, vers
 let refreshing = null;
 let refreshAgain = false;
 function refresh() {
-  if (refreshing) {
+  // While edits are pending, the state on screen is ahead of the server's:
+  // fetch once they are done instead.
+  if (refreshing || pendingEdits > 0) {
     refreshAgain = true;
-    return refreshing;
+    return refreshing ?? Promise.resolve();
   }
   refreshing = api("GET", "/api/state")
     .then((next) => {
-      // Sent before an edit that has since answered: fetch again instead.
-      if (next.version < latestVersion) {
+      // Sent before an edit that has since answered, or one started meanwhile.
+      if (next.version < latestVersion || pendingEdits > 0) {
         refreshAgain = true;
         return;
       }
@@ -305,7 +316,7 @@ function galleryTile(file, index) {
   const ref = `gallery/${file}`;
   const { gallery, carousel, draft } = state;
   const inCarousel = carousel.includes(ref);
-  const isNew = draft.untracked.includes(file);
+  const isNew = draft.added.includes(file);
   const last = gallery.length - 1;
   const moveTo = (to, key) => () => saveOrder(move(gallery, file, to), carousel, `${ref}:${key}`);
   return el("div", { class: `tile${isNew ? " new" : ""}${inCarousel ? " in-carousel" : ""}`, "data-id": file },
@@ -546,6 +557,9 @@ async function preview() {
 
 function save() {
   $("save-message").value = state.draft.message;
+  // A reopened dialog keeps its last returnValue, and Esc doesn't reset it
+  // everywhere (Firefox): without this, Esc could save.
+  $("save-dialog").returnValue = "";
   $("save-dialog").showModal();
 }
 
@@ -565,6 +579,7 @@ function deploy() {
     el("p", { class: "muted" }, "Fetches GitHub, rebases onto origin/main, pushes main, then runs ", el("code", {}, deployCommand), ".")
   );
   $("deploy-confirm").disabled = draft.dirty;
+  $("deploy-dialog").returnValue = ""; // see save()
   $("deploy-dialog").showModal();
 }
 

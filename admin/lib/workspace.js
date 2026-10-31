@@ -11,6 +11,7 @@ const { ORDER_FILE, splitName, isImageFile, parseOrder, listImages, orderGallery
   require("../../src/utils/imageOrder.js");
 const sidebarRules = require("../../src/utils/sidebar.js");
 
+export { isImageFile };
 export const GALLERY_DIR = "public/gallery";
 export const CAROUSEL_DIR = "public/carousel";
 export const SIDEBAR_DIR = sidebarRules.SIDEBAR_DIR;
@@ -54,6 +55,8 @@ export class Workspace {
     this.root = config.workspace;
     this.config = config;
     this.deployedFile = path.join(config.stateDir, "deployed.json");
+    // Present while the admin's own rebase runs (see recover()).
+    this.rebaseMarker = path.join(config.stateDir, "rebasing");
   }
 
   file(...parts) {
@@ -63,11 +66,13 @@ export class Workspace {
   // ---- Reading -----------------------------------------------------------
 
   // duringJob: a running deploy may be in the middle of its own rebase.
-  async check({ duringJob = false } = {}) {
+  // allowRebase: Discard, which aborts one.
+  async check({ duringJob = false, allowRebase = false } = {}) {
     if (!fs.existsSync(this.file(".git"))) throw new Error(`${this.root} is not a git clone (see admin/README.md)`);
     if (duringJob) return;
     if (await this.rebaseInProgress()) {
-      throw new HttpError(409, "A rebase is in progress in the workspace. Restart the admin (it aborts interrupted rebases) or run `git rebase --abort` there.");
+      if (allowRebase) return;
+      throw new HttpError(409, "A rebase is in progress in the workspace: finish it there, or press Discard draft to abort it.");
     }
     const branch = (await git(this.root, ["symbolic-ref", "--quiet", "--short", "HEAD"]).catch(() => "")).trim();
     if (branch !== this.config.branch) {
@@ -75,12 +80,18 @@ export class Workspace {
     }
   }
 
-  // At startup, before anything holds the lock: only the admin rebases in
-  // this clone, so a rebase still in progress is one a restart interrupted.
+  // At startup, before anything holds the lock: a rebase the admin started
+  // (the marker is there) was interrupted by the restart, so abort it. One
+  // started by hand is left alone.
   async recover() {
-    if (fs.existsSync(this.file(".git")) && (await this.rebaseInProgress())) {
-      console.log("Aborting a rebase interrupted by a restart");
-      await git(this.root, ["rebase", "--abort"]);
+    try {
+      if (fs.existsSync(this.rebaseMarker) && fs.existsSync(this.file(".git")) && (await this.rebaseInProgress())) {
+        console.log("Aborting a rebase interrupted by a restart");
+        await git(this.root, ["rebase", "--abort"]);
+      }
+      fs.rmSync(this.rebaseMarker, { force: true });
+    } catch (error) {
+      console.error("Couldn't abort the interrupted rebase:", error.message);
     }
   }
 
@@ -149,7 +160,6 @@ export class Workspace {
       ...describeChanges(head, now),
       dirty: status.length > 0,
       other: status.filter(({ file }) => !isContent(file)).map(({ code, file }) => `${code} ${file}`),
-      untracked: status.filter(({ code, file }) => code === "??" && file.startsWith(`${GALLERY_DIR}/`)).map(({ file }) => path.basename(file)),
     };
   }
 
@@ -240,10 +250,10 @@ export class Workspace {
     return names;
   }
 
-  // Only an upload that was never saved can be removed.
+  // Only an upload that was never saved (not in HEAD) can be removed.
   async removeUpload(file) {
-    const { untracked } = await this.draft();
-    if (typeof file !== "string" || !untracked.includes(file)) throw new HttpError(400, "Only unsaved uploads can be removed");
+    const { added } = describeChanges(await this.committed(), { ...this.current(), sidebar: this.readSidebar() });
+    if (typeof file !== "string" || !added.includes(file)) throw new HttpError(400, "Only unsaved uploads can be removed");
     const now = this.current();
     fs.unlinkSync(this.file(GALLERY_DIR, file));
     const order = { ...now.order, gallery: now.gallery.filter((f) => f !== file) };
@@ -350,7 +360,6 @@ export class Workspace {
   }
 
   async save(log, message) {
-    if (await this.rebaseInProgress()) throw new Error("A rebase is in progress in the workspace; discard the draft first");
     await this.install(log);
     await this.buildImages(log);
     await this.commitContent(log, message, () => {
@@ -431,27 +440,44 @@ export class Workspace {
   // commits them) and resolved with main's version, since the deploy
   // regenerates them right after. Any other conflict aborts the rebase.
   async rebase(upstream, log) {
-    let step = runGit(this.root, ["rebase", upstream], log);
-    for (;;) {
-      try {
-        return await step;
-      } catch {
-        const conflicts = (await git(this.root, ["diff", "--name-only", "--diff-filter=U"]).catch(() => "")).trim().split("\n").filter(Boolean);
-        if (!conflicts.length || !conflicts.every((file) => MANIFESTS.includes(file))) {
-          await runGit(this.root, ["rebase", "--abort"], log).catch(() => {});
-          throw new Error(
-            `Rebase onto ${upstream} failed${conflicts.length ? ` (conflicts in ${conflicts.join(", ")})` : ""}. ` +
-              "Nothing was pushed or deployed and the saved commits are unchanged; resolve it in the workspace by hand (see admin/README.md)."
-          );
+    fs.writeFileSync(this.rebaseMarker, upstream);
+    try {
+      let args = ["rebase", upstream];
+      for (;;) {
+        try {
+          return await runGit(this.root, args, log);
+        } catch {
+          // Throws (and so aborts) unless the stop is only about manifests.
+          const empty = await this.resolveManifestConflicts(log);
+          args = ["rebase", empty ? "--skip" : "--continue"];
         }
-        log(`Conflict only in generated manifests (${conflicts.join(", ")}): taking main's version, they are regenerated next`);
-        // During a rebase "ours" is the branch being rebased onto.
-        await runGit(this.root, ["checkout", "--ours", "--", ...conflicts], log);
-        await runGit(this.root, ["add", "--", ...conflicts], log);
-        const empty = await gitOk(this.root, ["diff", "--cached", "--quiet"]);
-        step = runGit(this.root, ["rebase", empty ? "--skip" : "--continue"], log);
       }
+    } catch (error) {
+      await runGit(this.root, ["rebase", "--abort"], log).catch(() => {});
+      throw new Error(`${error.message} Nothing was pushed or deployed and the saved commits are unchanged.`);
+    } finally {
+      fs.rmSync(this.rebaseMarker, { force: true });
     }
+  }
+
+  // Resolves a rebase stop that is only about generated manifests, and says
+  // whether the commit became empty. Throws for anything else.
+  async resolveManifestConflicts(log) {
+    const conflicts = (await git(this.root, ["diff", "--name-only", "--diff-filter=U"]).catch(() => "")).trim().split("\n").filter(Boolean);
+    if (!conflicts.length || !conflicts.every((file) => MANIFESTS.includes(file))) {
+      throw new Error(
+        `Rebase failed${conflicts.length ? ` (conflicts in ${conflicts.join(", ")})` : ""}: resolve it in the workspace by hand (see admin/README.md).`
+      );
+    }
+    log(`Conflict only in generated manifests (${conflicts.join(", ")}): taking main's version, they are regenerated next`);
+    for (const file of conflicts) {
+      // During a rebase "ours" is the branch being rebased onto; main may
+      // also have deleted the file.
+      const onMain = await gitOk(this.root, ["cat-file", "-e", `HEAD:${file}`]);
+      if (onMain) await runGit(this.root, ["checkout", "--ours", "--", file], log);
+      await runGit(this.root, onMain ? ["add", "--", file] : ["rm", "--quiet", "--force", "--", file], log);
+    }
+    return gitOk(this.root, ["diff", "--cached", "--quiet"]);
   }
 }
 
@@ -515,7 +541,7 @@ export function commitMessage(changes) {
 }
 
 function cleanHeading(text) {
-  if (typeof text !== "string" || text.length > MAX_HEADING) throw new HttpError(400, `The heading must be at most ${MAX_HEADING} characters`);
+  if (typeof text !== "string" || text.length > MAX_HEADING) throw new HttpError(400, `The heading must be text of at most ${MAX_HEADING} characters`);
   return text.replace(/\s+/g, " ").trim();
 }
 
