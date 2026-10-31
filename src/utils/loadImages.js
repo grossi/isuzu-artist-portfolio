@@ -1,5 +1,6 @@
 const fs = require("fs");
 const sharp = require('sharp');
+const { readOrder, listImages, orderGallery, orderCarousel, splitName } = require('./imageOrder');
 
 async function sizeOf(imagePath) {
   const { width, height } = await sharp(imagePath).metadata();
@@ -46,6 +47,9 @@ function scaledDimentions({ h, w }) {
 }
 
 async function main() {
+  // Gallery order and carousel slides, see imageOrder.js
+  const order = readOrder(require("path").join(__dirname, "../.."));
+
   /** Generates Gallery json */
 
   const galleryNormalizedPath = require("path").join(__dirname, "../../public/gallery");
@@ -55,38 +59,31 @@ async function main() {
 
   const rescaleJobs = [];
 
-  // Plain code-unit (byte) order, e.g. "zzzzz (10)" before "zzzzz (2)": the gallery order is curated against it.
-  const galleryPictures = (await Promise.all(fs.readdirSync(galleryNormalizedPath).sort().map(async (file, k) => {
-    let fileStats = fs.statSync(`public/gallery/${file}`);
-    const extension = file.split('.')[1];
-    // Skip folders and stray files such as .DS_Store, which sizeOf can't read.
-    if(!fileStats.isDirectory() && (extension === 'jpg' || extension === 'png')) {
-      const name = file.split('.')[0];
-      const dimensions = await sizeOf(`public/gallery/${file}`);
+  const galleryFiles = orderGallery(listImages(galleryNormalizedPath), order.gallery);
+  const galleryPictures = await Promise.all(galleryFiles.map(async (file) => {
+    const { name, extension } = splitName(file);
+    const dimensions = await sizeOf(`public/gallery/${file}`);
 
-      rescaleJobs.push(rescale({
-        imagePath: `public/gallery/${file}`,
-        width: scaledDimentions({ h: dimensions.height, w: dimensions.width }),
-        destinationPath: `public/gallery/small/${name}`
-      }));
-      rescaleJobs.push(rescaleLarge({
-        imagePath: `public/gallery/${file}`,
-        destinationPath: `public/gallery/large/${name}`
-      }));
+    rescaleJobs.push(rescale({
+      imagePath: `public/gallery/${file}`,
+      width: scaledDimentions({ h: dimensions.height, w: dimensions.width }),
+      destinationPath: `public/gallery/small/${name}`
+    }));
+    rescaleJobs.push(rescaleLarge({
+      imagePath: `public/gallery/${file}`,
+      destinationPath: `public/gallery/large/${name}`
+    }));
 
-      return {
-        name,
-        extension,
-        width: dimensions.width,
-        height: dimensions.height,
-        location: `gallery/${file}`,
-        locationSmall: `gallery/small/${name}.webp`,
-        locationLarge: `gallery/large/${name}.webp`,
-      }
-    } else {
-      return {};
+    return {
+      name,
+      extension,
+      width: dimensions.width,
+      height: dimensions.height,
+      location: `gallery/${file}`,
+      locationSmall: `gallery/small/${name}.webp`,
+      locationLarge: `gallery/large/${name}.webp`,
     }
-  }))).filter(picture => (picture.extension === 'jpg' || picture.extension === 'png'));
+  }));
 
   fs.writeFileSync('./src/gallery.json', JSON.stringify(galleryPictures, null, 2), 'utf-8'); 
 
@@ -96,25 +93,25 @@ async function main() {
 
   freshDir('public/carousel/large');
 
-  const carouselPictures = fs.readdirSync(carouselNormalizedPath).map((file, k) => {
-    const extension = file.split('.')[1];
-    const name = file.split('.')[0];
-    if (extension !== 'jpg' && extension !== 'png') {
-      return {};
-    }
+  // Slides taken from the gallery reuse its large/ derivatives.
+  const carouselPictures = orderCarousel(listImages(carouselNormalizedPath), galleryFiles, order.carousel).map((ref) => {
+    const [folder, file] = ref.split('/');
+    const { name, extension } = splitName(file);
 
-    rescaleJobs.push(rescaleLarge({
-      imagePath: `public/carousel/${file}`,
-      destinationPath: `public/carousel/large/${name}`
-    }));
+    if (folder === 'carousel') {
+      rescaleJobs.push(rescaleLarge({
+        imagePath: `public/carousel/${file}`,
+        destinationPath: `public/carousel/large/${name}`
+      }));
+    }
 
     return {
       name,
       extension,
-      location: `carousel/${file}`,
-      locationLarge: `carousel/large/${name}.webp`,
+      location: ref,
+      locationLarge: `${folder}/large/${name}.webp`,
     }
-  }).filter(picture => (picture.extension === 'jpg' || picture.extension === 'png'));
+  });
 
   fs.writeFileSync('./src/carousel.json', JSON.stringify(carouselPictures, null, 2), 'utf-8'); 
 
