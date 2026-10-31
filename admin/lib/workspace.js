@@ -370,8 +370,14 @@ export class Workspace {
       if (fs.existsSync(this.file(p)) || (OPTIONAL_PATHS.includes(p) && (await gitOk(this.root, ["ls-files", "--error-unmatch", "--", p])))) paths.push(p);
     }
     await runGit(this.root, ["add", "--all", "--", ...paths], log);
-    if (await gitOk(this.root, ["diff", "--cached", "--quiet", "--", ...paths])) return onNothing();
-    await runGit(this.root, ["commit", "--quiet", "-m", message, "--only", "--", ...paths], log);
+    // The commit's pathspecs must be known to git, now or in HEAD (a deletion):
+    // build-images creates public/sidebar/ for its ignored large/ alone.
+    const known = [];
+    for (const p of paths) {
+      if ((await git(this.root, ["ls-files", "--", p])).trim() || (await git(this.root, ["ls-tree", "--name-only", "HEAD", "--", p])).trim()) known.push(p);
+    }
+    if (!known.length || (await gitOk(this.root, ["diff", "--cached", "--quiet", "--", ...known]))) return onNothing();
+    await runGit(this.root, ["commit", "--quiet", "-m", message, "--only", "--", ...known], log);
   }
 
   async deploy(log) {

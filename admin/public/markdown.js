@@ -3,7 +3,7 @@ import { compiler } from "/vendor/markdown-to-jsx.js";
 // Same rules as the site's components/molecules/Markdown: no raw HTML, and
 // links and images only to http(s), mailto or relative URLs.
 export function safeUrl(url) {
-  const compact = Array.from(url).filter((c) => c.charCodeAt(0) > 0x20 && c.charCodeAt(0) !== 0x7f).join("");
+  const compact = Array.from(url).filter((c) => c.charCodeAt(0) > 0x20 && c.charCodeAt(0) !== 0x7f && !/\p{Cf}/u.test(c)).join("");
   const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(compact);
   return !scheme || ["http", "https", "mailto"].includes(scheme[1].toLowerCase()) ? url : null;
 }

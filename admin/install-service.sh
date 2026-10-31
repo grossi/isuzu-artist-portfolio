@@ -123,6 +123,7 @@ Environment=PATH=$(dirname "$yarn_bin"):$(dirname "$node_bin"):$(dirname "$aws_b
 ExecStart=$node_bin $workspace/admin/server.js
 Restart=always
 RestartSec=5
+NoNewPrivileges=yes
 
 [Install]
 WantedBy=default.target
