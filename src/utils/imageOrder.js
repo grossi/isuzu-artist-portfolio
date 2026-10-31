@@ -44,10 +44,12 @@ function parseOrder(text) {
   return order;
 }
 
-// Image files directly in dir, in byte order (directories such as small/ are skipped).
+// Image files directly in dir, in byte order (directories such as small/ are
+// skipped; a symlink counts if it points to a file).
 function listImages(dir) {
+  const isFile = (entry) => entry.isFile() || (entry.isSymbolicLink() && Boolean(fs.statSync(path.join(dir, entry.name), { throwIfNoEntry: false })?.isFile()));
   return fs.readdirSync(dir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && isImageFile(entry.name))
+    .filter((entry) => isFile(entry) && isImageFile(entry.name))
     .map((entry) => entry.name)
     .sort();
 }

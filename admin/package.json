@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "busboy": "^1.6.0",
-    "markdown-to-jsx": "^7.7.17",
     "sharp": "^0.35.5",
     "sortablejs": "^1.15.7"
   }

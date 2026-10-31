@@ -48,10 +48,11 @@ function validateContent(content) {
   };
   if (!content || typeof content !== "object") fail("expected an object");
   const { heading = { ja: "", en: "" }, entries } = content;
-  if (!isText(heading.ja) || !isText(heading.en)) fail('"heading" must have "ja" and "en" strings');
+  if (!heading || !isText(heading.ja) || !isText(heading.en)) fail('"heading" must have "ja" and "en" strings');
   if (!Array.isArray(entries)) fail('"entries" must be a list');
   const ids = new Set();
   for (const entry of entries) {
+    if (!entry || typeof entry !== "object") fail("every entry must be an object");
     if (typeof entry.id !== "string" || !/^[a-z0-9-]+$/.test(entry.id) || ids.has(entry.id)) fail(`bad or repeated id "${entry.id}"`);
     ids.add(entry.id);
     if (!isValidImage(entry.image)) fail(`${entry.id}: bad image "${entry.image}"`);

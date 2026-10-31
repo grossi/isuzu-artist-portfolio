@@ -36,10 +36,14 @@ export function resolveInside(root, urlPath) {
   return file;
 }
 
+export function contentType(file) {
+  return TYPES[path.extname(file).toLowerCase()] || "application/octet-stream";
+}
+
 export function sendFile(res, file, { cache = "no-store", status = 200 } = {}) {
   const stat = fs.statSync(file);
   res.writeHead(status, {
-    "Content-Type": TYPES[path.extname(file).toLowerCase()] || "application/octet-stream",
+    "Content-Type": contentType(file),
     "Content-Length": stat.size,
     "Cache-Control": cache,
     "X-Content-Type-Options": "nosniff",

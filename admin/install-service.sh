@@ -33,9 +33,38 @@ preview_https_port="${ADMIN_PREVIEW_HTTPS_PORT:-8973}"
 env_file="$HOME/.config/isuzu-admin/env"
 unit_file="$HOME/.config/systemd/user/isuzu-admin.service"
 
+# An existing env file wins (re-running must not point tailscale serve at
+# other ports than the service uses).
+from_env_file() {
+  local value=""
+  [ -f "$env_file" ] && value="$(sed -n "s/^$1=//p" "$env_file" | tail -n 1)"
+  echo "${value:-$2}"
+}
+port="$(from_env_file ADMIN_PORT "$port")"
+preview_port="$(from_env_file ADMIN_PREVIEW_PORT "$preview_port")"
+workspace="$(from_env_file ADMIN_WORKSPACE "$workspace")"
+state_dir="$(from_env_file ADMIN_STATE_DIR "$state_dir")"
+
+# The unit file can't quote these paths.
+for path in "$workspace" "$state_dir"; do
+  case "$path" in
+    *[!A-Za-z0-9._/-]*) echo "Use a path without spaces or special characters: $path" >&2; exit 1 ;;
+  esac
+done
+
 node_bin="$(command -v node)" || { echo "node is not on PATH" >&2; exit 1; }
 yarn_bin="$(command -v yarn)" || { echo "yarn is not on PATH" >&2; exit 1; }
-tailnet_name="$(tailscale status --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).Self.DNSName.replace(/\.$/,"")))')"
+aws_bin="$(command -v aws)" || { echo "aws (the AWS CLI, for yarn deploy) is not on PATH" >&2; exit 1; }
+
+tailnet_name() {
+  local name
+  name="$(tailscale status --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log((JSON.parse(s).Self?.DNSName||"").replace(/\.$/,"")))')"
+  if [ -z "$name" ]; then
+    echo "Can't read this machine's tailnet name: is tailscale up and logged in?" >&2
+    exit 1
+  fi
+  echo "$name"
+}
 
 echo "== Workspace $workspace"
 if [ ! -d "$workspace/.git" ]; then
@@ -60,6 +89,7 @@ mkdir -p "$(dirname "$env_file")"
 if [ -f "$env_file" ]; then
   echo "(kept the existing file)"
 else
+  name="$(tailnet_name)"
   cat > "$env_file" <<EOF
 # isuzu-admin settings, read by $unit_file. Restart the service after editing:
 #   systemctl --user restart isuzu-admin
@@ -69,8 +99,10 @@ ADMIN_STATE_DIR=$state_dir
 ADMIN_HOST=127.0.0.1
 ADMIN_PORT=$port
 ADMIN_PREVIEW_PORT=$preview_port
-ADMIN_TAILNET_NAME=$tailnet_name
-ADMIN_PREVIEW_URL=https://$tailnet_name:$preview_https_port/
+ADMIN_TAILNET_NAME=$name
+ADMIN_PREVIEW_URL=https://$name:$preview_https_port/
+# Optional: only these Tailscale logins (comma-separated) may use the admin.
+#ADMIN_ALLOWED_USERS=
 # Split on spaces and run without a shell, in the workspace.
 ADMIN_DEPLOY_CMD=yarn deploy
 EOF
@@ -81,14 +113,13 @@ mkdir -p "$(dirname "$unit_file")"
 cat > "$unit_file" <<EOF
 [Unit]
 Description=isuZu admin console (127.0.0.1:$port, preview :$preview_port; tailscale serve :$https_port / :$preview_https_port)
-After=network-online.target
 
 [Service]
 Type=simple
 WorkingDirectory=$workspace/admin
 EnvironmentFile=$env_file
-# yarn (corepack) and aws live in ~/.local/bin.
-Environment=PATH=$(dirname "$yarn_bin"):$(dirname "$node_bin"):/usr/local/bin:/usr/bin:/bin
+# yarn (corepack), node and aws (for yarn deploy).
+Environment=PATH=$(dirname "$yarn_bin"):$(dirname "$node_bin"):$(dirname "$aws_bin"):/usr/local/bin:/usr/bin:/bin
 ExecStart=$node_bin $workspace/admin/server.js
 Restart=always
 RestartSec=5
@@ -112,6 +143,11 @@ if [ -n "$serve" ]; then
 fi
 
 echo
-echo "Admin:   https://$tailnet_name:$https_port/"
-echo "Preview: https://$tailnet_name:$preview_https_port/"
+if [ -n "$serve" ]; then
+  name="$(tailnet_name)"
+  echo "Admin:   https://$name:$https_port/"
+  echo "Preview: https://$name:$preview_https_port/"
+else
+  echo "Admin:   http://127.0.0.1:$port/ (no tailscale serve)"
+fi
 echo "Logs:    journalctl --user -u isuzu-admin -f"

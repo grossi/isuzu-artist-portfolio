@@ -24,9 +24,12 @@ const OPTIONAL_PATHS = [ORDER_FILE, SIDEBAR_DIR];
 const MAX_HEADING = 200;
 const MAX_DESCRIPTION = 20000;
 
-// Git never prompts (a missing credential fails instead of hanging) and never
-// opens an editor.
-const GIT_ENV = { GIT_TERMINAL_PROMPT: "0", GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true" };
+// Git never prompts (a missing credential fails instead of hanging), never
+// opens an editor, and read-only commands such as the status refresh behind
+// /api/state never take index.lock away from a running job.
+const GIT_ENV = { GIT_TERMINAL_PROMPT: "0", GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true", GIT_OPTIONAL_LOCKS: "0" };
+// Network steps get a shorter leash than builds.
+const NETWORK_TIMEOUT = 5 * 60 * 1000;
 const execFileAsync = promisify(execFile);
 
 export async function git(cwd, args) {
@@ -42,8 +45,8 @@ async function gitOk(cwd, args) {
   return git(cwd, args).then(() => true, () => false);
 }
 
-function runGit(cwd, args, log) {
-  return run("git", args, { cwd, log, env: GIT_ENV });
+function runGit(cwd, args, log, options = {}) {
+  return run("git", args, { cwd, log, env: GIT_ENV, ...options });
 }
 
 export class Workspace {
@@ -59,11 +62,25 @@ export class Workspace {
 
   // ---- Reading -----------------------------------------------------------
 
-  async check() {
+  // duringJob: a running deploy may be in the middle of its own rebase.
+  async check({ duringJob = false } = {}) {
     if (!fs.existsSync(this.file(".git"))) throw new Error(`${this.root} is not a git clone (see admin/README.md)`);
+    if (duringJob) return;
+    if (await this.rebaseInProgress()) {
+      throw new HttpError(409, "A rebase is in progress in the workspace. Restart the admin (it aborts interrupted rebases) or run `git rebase --abort` there.");
+    }
     const branch = (await git(this.root, ["symbolic-ref", "--quiet", "--short", "HEAD"]).catch(() => "")).trim();
     if (branch !== this.config.branch) {
       throw new HttpError(409, `The workspace is on "${branch || "a detached HEAD"}", not ${this.config.branch}`);
+    }
+  }
+
+  // At startup, before anything holds the lock: only the admin rebases in
+  // this clone, so a rebase still in progress is one a restart interrupted.
+  async recover() {
+    if (fs.existsSync(this.file(".git")) && (await this.rebaseInProgress())) {
+      console.log("Aborting a rebase interrupted by a restart");
+      await git(this.root, ["rebase", "--abort"]);
     }
   }
 
@@ -209,7 +226,16 @@ export class Workspace {
       taken.add(name.toLowerCase());
       return `${name}.${extension}`;
     });
-    uploads.forEach((upload, i) => fs.copyFileSync(upload.path, path.join(dir, names[i]), fs.constants.COPYFILE_EXCL));
+    const copied = [];
+    try {
+      uploads.forEach((upload, i) => {
+        fs.copyFileSync(upload.path, path.join(dir, names[i]), fs.constants.COPYFILE_EXCL);
+        copied.push(path.join(dir, names[i]));
+      });
+    } catch (error) {
+      copied.forEach((file) => fs.rmSync(file, { force: true }));
+      throw error;
+    }
     this.writeOrder({ ...now.order, gallery: [...names, ...now.gallery] });
     return names;
   }
@@ -347,31 +373,18 @@ export class Workspace {
   async deploy(log) {
     const { remote, branch, deployCommand } = this.config;
     const upstream = `${remote}/${branch}`;
-    if (await this.rebaseInProgress()) {
-      log("Aborting an interrupted rebase");
-      await runGit(this.root, ["rebase", "--abort"], log);
-    }
     const status = await this.status();
     if (status.length) {
       throw new Error(`The workspace has unsaved changes (${status.slice(0, 5).map((e) => e.file).join(", ")}${status.length > 5 ? ", …" : ""}). Save or discard the draft first.`);
     }
 
     log("== Fetching");
-    await runGit(this.root, ["fetch", "--quiet", remote, branch], log);
+    await runGit(this.root, ["fetch", "--quiet", remote, branch], log, { timeoutMs: NETWORK_TIMEOUT });
     let upstreamChanged = false;
     if (!(await gitOk(this.root, ["merge-base", "--is-ancestor", upstream, "HEAD"]))) {
       upstreamChanged = true;
       log(`== Rebasing the saved commits onto ${upstream}`);
-      try {
-        await runGit(this.root, ["rebase", upstream], log);
-      } catch {
-        const conflicts = (await git(this.root, ["diff", "--name-only", "--diff-filter=U"]).catch(() => "")).trim().split("\n").filter(Boolean);
-        await runGit(this.root, ["rebase", "--abort"], log).catch(() => {});
-        throw new Error(
-          `Rebase onto ${upstream} failed${conflicts.length ? ` (conflicts in ${conflicts.join(", ")})` : ""}. ` +
-            "Nothing was pushed or deployed and the saved commits are unchanged; resolve it in the workspace by hand."
-        );
-      }
+      await this.rebase(upstream, log);
     }
 
     await this.install(log);
@@ -389,7 +402,7 @@ export class Workspace {
     if (head !== (await git(this.root, ["rev-parse", upstream])).trim()) {
       log(`== Pushing ${branch}`);
       try {
-        await runGit(this.root, ["push", "--porcelain", remote, `HEAD:refs/heads/${branch}`], log);
+        await runGit(this.root, ["push", "--porcelain", remote, `HEAD:refs/heads/${branch}`], log, { timeoutMs: NETWORK_TIMEOUT });
       } catch {
         throw new Error("Push failed (see above); nothing was deployed. Try Deploy again, it fetches and rebases first.");
       }
@@ -405,6 +418,33 @@ export class Workspace {
     fs.writeFileSync(this.deployedFile, `${JSON.stringify(deployed, null, 2)}\n`);
     log(`✓ Deployed ${head.slice(0, 7)} (${subject})`);
     return deployed;
+  }
+
+  // Conflicts in the generated manifests alone are expected (every Save
+  // commits them) and resolved with main's version, since the deploy
+  // regenerates them right after. Any other conflict aborts the rebase.
+  async rebase(upstream, log) {
+    let step = runGit(this.root, ["rebase", upstream], log);
+    for (;;) {
+      try {
+        return await step;
+      } catch {
+        const conflicts = (await git(this.root, ["diff", "--name-only", "--diff-filter=U"]).catch(() => "")).trim().split("\n").filter(Boolean);
+        if (!conflicts.length || !conflicts.every((file) => MANIFESTS.includes(file))) {
+          await runGit(this.root, ["rebase", "--abort"], log).catch(() => {});
+          throw new Error(
+            `Rebase onto ${upstream} failed${conflicts.length ? ` (conflicts in ${conflicts.join(", ")})` : ""}. ` +
+              "Nothing was pushed or deployed and the saved commits are unchanged; resolve it in the workspace by hand (see admin/README.md)."
+          );
+        }
+        log(`Conflict only in generated manifests (${conflicts.join(", ")}): taking main's version, they are regenerated next`);
+        // During a rebase "ours" is the branch being rebased onto.
+        await runGit(this.root, ["checkout", "--ours", "--", ...conflicts], log);
+        await runGit(this.root, ["add", "--", ...conflicts], log);
+        const empty = await gitOk(this.root, ["diff", "--cached", "--quiet"]);
+        step = runGit(this.root, ["rebase", empty ? "--skip" : "--continue"], log);
+      }
+    }
   }
 }
 

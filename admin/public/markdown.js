@@ -9,8 +9,9 @@ export function safeUrl(url) {
 }
 
 // Builds DOM nodes instead of React elements. Only plain, inert attributes are
-// copied, so nothing in the text can add a handler or a script URL.
-const ATTRIBUTES = new Set(["href", "src", "alt", "title", "id", "start", "colspan", "rowspan"]);
+// copied, so nothing in the text can add a handler or a script URL. No "id":
+// a "## Gallery" heading would otherwise take over the page's own ids.
+const ATTRIBUTES = new Set(["href", "src", "alt", "title", "start", "colspan", "rowspan", "type", "checked"]);
 function createElement(type, props, ...children) {
   const node = document.createElement(typeof type === "string" ? type : "div");
   for (const [key, value] of Object.entries(props ?? {})) {
@@ -19,6 +20,7 @@ function createElement(type, props, ...children) {
     node.setAttribute(key, String(value));
   }
   if (type === "a") Object.assign(node, { target: "_blank", rel: "noopener noreferrer" });
+  if (type === "input") node.disabled = true; // "- [x] task" checkboxes
   const append = (child) => {
     if (Array.isArray(child)) child.forEach(append);
     else if (child instanceof Node) node.append(child);
