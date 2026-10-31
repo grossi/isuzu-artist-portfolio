@@ -16,6 +16,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; padding: 0 16px 48px; }
 h1 { font-size: 20px; margin: 0; white-space: nowrap; }
 h1 span { font-weight: 400; color: var(--muted); }
@@ -175,7 +176,8 @@ dialog textarea { width: 100%; font: 13px ui-monospace, SFMono-Regular, Menlo, m
 
 @media (max-width: 600px) {
   body { padding: 0 10px 40px; }
-  .top { gap: 8px; }
+  /* Two rows of buttons: sticky, they would cover a third of the screen. */
+  .top { gap: 8px; position: static; }
   .actions button, .actions .button { padding: 7px 10px; font-size: 13px; }
   .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
   .strip .tile { flex-basis: 120px; }
