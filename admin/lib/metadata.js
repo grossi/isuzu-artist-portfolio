@@ -7,7 +7,8 @@ import sharp from "sharp";
 // needs to be displayed: the image data, its colour profile and its
 // animation. EXIF (location, camera, dates), XMP, IPTC/Photoshop blocks,
 // thumbnails, comments, text chunks, content credentials and anything
-// unknown go. Blocks are cut out of the file, nothing is decoded or
+// unknown go. (The ICC profile is kept for the colours; a profile's own
+// description text is the one free-form field left.) Blocks are cut out of the file, nothing is decoded or
 // re-encoded, so the pixels are untouched. Only an image that EXIF rotates
 // is re-encoded, with the rotation applied, since dropping the tag would
 // turn it on its side.
@@ -21,7 +22,7 @@ export async function stripMetadata(file, metadata) {
       stripped = STRIP[metadata.format](source);
       const check = await sharp(stripped, { pages: -1 }).metadata();
       if (["format", "width", "height", "pages"].some((key) => check[key] !== metadata[key])) stripped = null;
-      else await sharp(stripped).resize(64, 64, { fit: "inside" }).toBuffer(); // still decodes to the end
+      else await sharp(stripped, { animated: true }).resize(64, 64, { fit: "inside" }).toBuffer(); // still decodes to the end
     } catch {
       stripped = null;
     }
