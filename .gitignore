@@ -31,5 +31,6 @@ yarn-error.log*
 /public/gallery/large/
 /public/carousel/large/
 /public/sidebar/large/
+/public/sidebar/small/
 /public/work-gallery/*/small/
 /public/work-gallery/*/large/
