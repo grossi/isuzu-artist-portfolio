@@ -8,6 +8,18 @@ Node.js 20.19+, 22.13+ or 24+ (the range Vite 8 and ESLint 10 support) and Yarn 
 
 ## Available Scripts
 
+### Previous book editions
+
+`src/previous-editions.json` lists compact previous editions below their matching
+sidebar entry (`parentId` matches an entry id in `src/sidebar-content.json`).
+The current edition keeps its large cover. Each previous edition has a small
+uncropped cover, a localized edition label, its original title, and a retailer
+link. This separate file is not overwritten by the admin sidebar editor.
+
+`public/isuzubook-2018.jpg` is the actual 2018 cover supplied through
+https://amzn.asia/d/01wjbUCD (Amazon ASIN B07D55TSL4), not the revised edition.
+Titles remain in their original Japanese in both languages.
+
 In the project directory, you can run:
 
 ### `yarn build-images`

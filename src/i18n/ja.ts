@@ -1,4 +1,5 @@
 const ja = {
+  "sidebar.previousEditions": "過去の版",
   "meta.title": "isuZuの画廊",
   "meta.description": "イラストレーターisuZuの作品ギャラリーと職務経歴書",
   "nav.work": "仕事",
