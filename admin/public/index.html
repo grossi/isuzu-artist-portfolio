@@ -87,12 +87,12 @@
       </form>
     </dialog>
 
-    <dialog id="entry-dialog" class="wide">
+    <dialog id="entry-dialog" class="wide" aria-labelledby="entry-title">
       <!-- novalidate: the link is checked by app.js, in the page's language, not by the browser. -->
       <form id="entry-form" novalidate>
         <h3 id="entry-title"></h3>
         <div class="entry-top">
-          <label class="entry-image" id="entry-drop" data-i18n-title="entryDialog.imageTitle">
+          <label class="entry-image" id="entry-drop" tabindex="0" role="button" data-i18n-title="entryDialog.imageTitle" data-i18n-aria-label="entryDialog.imageTitle">
             <img id="entry-image-preview" alt="" hidden />
             <span id="entry-image-hint"></span>
             <input type="file" id="entry-picker" accept="image/jpeg,image/png,image/webp" hidden />
@@ -125,12 +125,12 @@
       </form>
     </dialog>
 
-    <dialog id="edition-dialog" class="wide">
+    <dialog id="edition-dialog" class="wide" aria-labelledby="edition-heading">
       <!-- novalidate: the fields are checked by app.js, in the page's language, not by the browser. -->
       <form id="edition-form" novalidate>
         <h3 id="edition-heading"></h3>
         <div class="entry-top">
-          <label class="entry-image" id="edition-drop" data-i18n-title="editionDialog.imageTitle">
+          <label class="entry-image" id="edition-drop" tabindex="0" role="button" data-i18n-title="editionDialog.imageTitle" data-i18n-aria-label="editionDialog.imageTitle">
             <img id="edition-image-preview" alt="" hidden />
             <span id="edition-image-hint"></span>
             <input type="file" id="edition-picker" accept="image/jpeg,image/png,image/webp" hidden />

@@ -489,8 +489,8 @@ function entryCard(entry, index) {
       controlButton("⤒", t("entry.moveTop", { id: entry.id }), moveTo(0, "top"), index === 0, `entry:${entry.id}:top`),
       controlButton("↑", t("entry.moveUp", { id: entry.id }), moveTo(index - 1, "up"), index === 0, `entry:${entry.id}:up`),
       controlButton("↓", t("entry.moveDown", { id: entry.id }), moveTo(index + 1, "down"), index === order.length - 1, `entry:${entry.id}:down`),
-      el("button", { type: "button", onclick: () => openEntry(entry), disabled: busy() }, t("entry.edit")),
-      el("button", { type: "button", class: "danger", onclick: () => removeEntry(entry), disabled: busy() }, t("entry.remove"))),
+      el("button", { type: "button", "aria-label": t("entry.editNamed", { id: entry.id }), onclick: () => openEntry(entry), disabled: busy() }, t("entry.edit")),
+      el("button", { type: "button", class: "danger", "aria-label": t("entry.removeNamed", { id: entry.id }), onclick: () => removeEntry(entry), disabled: busy() }, t("entry.remove"))),
     editionsBlock(entry));
 }
 
@@ -577,7 +577,13 @@ function showEntryError(error) {
   $("entry-error").hidden = !error;
 }
 
+// Bumped each time a dialog opens: a submission answers only the session it
+// was sent from, not a dialog reopened meanwhile.
+let entrySession = 0;
+let editionSession = 0;
+
 function openEntry(entry = null) {
+  entrySession++;
   editing = entry;
   // After the edits already queued: the entry shown includes them.
   editingVersion = edits.then(() => state.version);
@@ -609,17 +615,20 @@ async function submitEntry(event) {
   const entry = { id: editing?.id, link, description: { ja: $("entry-ja").value, en: $("entry-en").value } };
   const image = entryImage;
   const isEdit = Boolean(editing);
+  const session = entrySession;
+  const current = () => session === entrySession && $("entry-dialog").open;
   try {
     entry.version = await editingVersion;
     const form = new FormData();
     form.append("entry", JSON.stringify(entry));
     if (image) form.append("image", image, image.name);
     const data = await queue(() => api("POST", "/api/sidebar/entry", form));
-    $("entry-dialog").close();
+    if (current()) $("entry-dialog").close();
     toast(() => t(isEdit ? "toast.entryUpdated" : "toast.entryAdded", { id: data.saved.id }));
     await refresh();
   } catch (error) {
-    fail(error);
+    if (current()) fail(error);
+    else toast(() => errorText(error), true);
   } finally {
     submitting = false;
     $("entry-submit").disabled = false;
@@ -685,8 +694,8 @@ function editionItem(entry, edition, index) {
     el("div", { class: "edition-controls" },
       controlButton("↑", t("edition.moveUp", { name }), moveTo(index - 1, "up"), index === 0 || busy(), `${key}:up`),
       controlButton("↓", t("edition.moveDown", { name }), moveTo(index + 1, "down"), index === order.length - 1 || busy(), `${key}:down`),
-      el("button", { type: "button", onclick: () => openEdition(entry, edition), disabled: busy() }, t("entry.edit")),
-      el("button", { type: "button", class: "danger", onclick: () => removeEdition(entry, edition), disabled: busy() }, t("entry.remove"))));
+      el("button", { type: "button", "aria-label": t("edition.edit", { name }), onclick: () => openEdition(entry, edition), disabled: busy() }, t("entry.edit")),
+      el("button", { type: "button", class: "danger", "aria-label": t("edition.remove", { name }), onclick: () => removeEdition(entry, edition), disabled: busy() }, t("entry.remove"))));
 }
 
 function editionsBlock(entry) {
@@ -695,7 +704,7 @@ function editionsBlock(entry) {
     el("div", { class: "editions-head" },
       el("strong", {}, t("edition.heading")),
       el("span", { class: "muted" }, t("edition.hint")),
-      el("button", { type: "button", onclick: () => openEdition(entry), disabled: busy() }, t("edition.add"))),
+      el("button", { type: "button", "aria-label": t("edition.addNamed", { id: entry.id }), onclick: () => openEdition(entry), disabled: busy() }, t("edition.add"))),
     editions.length ? el("ol", { class: "edition-list" }, editions.map((edition, i) => editionItem(entry, edition, i))) : null);
 }
 
@@ -769,6 +778,7 @@ function showEditionError(error) {
 }
 
 function openEdition(entry, edition = null) {
+  editionSession++;
   editionTarget = { entry, edition };
   editionVersion = edits.then(() => state.version);
   editionImage = null;
@@ -812,18 +822,21 @@ async function submitEdition(event) {
   $("edition-submit").disabled = true;
   const body = { entryId: entry.id, id: editing?.id, link, title, edition: label };
   const image = editionImage;
+  const session = editionSession;
+  const current = () => session === editionSession && $("edition-dialog").open;
   try {
     body.version = await editionVersion;
     const form = new FormData();
     form.append("edition", JSON.stringify(body));
     if (image) form.append("image", image, image.name);
     const data = await queue(() => api("POST", "/api/sidebar/edition", form));
-    $("edition-dialog").close();
+    if (current()) $("edition-dialog").close();
     const name = inLang(data.saved.edition, lang).text;
     toast(() => t(editing ? "toast.editionUpdated" : "toast.editionAdded", { name, id: entry.id }));
     await refresh();
   } catch (error) {
-    showEditionError(error);
+    if (current()) showEditionError(error);
+    else toast(() => errorText(error), true);
   } finally {
     submittingEdition = false;
     $("edition-submit").disabled = false;
@@ -837,6 +850,16 @@ $("edition-picker").addEventListener("change", (e) => {
   e.target.value = "";
 });
 for (const id of ["edition-label-ja", "edition-label-en", "edition-title-ja", "edition-title-en", "edition-link"]) $(id).addEventListener("input", updateEditionPreview);
+
+// The image areas are labels around a hidden file input: Enter or Space
+// opens it for keyboard users, as a click does.
+for (const prefix of ["entry", "edition"]) {
+  $(`${prefix}-drop`).addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    $(`${prefix}-picker`).click();
+  });
+}
 
 // ---- Actions ---------------------------------------------------------------
 
