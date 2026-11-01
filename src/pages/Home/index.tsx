@@ -8,6 +8,7 @@ import Galery from 'components/organisms/Gallery';
 import aboutJa from "assets/md/about.ja.md?url";
 import aboutEn from "assets/md/about.en.md?url";
 import sidebarData from "sidebar.json";
+import previousEditions from "previous-editions.json";
 import { SiX, SiPixiv, SiFiverr } from "react-icons/si";
 import { MdEmail } from "react-icons/md";
 import { Localized, useLanguage } from "i18n/LanguageContext";
@@ -74,6 +75,14 @@ export default function Home() {
                 ...entry,
                 image: `${import.meta.env.BASE_URL}${entry.image}`,
                 description: entry.description[lang],
+                previousEditions: previousEditions
+                  .filter((edition) => edition.parentId === entry.id)
+                  .map((edition) => ({
+                    ...edition,
+                    image: `${import.meta.env.BASE_URL}${edition.image}`,
+                    title: edition.title[lang],
+                    edition: edition.edition[lang],
+                  })),
               }))}
               socialLinks={socialLinks}
             />
