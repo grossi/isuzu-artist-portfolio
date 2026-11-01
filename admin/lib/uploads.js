@@ -5,6 +5,7 @@ import { pipeline } from "node:stream/promises";
 import busboy from "busboy";
 import sharp from "sharp";
 import { HttpError } from "./errors.js";
+import { stripMetadata } from "./metadata.js";
 
 // Detected format → file extension. The client's name and type are not trusted.
 const FORMATS = { jpeg: "jpg", png: "png", webp: "webp" };
@@ -25,8 +26,9 @@ export function sanitizeStem(filename) {
   return slug || "illustration";
 }
 
-// Streams a multipart upload into tempDir and checks every file is a real
-// jpg/png/webp. Text parts are only accepted under the given field names.
+// Streams a multipart upload into tempDir, checks every file is a real
+// jpg/png/webp and strips its metadata (lib/metadata.js). Text parts are only
+// accepted under the given field names.
 // Returns { files: [{ path, stem, extension, originalName }], fields }; on any
 // error the temp files are deleted and an HttpError is thrown.
 export async function receiveUploads(req, { tempDir, maxBytes, maxFiles, fieldNames = [] }) {
@@ -85,9 +87,14 @@ export async function receiveUploads(req, { tempDir, maxBytes, maxFiles, fieldNa
       if (!extension || !metadata.width || !metadata.height) {
         throw new HttpError(415, "not-an-image", { name: file.originalName });
       }
-      // The header alone passes for a truncated file: decode the whole image
-      // (sharp fails on decoder warnings and on more than 268 Mpx).
-      await sharp(file.path).resize(64, 64, { fit: "inside" }).toBuffer().catch(() => {
+      // The header alone passes for a truncated file: decode the whole image,
+      // every frame of an animation (sharp fails on decoder warnings and on
+      // more than 268 Mpx in all).
+      await sharp(file.path, { animated: true }).resize(64, 64, { fit: "inside" }).toBuffer().catch(() => {
+        throw new HttpError(415, "damaged-image", { name: file.originalName });
+      });
+      // The file goes to the public repo and the site as it is: no location or camera data.
+      await stripMetadata(file.path, metadata).catch(() => {
         throw new HttpError(415, "damaged-image", { name: file.originalName });
       });
       Object.assign(file, { extension, stem: sanitizeStem(file.originalName) });

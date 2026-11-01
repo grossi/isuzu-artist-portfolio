@@ -17,3 +17,4 @@ Everything else (design, layout, text, code) comes as a pull request against `ma
 - The Work and CV pages aren't finished, so `showSectionLinks` in the header keeps their links hidden. Leave it that way unless asked.
 - Sidebar text is written in the admin dashboard, so the Markdown component deliberately never renders raw HTML. It only allows http(s), mailto and relative links.
 - Deep links such as `/work` work because CloudFront, and `vercel.json` on previews, serve `index.html` for unknown paths.
+- The repository and its whole history are public (see `SECURITY.md`). Never commit credentials, private hostnames or addresses (tailnet names, `100.x` IPs: use placeholders in docs and tests) or personal data. The admin dashboard strips EXIF/XMP/IPTC from uploads; an image added by hand ships exactly as it is, so check a photo for location data first.
