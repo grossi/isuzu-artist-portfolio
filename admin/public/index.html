@@ -125,6 +125,48 @@
       </form>
     </dialog>
 
+    <dialog id="edition-dialog" class="wide">
+      <!-- novalidate: the fields are checked by app.js, in the page's language, not by the browser. -->
+      <form id="edition-form" novalidate>
+        <h3 id="edition-heading"></h3>
+        <div class="entry-top">
+          <label class="entry-image" id="edition-drop" data-i18n-title="editionDialog.imageTitle">
+            <img id="edition-image-preview" alt="" hidden />
+            <span id="edition-image-hint"></span>
+            <input type="file" id="edition-picker" accept="image/jpeg,image/png,image/webp" hidden />
+          </label>
+          <div class="entry-fields">
+            <label for="edition-link" data-i18n="editionDialog.link"></label>
+            <input id="edition-link" aria-describedby="edition-link-error" type="url" inputmode="url" placeholder="https://…" maxlength="2000" />
+            <p class="hint" data-i18n="editionDialog.linkHint"></p>
+            <p class="field-error" id="edition-link-error" hidden></p>
+          </div>
+        </div>
+        <div class="entry-langs">
+          <div class="edition-fields">
+            <label for="edition-label-ja" data-i18n="editionDialog.labelJa"></label>
+            <input id="edition-label-ja" maxlength="100" lang="ja" data-i18n-placeholder="editionDialog.labelJaExample" />
+            <label for="edition-title-ja" data-i18n="editionDialog.titleJa"></label>
+            <input id="edition-title-ja" maxlength="300" lang="ja" />
+            <div class="md-preview" id="edition-ja-preview"></div>
+          </div>
+          <div class="edition-fields">
+            <label for="edition-label-en" data-i18n="editionDialog.labelEn"></label>
+            <input id="edition-label-en" maxlength="100" lang="en" data-i18n-placeholder="editionDialog.labelEnExample" />
+            <label for="edition-title-en" data-i18n="editionDialog.titleEn"></label>
+            <input id="edition-title-en" maxlength="300" lang="en" />
+            <div class="md-preview" id="edition-en-preview"></div>
+          </div>
+        </div>
+        <p class="hint" data-i18n="editionDialog.fallbackHint"></p>
+        <p class="banner error" id="edition-error" hidden></p>
+        <div class="dialog-actions">
+          <button type="button" id="edition-cancel" data-i18n="common.cancel"></button>
+          <button type="submit" class="primary" id="edition-submit" data-i18n="entryDialog.submit"></button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="deploy-dialog">
       <form method="dialog">
         <h3 data-i18n="deployDialog.title"></h3>

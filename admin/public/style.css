@@ -185,6 +185,32 @@ input:not([type="file"]) { font: inherit; font-size: 14px; padding: 7px 10px; bo
 .md-preview a { color: var(--accent); }
 .md-preview img { max-width: 100%; }
 
+/* An entry's previous editions, under the entry. */
+.editions { grid-column: 2 / -1; border-top: 1px dashed var(--line); padding-top: 8px; }
+.editions-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 13px; }
+.editions-head .muted { font-size: 12px; }
+.editions-head button { margin-left: auto; padding: 4px 10px; }
+.edition-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.edition { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 13px; line-height: 1.45; }
+.edition-thumb { display: block; width: 40px; height: 56px; object-fit: contain; background: #ecebe8; border-radius: 3px; }
+.edition-info { min-width: 0; overflow-wrap: anywhere; }
+.edition-info .lang { font-size: 11px; color: var(--muted); }
+.edition-info .edition-label { font-weight: 600; }
+.edition-info a { color: var(--accent); font-size: 12px; }
+.edition-controls { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.edition-controls button { padding: 3px 9px; }
+
+/* The site's previous edition row (components/organisms/Sidebar), in the dialog's preview. */
+.edition-site-heading { font-size: 14px; font-weight: 500; margin: 2px 0 4px; }
+.edition-row { display: flex; align-items: center; gap: 12px; min-height: 64px; padding-block: 4px; }
+.edition-cover { width: 40px; height: 56px; object-fit: contain; flex-shrink: 0; }
+span.edition-cover { background: #ecebe8; }
+.edition-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.edition-text .edition-label { font-size: 12px; color: rgba(0, 0, 0, 0.54); }
+.edition-name { display: block; font-size: 12px; line-height: 1.5; }
+.edition-fields { display: flex; flex-direction: column; }
+.edition-fields input { width: 100%; margin-bottom: 8px; }
+
 dialog.wide { width: min(900px, calc(100vw - 24px)); }
 .entry-top { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 14px; margin-bottom: 12px; }
 .entry-image {
@@ -269,5 +295,10 @@ dialog textarea { width: 100%; font: 13px ui-monospace, SFMono-Regular, Menlo, m
   .entry-controls button { flex: 1; }
   .entry-top { grid-template-columns: 110px minmax(0, 1fr); }
   .entry-image { height: 140px; }
+  .editions { grid-column: 1 / -1; }
+  .editions-head button { margin-left: 0; flex-basis: 100%; }
+  .edition { grid-template-columns: 40px minmax(0, 1fr); }
+  .edition-controls { grid-column: 1 / -1; justify-content: stretch; }
+  .edition-controls button { flex: 1; }
   .heading-row label { flex: 1 1 140px; }
 }

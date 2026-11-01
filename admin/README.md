@@ -8,6 +8,9 @@ A small web app, reachable only on the tailnet, for managing the site's content 
   `public/carousel/` or any gallery image.
 - **Sidebar**: the box under the profile (著書 / My Books). Add, edit, reorder and remove
   entries (an image, an optional link, a ja/en markdown description), and edit its heading.
+  Under each entry, its **previous editions** (過去のバージョン): older editions of the book,
+  shown on the site as a small cover, an edition label and a title, the whole row a link.
+  Add (a cover, the ja/en edition label and title, a link), edit, reorder and remove them.
 - **Preview** the real site built from the draft, then **Save** (commit) and **Deploy**.
 
 It is a plain Node server (`server.js`, `lib/`) with a build-free frontend (`public/`). It
@@ -42,7 +45,7 @@ always on `main`. It never touches another checkout.
 
 | Step | What happens |
 | --- | --- |
-| **Draft** | Uploads, reorders, carousel and sidebar changes edit the workspace's files right away: `public/gallery/`, `public/sidebar/`, `src/image-order.json`, `src/sidebar-content.json`. **Discard draft** runs `git reset --hard` and `git clean -d` (ignored files such as `node_modules/` and the webp derivatives stay). |
+| **Draft** | Uploads, reorders, carousel and sidebar changes (previous editions included) edit the workspace's files right away: `public/gallery/`, `public/sidebar/`, `src/image-order.json`, `src/sidebar-content.json`. **Discard draft** runs `git reset --hard` and `git clean -d` (ignored files such as `node_modules/` and the webp derivatives stay). |
 | **Preview** | `yarn install`, `yarn build-images` and `vite build` of the draft into the state dir, swapped in when the build succeeds. The preview server (second port) serves that build as the real site, with the same SPA fallback as CloudFront. The tab shows a "building" page and reloads itself until the build is done. |
 | **Save** | `yarn build-images` (to regenerate `src/*.json`), then a commit on `main` of the content paths only: the originals, the two source files and the generated manifests. The `small/`/`large/` derivatives are gitignored and never committed. |
 | **Deploy** | Refuses while anything in the workspace is unsaved. Then `git fetch`, `git rebase origin/main` if `main` moved (and regenerates and commits the manifests if they changed), `git push origin HEAD:main` (never forced), and the deploy command (`yarn deploy`: the full `yarn build`, then `scripts/push-s3.sh`). The log streams to the page. |
@@ -93,7 +96,15 @@ duplicate uploads to S3, and no second copy to keep in sync or forget when a sli
   "heading": { "ja": "著書", "en": "My Books" },
   "entries": [
     { "id": "new-book", "image": "sidebar/new-book.png", "link": "https://…", "description": { "ja": "…", "en": "" } },
-    { "id": "isuzubook", "image": "isuzubook.webp", "link": null, "description": { "ja": "…", "en": "…" } }
+    {
+      "id": "isuzubook", "image": "isuzubook.webp", "link": null, "description": { "ja": "…", "en": "…" },
+      "previousEditions": [
+        {
+          "id": "clip-studio-paint-pro-2018", "image": "isuzubook-2018.jpg", "link": "https://…",
+          "title": { "ja": "…", "en": "…" }, "edition": { "ja": "2018年版", "en": "2018 edition" }
+        }
+      ]
+    }
   ]
 }
 ```
@@ -105,6 +116,17 @@ they are (`isuzubook.webp` is also used by the History page). `link: null` means
 is not a link. An empty language falls back to the other one, and an entry with no text at
 all shows only its image. Removing an entry deletes its `public/sidebar/` image, which stays
 in the git history.
+
+`previousEditions` (optional, left out when empty) belong to their entry, so removing the
+entry removes them too and none can be left pointing at a book that is gone. New ones go
+first; their ids are unique in the whole file. The link is required (http(s), checked by the
+server and the build), and the title and the edition label each need one language, the other
+one falling back to it like the descriptions. Their covers are uploaded like entry images
+(same checks, same metadata stripping, into `public/sidebar/`), and the build ships a webp
+that fits 120×168 px (`public/sidebar/small/`, three times the 40×56 box the site draws).
+The 2018 cover (`isuzubook-2018.jpg`) is, like the book covers, a web-ready file directly in
+`public/`, shipped as it is. An edition's image is deleted with it only when nothing else
+uses it.
 
 ## Network and security
 

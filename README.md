@@ -10,11 +10,10 @@ Node.js 20.19+, 22.13+ or 24+ (the range Vite 8 and ESLint 10 support) and Yarn 
 
 ### Previous book editions
 
-`src/previous-editions.json` lists compact previous editions below their matching
-sidebar entry (`parentId` matches an entry id in `src/sidebar-content.json`).
-The current edition keeps its large cover. Each previous edition has a small
-uncropped cover, a localized edition label, its original title, and a retailer
-link. This separate file is not overwritten by the admin sidebar editor.
+Older editions of a book in the 著書 / My Books box are listed under it, each with a
+small cover, a localized edition label, its title and a retailer link. They are part of
+the book's entry in `src/sidebar-content.json` (`previousEditions`) and are managed in
+the admin console (see `admin/README.md`).
 
 `public/isuzubook-2018.jpg` is the actual 2018 cover supplied through
 https://amzn.asia/d/01wjbUCD (Amazon ASIN B07D55TSL4), not the revised edition.

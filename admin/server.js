@@ -265,6 +265,37 @@ const routes = {
     json(res, 200, { version });
   },
 
+  // Multipart: an "edition" JSON field ({ entryId, id?, link, title,
+  // edition, version }) and an optional "image" file (required for a new
+  // one). Like entries, only an edit needs the version it was opened at.
+  "POST /api/sidebar/edition": async (req, res) => {
+    const saved = await withUpload(req, "sidebar", { maxFiles: 1, fieldNames: ["edition"] }, ({ files, fields }) => {
+      let edition;
+      try {
+        edition = JSON.parse(fields.edition ?? "");
+      } catch {
+        throw new HttpError(400, "invalid-edition");
+      }
+      return {
+        seenVersion: edition?.id === undefined ? ANY_VERSION : edition.version,
+        apply: () => workspace.saveEdition(edition?.entryId, edition, files[0]),
+      };
+    });
+    json(res, 200, { saved, version });
+  },
+
+  "PUT /api/sidebar/editions": async (req, res) => {
+    const body = await readJson(req);
+    await mutate("sidebar", body.version, () => workspace.setEditionOrder(body.entryId, body.order));
+    json(res, 200, { version });
+  },
+
+  "POST /api/sidebar/edition/remove": async (req, res) => {
+    const body = await readJson(req);
+    await mutate("sidebar", body.version, () => workspace.removeEdition(body.entryId, body.id));
+    json(res, 200, { version });
+  },
+
   "POST /api/discard": async (req, res) => {
     const body = await readJson(req);
     // Discard also gets the workspace out of a rebase left in progress.
@@ -309,6 +340,7 @@ const routes = {
 
 const IMAGE_ROUTE = /^\/(?:thumb|image)\/(gallery|carousel)\/([^/]+)$/;
 const ENTRY_IMAGE_ROUTE = /^\/(?:thumb|image)\/sidebar\/([a-z0-9-]+)$/;
+const EDITION_IMAGE_ROUTE = /^\/(?:thumb|image)\/edition\/([a-z0-9-]+)\/([a-z0-9-]+)$/;
 
 async function sendImage(res, pathname, source) {
   if (pathname.startsWith("/image/")) return sendFile(res, source);
@@ -361,6 +393,15 @@ async function handleAdmin(req, res) {
     const entry = workspace.readSidebar().entries.find((e) => e.id === entryImage[1]);
     if (!entry || !fs.existsSync(workspace.file("public", entry.image))) throw new HttpError(404, "no-image");
     return sendImage(res, pathname, workspace.file("public", entry.image));
+  }
+
+  // A previous edition's cover, by entry and edition id.
+  const editionImage = req.method === "GET" && EDITION_IMAGE_ROUTE.exec(pathname);
+  if (editionImage) {
+    const entry = workspace.readSidebar().entries.find((e) => e.id === editionImage[1]);
+    const edition = entry?.previousEditions?.find((e) => e.id === editionImage[2]);
+    if (!edition || !fs.existsSync(workspace.file("public", edition.image))) throw new HttpError(404, "no-image");
+    return sendImage(res, pathname, workspace.file("public", edition.image));
   }
 
   if (pathname === "/favicon.ico") return res.writeHead(204).end();
