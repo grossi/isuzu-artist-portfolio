@@ -21,7 +21,7 @@ export async function stripMetadata(file, metadata) {
     try {
       stripped = STRIP[metadata.format](source);
       const check = await sharp(stripped, { pages: -1 }).metadata();
-      if (["format", "width", "height", "pages"].some((key) => check[key] !== metadata[key])) stripped = null;
+      if (["format", "width", "height", "pages"].some((key) => check[key] !== metadata[key]) || check.exif || check.xmp || check.iptc) stripped = null;
       else await sharp(stripped, { animated: true }).resize(64, 64, { fit: "inside" }).toBuffer(); // still decodes to the end
     } catch {
       stripped = null;

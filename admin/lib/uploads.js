@@ -94,7 +94,9 @@ export async function receiveUploads(req, { tempDir, maxBytes, maxFiles, fieldNa
         throw new HttpError(415, "damaged-image", { name: file.originalName });
       });
       // The file goes to the public repo and the site as it is: no location or camera data.
-      await stripMetadata(file.path, metadata);
+      await stripMetadata(file.path, metadata).catch(() => {
+        throw new HttpError(415, "damaged-image", { name: file.originalName });
+      });
       Object.assign(file, { extension, stem: sanitizeStem(file.originalName) });
     }
     return { files, fields };

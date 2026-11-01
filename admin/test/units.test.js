@@ -13,7 +13,7 @@ test("only loopback and tailnet addresses can be bound", () => {
   for (const host of ["127.0.0.1", "::1", "localhost", "100.101.102.103", "100.64.0.1", "fd7a:115c:a1e0::1"]) {
     assert.doesNotThrow(() => assertPrivateHost(host), host);
   }
-  for (const host of ["0.0.0.0", "::", "192.168.50.10", "8.8.8.8", "100.128.0.1", "example.com", ""]) {
+  for (const host of ["0.0.0.0", "::", "192.0.2.10", "8.8.8.8", "100.128.0.1", "example.com", ""]) {
     assert.throws(() => assertPrivateHost(host), host);
   }
   assert.throws(() => loadConfig({ ADMIN_HOST: "0.0.0.0" }));
