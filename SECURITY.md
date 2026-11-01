@@ -16,6 +16,8 @@ The repository is public, and so is everything in its history.
   them from the deploying machine (`~/.aws`), never from the repo.
 - No private hostnames or addresses (tailnet names, `100.x` IPs); docs use placeholders.
 - No personal data beyond what the site itself shows.
+- No symlinks that point outside the project: the build would copy their target into the
+  published site, so `yarn build-images` refuses them (`src/utils/symlinks.js`).
 - Images: the admin console strips EXIF/XMP/IPTC from uploads (`admin/lib/metadata.js`).
   An image added by hand under `public/` is committed and shipped exactly as it is, so
   check a photo for location data first (`exiftool -gps:all <file>`).
