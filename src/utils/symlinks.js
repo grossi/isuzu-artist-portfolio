@@ -23,7 +23,10 @@ function findSymlinks(root) {
 function assertNoSymlinks(root) {
   const found = findSymlinks(root);
   if (found.length) {
-    throw new Error(`Refusing to build: symlinks in public/ or src/ would publish whatever they point to. Replace them with the files: ${found.join(", ")}`);
+    throw new Error(
+      `Refusing to build: a symlink in public/, src/ or index.html would publish whatever it points to. ` +
+        `Replace it with the file (a ".#name" link is an editor's lock file: save or close it): ${found.join(", ")}`
+    );
   }
 }
 

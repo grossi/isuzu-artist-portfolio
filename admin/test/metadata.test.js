@@ -175,3 +175,31 @@ test("png: an APNG keeps only its still image, whose frames nothing could check"
   const apng = Buffer.concat([png.subarray(0, ihdrEnd), acTL, fcTL(0), png.subarray(ihdrEnd, iend), fcTL(1), fdAT, png.subarray(iend)]);
   assert.ok((await strip("anim.png", apng)).equals(png));
 });
+
+test("webp: known chunks where the decoder never reads them go", async () => {
+  const riff = (...chunks) => {
+    const body = Buffer.concat([Buffer.from("WEBP", "latin1"), ...chunks]);
+    const header = Buffer.from("RIFF0000", "latin1");
+    header.writeUInt32LE(body.length, 4);
+    return Buffer.concat([header, body]);
+  };
+  const chunk = (type, text) => {
+    const data = Buffer.from(text, "latin1");
+    const out = Buffer.alloc(8 + data.length + (data.length % 2));
+    out.write(type, 0, "latin1");
+    out.writeUInt32LE(data.length, 4);
+    data.copy(out, 8);
+    return out;
+  };
+  const simple = await noise(16, 16).webp().toBuffer(); // RIFF, WEBP, one VP8 chunk
+  const image = simple.subarray(12);
+  for (const stray of ["ICCP", "ANIM", "VP8 ", "ALPH"]) {
+    const tagged = riff(image, chunk(stray, "someone"));
+    const valid = await sharp(tagged).resize(8).toBuffer().then(() => true, () => false); // else refused at upload
+    if (valid) assert.ok((await strip("stray.webp", tagged)).equals(simple), stray);
+  }
+  const still = await noise(16, 16).withExif(GPS).webp().toBuffer(); // VP8X without ICC, VP8, EXIF
+  const stripped = await strip("still.webp", riff(still.subarray(12), chunk("ICCP", "someone"))); // ICC not flagged
+  assert.ok(!stripped.includes("someone") && !stripped.includes("GPS"));
+  assert.ok((await pixels(stripped)).equals(await pixels(still)));
+});
