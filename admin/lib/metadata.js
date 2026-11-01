@@ -121,12 +121,12 @@ const STRIP = {
     }
   },
 
-  // RIFF chunks: only the image, alpha, animation and ICC chunks, and inside
-  // each animation frame only its image and alpha. The VP8X EXIF and XMP
-  // flags are cleared and the sizes fixed.
+  // RIFF chunks, only where the format reads them: a simple file's one image
+  // chunk; in an extended one, the ICC profile if flagged, then either the
+  // animation (inside each frame only its image and alpha) or one image with
+  // its alpha. The VP8X EXIF and XMP flags are cleared and the sizes fixed.
   webp(buf) {
-    const keep = new Set(["VP8 ", "VP8L", "ALPH", "ANIM", "ICCP"]);
-    const frameKeep = new Set(["VP8 ", "VP8L", "ALPH"]);
+    const isImage = (type) => type === "VP8 " || type === "VP8L";
     const chunks = (start, end) => {
       const list = [];
       for (let pos = start; pos + 8 <= end; ) {
@@ -146,19 +146,35 @@ const STRIP = {
     if (buf.toString("latin1", 0, 4) !== "RIFF" || buf.toString("latin1", 8, 12) !== "WEBP") throw new Error("not a WebP");
     const riffEnd = 8 + buf.readUInt32LE(4);
     if (riffEnd > buf.length) throw new Error("truncated");
+    const all = chunks(12, riffEnd);
     const out = [];
-    for (const { type, chunk: data } of chunks(12, riffEnd)) {
-      if (type === "VP8X") {
-        const vp8x = Buffer.from(data);
-        vp8x[8] &= ~(0x08 | 0x04); // EXIF, XMP
-        out.push(vp8x);
-      } else if (type === "ANMF") {
-        // A 16-byte frame header (position, size, duration, flags), then the frame's chunks.
-        const offset = data.byteOffset - buf.byteOffset;
-        const frame = chunks(offset + 24, offset + data.length).filter((c) => frameKeep.has(c.type));
-        out.push(chunk("ANMF", Buffer.concat([data.subarray(8, 24), ...frame.map((c) => c.chunk)])));
-      } else if (keep.has(type)) {
-        out.push(data);
+    if (all[0]?.type !== "VP8X") {
+      const image = all.find((c) => isImage(c.type));
+      if (!image) throw new Error("no image");
+      out.push(image.chunk);
+    } else {
+      const flags = all[0].chunk[8];
+      const vp8x = Buffer.from(all[0].chunk);
+      vp8x[8] &= ~(0x08 | 0x04); // EXIF, XMP
+      out.push(vp8x);
+      const icc = all.find((c) => c.type === "ICCP");
+      if (flags & 0x20 && icc) out.push(icc.chunk);
+      if (flags & 0x02) {
+        for (const { type, chunk: data } of all) {
+          if (type === "ANIM") out.push(data);
+          else if (type === "ANMF") {
+            // A 16-byte frame header (position, size, duration, flags), then the frame's chunks.
+            const offset = data.byteOffset - buf.byteOffset;
+            const frame = chunks(offset + 24, offset + data.length).filter((c) => isImage(c.type) || c.type === "ALPH");
+            out.push(chunk("ANMF", Buffer.concat([data.subarray(8, 24), ...frame.map((c) => c.chunk)])));
+          }
+        }
+      } else {
+        const at = all.findIndex((c) => isImage(c.type));
+        if (at === -1) throw new Error("no image");
+        const alpha = all.slice(0, at).find((c) => c.type === "ALPH");
+        if (alpha) out.push(alpha.chunk);
+        out.push(all[at].chunk);
       }
     }
     return chunk("RIFF", Buffer.concat([Buffer.from("WEBP", "latin1"), ...out]));
