@@ -1,6 +1,6 @@
 # Simple page to showcase isuZu's work
 
-Can be viewed at [http://isuzu.work](http://isuzu.work)
+Can be viewed at [https://isuzu.work](https://isuzu.work)
 
 ## Requirements
 
