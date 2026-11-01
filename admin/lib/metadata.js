@@ -8,10 +8,10 @@ import sharp from "sharp";
 // animation. EXIF (location, camera, dates), XMP, IPTC/Photoshop blocks,
 // thumbnails, comments, text chunks, content credentials and anything
 // unknown go. (The ICC profile is kept for the colours; a profile's own
-// description text is the one free-form field left.) Blocks are cut out of the file, nothing is decoded or
-// re-encoded, so the pixels are untouched. Only an image that EXIF rotates
-// is re-encoded, with the rotation applied, since dropping the tag would
-// turn it on its side.
+// description text is the one free-form field left.) Blocks are cut out of
+// the file, nothing is decoded or re-encoded, so the pixels are untouched.
+// Only an image that EXIF rotates is re-encoded, with the rotation applied,
+// since dropping the tag would turn it on its side.
 
 // metadata: what sharp read from the file (format, orientation, size, pages).
 export async function stripMetadata(file, metadata) {
@@ -20,7 +20,7 @@ export async function stripMetadata(file, metadata) {
   if (!metadata.orientation || metadata.orientation === 1) {
     try {
       stripped = STRIP[metadata.format](source);
-      const check = await sharp(stripped, { pages: -1 }).metadata();
+      const check = await sharp(stripped).metadata(); // one frame's size, and the frame count
       if (["format", "width", "height", "pages"].some((key) => check[key] !== metadata[key]) || check.exif || check.xmp || check.iptc) stripped = null;
       else await sharp(stripped, { animated: true }).resize(64, 64, { fit: "inside" }).toBuffer(); // still decodes to the end
     } catch {
@@ -117,31 +117,46 @@ const STRIP = {
     }
   },
 
-  // RIFF chunks: only the image, alpha, animation and ICC chunks. The VP8X
-  // EXIF and XMP flags are cleared and the RIFF size fixed.
+  // RIFF chunks: only the image, alpha, animation and ICC chunks, and inside
+  // each animation frame only its image and alpha. The VP8X EXIF and XMP
+  // flags are cleared and the sizes fixed.
   webp(buf) {
-    const keep = new Set(["VP8 ", "VP8L", "VP8X", "ALPH", "ANIM", "ANMF", "ICCP"]);
+    const keep = new Set(["VP8 ", "VP8L", "ALPH", "ANIM", "ICCP"]);
+    const frameKeep = new Set(["VP8 ", "VP8L", "ALPH"]);
+    const chunks = (start, end) => {
+      const list = [];
+      for (let pos = start; pos + 8 <= end; ) {
+        const size = buf.readUInt32LE(pos + 4);
+        const next = pos + 8 + size + (size % 2);
+        if (next > end) throw new Error("truncated");
+        list.push({ type: buf.toString("latin1", pos, pos + 4), chunk: buf.subarray(pos, next) });
+        pos = next;
+      }
+      return list;
+    };
+    const chunk = (type, body) => {
+      const header = Buffer.from(`${type}0000`, "latin1");
+      header.writeUInt32LE(body.length, 4);
+      return Buffer.concat([header, body]);
+    };
     if (buf.toString("latin1", 0, 4) !== "RIFF" || buf.toString("latin1", 8, 12) !== "WEBP") throw new Error("not a WebP");
-    const out = [];
     const riffEnd = 8 + buf.readUInt32LE(4);
     if (riffEnd > buf.length) throw new Error("truncated");
-    let pos = 12;
-    while (pos + 8 <= riffEnd) {
-      const type = buf.toString("latin1", pos, pos + 4);
-      const end = pos + 8 + buf.readUInt32LE(pos + 4) + (buf.readUInt32LE(pos + 4) % 2);
-      if (end > riffEnd) throw new Error("truncated");
+    const out = [];
+    for (const { type, chunk: data } of chunks(12, riffEnd)) {
       if (type === "VP8X") {
-        const chunk = Buffer.from(buf.subarray(pos, end));
-        chunk[8] &= ~(0x08 | 0x04); // EXIF, XMP
-        out.push(chunk);
+        const vp8x = Buffer.from(data);
+        vp8x[8] &= ~(0x08 | 0x04); // EXIF, XMP
+        out.push(vp8x);
+      } else if (type === "ANMF") {
+        // A 16-byte frame header (position, size, duration, flags), then the frame's chunks.
+        const offset = data.byteOffset - buf.byteOffset;
+        const frame = chunks(offset + 24, offset + data.length).filter((c) => frameKeep.has(c.type));
+        out.push(chunk("ANMF", Buffer.concat([data.subarray(8, 24), ...frame.map((c) => c.chunk)])));
       } else if (keep.has(type)) {
-        out.push(buf.subarray(pos, end));
+        out.push(data);
       }
-      pos = end;
     }
-    const body = Buffer.concat(out);
-    const header = Buffer.from("RIFF0000WEBP", "latin1");
-    header.writeUInt32LE(body.length + 4, 4);
-    return Buffer.concat([header, body]);
+    return chunk("RIFF", Buffer.concat([Buffer.from("WEBP", "latin1"), ...out]));
   },
 };

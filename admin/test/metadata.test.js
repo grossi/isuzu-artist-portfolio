@@ -127,3 +127,23 @@ test("animated webp keeps its frames, even when it needs a re-encode", async () 
     assert.deepEqual([meta.pages, meta.exif], [2, undefined], name);
   }
 });
+
+test("a lossy animation is cut, not re-encoded, and its frames lose unknown chunks", async () => {
+  const frame = (v) => noise(20, 40).linear(1, v).webp().toBuffer();
+  const animated = await sharp([await frame(0), await frame(60)], { join: { animated: true } }).withExif(GPS).webp().toBuffer();
+  // An unknown chunk inside the last frame (the RIFF and ANMF sizes grow with it).
+  const extra = Buffer.from("XTRA\x08\0\0\0someone!", "latin1");
+  const at = animated.lastIndexOf("ANMF");
+  const frameEnd = at + 8 + animated.readUInt32LE(at + 4);
+  const tagged = Buffer.concat([animated.subarray(0, frameEnd), extra, animated.subarray(frameEnd)]);
+  tagged.writeUInt32LE(tagged.length - 8, 4);
+  tagged.writeUInt32LE(tagged.readUInt32LE(at + 4) + extra.length, at + 4);
+  assert.equal((await sharp(tagged).metadata()).pages, 2);
+
+  const stripped = await strip("lossy-anim.webp", tagged);
+  const meta = await sharp(stripped).metadata();
+  assert.deepEqual([meta.pages, meta.exif], [2, undefined]);
+  assert.ok(!stripped.includes("someone"));
+  const vp8 = animated.indexOf("VP8 ", at);
+  assert.ok(stripped.includes(animated.subarray(vp8, vp8 + 200)), "re-encoded");
+});

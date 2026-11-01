@@ -2,7 +2,7 @@ const fs = require("fs");
 const sharp = require('sharp');
 const { readOrder, listImages, orderGallery, orderCarousel, splitName } = require('./imageOrder');
 const sidebar = require('./sidebar');
-const { assertNoOutsideLinks } = require('./symlinks');
+const { assertNoSymlinks } = require('./symlinks');
 
 async function sizeOf(imagePath) {
   const { width, height } = await sharp(imagePath).metadata();
@@ -52,7 +52,7 @@ function scaledDimentions({ h, w }) {
 }
 
 async function main() {
-  assertNoOutsideLinks(require("path").join(__dirname, "../.."));
+  assertNoSymlinks(require("path").join(__dirname, "../.."));
 
   // Gallery order and carousel slides, see imageOrder.js
   const order = readOrder(require("path").join(__dirname, "../.."));
