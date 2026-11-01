@@ -87,9 +87,10 @@ export async function receiveUploads(req, { tempDir, maxBytes, maxFiles, fieldNa
       if (!extension || !metadata.width || !metadata.height) {
         throw new HttpError(415, "not-an-image", { name: file.originalName });
       }
-      // The header alone passes for a truncated file: decode the whole image
-      // (sharp fails on decoder warnings and on more than 268 Mpx).
-      await sharp(file.path).resize(64, 64, { fit: "inside" }).toBuffer().catch(() => {
+      // The header alone passes for a truncated file: decode the whole image,
+      // every frame of an animation (sharp fails on decoder warnings and on
+      // more than 268 Mpx in all).
+      await sharp(file.path, { animated: true }).resize(64, 64, { fit: "inside" }).toBuffer().catch(() => {
         throw new HttpError(415, "damaged-image", { name: file.originalName });
       });
       // The file goes to the public repo and the site as it is: no location or camera data.

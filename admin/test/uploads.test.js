@@ -76,6 +76,17 @@ test("non-images, truncated images, oversize files and stray fields are refused,
   }
 });
 
+test("every frame of an animation is decoded, not only the first", async () => {
+  const frame = (v) => sharp({ create: { width: 64, height: 64, channels: 3, background: { r: v, g: 255 - v, b: 0 } } }).webp({ lossless: true }).toBuffer();
+  const animated = await sharp([await frame(10), await frame(120), await frame(240)], { join: { animated: true } }).webp({ lossless: true }).toBuffer();
+  const damaged = Buffer.from(animated);
+  for (let i = damaged.lastIndexOf("ANMF") + 40; i < damaged.length - 4; i++) damaged[i] ^= 0xa5; // the last frame only
+  assert.equal((await post([["files", animated, "anim.webp"]])).status, 200);
+  const res = await post([["files", damaged, "anim.webp"]]);
+  assert.deepEqual([res.status, res.body.code], [415, "damaged-image"]);
+  assert.ok(spoolEmpty());
+});
+
 test("a write error fails the upload instead of crashing the server", { skip: process.getuid?.() === 0 }, async () => {
   fs.mkdirSync(spool, { recursive: true });
   fs.chmodSync(spool, 0o500); // the temp files can't be created
