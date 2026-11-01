@@ -127,12 +127,15 @@ in the git history.
   MIME type. At most 40 MB per file and 20 files per upload. Names become ASCII slugs with an
   extension from the detected format, made unique, so there are no path separators, dot
   files or overwrites. Image URLs only serve files listed in their folder.
-- Uploads lose their metadata before they reach the workspace (`lib/metadata.js`): EXIF
-  (a phone photo's location, the camera, dates), XMP, IPTC/Photoshop blocks, comments and
-  PNG text chunks. The originals are committed to a public repo and shipped next to their
-  webp derivatives. The blocks are cut out of the file, so the pixels and the colour
-  profile are untouched; only an image that EXIF rotates is re-encoded with the rotation
-  applied.
+- Uploads lose their metadata before they reach the workspace (`lib/metadata.js`). The
+  originals are committed to a public repo and shipped next to their webp derivatives, so
+  only what draws the image stays: the image data, its colour profile and its animation.
+  EXIF (a phone photo's location, the camera, dates), XMP, IPTC/Photoshop blocks,
+  thumbnails, comments, text chunks, content credentials and unknown blocks go. They are
+  cut out of the file, so the pixels are untouched; only an image that EXIF rotates is
+  re-encoded with the rotation applied.
+- The site's build refuses symlinks in `public/` or `src/` that point outside the project
+  (`src/utils/symlinks.js`): it would copy the target and the deploy would publish it.
 - Git and the deploy run without a shell (`execFile`/`spawn` with argument lists). Commit
   messages and file names are passed as arguments, and git never prompts.
 - Markdown (sidebar descriptions) is rendered with raw HTML disabled and an allowlist of
