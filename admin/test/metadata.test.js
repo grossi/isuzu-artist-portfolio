@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import zlib from "node:zlib";
 import { after, test } from "node:test";
 import sharp from "sharp";
 import { stripMetadata } from "../lib/metadata.js";
@@ -146,4 +147,31 @@ test("a lossy animation is cut, not re-encoded, and its frames lose unknown chun
   assert.ok(!stripped.includes("someone"));
   const vp8 = animated.indexOf("VP8 ", at);
   assert.ok(stripped.includes(animated.subarray(vp8, vp8 + 200)), "re-encoded");
+});
+
+test("jpeg: an Adobe segment keeps only its 12 bytes", async () => {
+  const image = await noise(16, 16).jpeg().toBuffer();
+  const adobe = Buffer.from("Adobe\0\x64\0\0\0\0\x01", "latin1"); // version 100, YCbCr
+  const tagged = Buffer.concat([image.subarray(0, 2), segment(0xee, Buffer.concat([adobe, Buffer.from("someone")])), image.subarray(2)]);
+  const stripped = await strip("adobe.jpg", tagged);
+  assert.ok(stripped.equals(Buffer.concat([image.subarray(0, 2), segment(0xee, adobe), image.subarray(2)])));
+});
+
+test("png: an APNG keeps only its still image, whose frames nothing could check", async () => {
+  const chunk = (type, data) => {
+    const body = Buffer.concat([Buffer.from(type, "latin1"), data]);
+    const out = Buffer.alloc(8 + body.length);
+    out.writeUInt32BE(data.length, 0);
+    body.copy(out, 4);
+    out.writeUInt32BE(zlib.crc32(body), 4 + body.length);
+    return out;
+  };
+  const png = await noise(16, 16).png().toBuffer();
+  const ihdrEnd = 8 + 25;
+  const acTL = chunk("acTL", Buffer.from([0, 0, 0, 2, 0, 0, 0, 0]));
+  const fcTL = (seq) => chunk("fcTL", Buffer.concat([Buffer.from([0, 0, 0, seq, 0, 0, 0, 16, 0, 0, 0, 16]), Buffer.alloc(8), Buffer.from([0, 1, 0, 10, 0, 0])]));
+  const fdAT = chunk("fdAT", Buffer.concat([Buffer.from([0, 0, 0, 2]), Buffer.from("not a frame, someone")]));
+  const iend = png.length - 12;
+  const apng = Buffer.concat([png.subarray(0, ihdrEnd), acTL, fcTL(0), png.subarray(ihdrEnd, iend), fcTL(1), fdAT, png.subarray(iend)]);
+  assert.ok((await strip("anim.png", apng)).equals(png));
 });

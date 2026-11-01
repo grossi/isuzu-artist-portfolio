@@ -4,7 +4,7 @@ import sharp from "sharp";
 // Uploads are committed to the public repo and shipped as they are (the
 // originals sit next to their webp derivatives), so a photo taken with a
 // phone would publish where it was taken. Every upload keeps only what it
-// needs to be displayed: the image data, its colour profile and its
+// needs to be displayed: the image data, its colour profile and a WebP's
 // animation. EXIF (location, camera, dates), XMP, IPTC/Photoshop blocks,
 // thumbnails, comments, text chunks, content credentials and anything
 // unknown go. (The ICC profile is kept for the colours; a profile's own
@@ -45,9 +45,10 @@ const ENCODE = { jpeg: { quality: 95, chromaSubsampling: "4:4:4" }, png: {}, web
 const STRIP = {
   // Markers up to the end of the image. Kept: frame and scan headers,
   // tables, restart markers, APP0 JFIF (without its thumbnail), APP2
-  // ICC_PROFILE and APP14 Adobe (colour transform). Everything else goes:
-  // APP1 (EXIF, XMP), JFXX thumbnails, MPF, IPTC/Photoshop, C2PA, COM, and
-  // anything after EOI (MPF's extra images, gain maps).
+  // ICC_PROFILE and APP14 Adobe (its 12 bytes: the colour transform).
+  // Everything else goes: APP1 (EXIF, XMP), JFXX thumbnails, MPF,
+  // IPTC/Photoshop, C2PA, COM, and anything after EOI (MPF's extra images,
+  // gain maps).
   jpeg(buf) {
     const isFrameOrTable = (marker) => (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc8) || marker === 0xdb || marker === 0xdd || marker === 0xda;
     const segment = (marker, body) => {
@@ -86,7 +87,9 @@ const STRIP = {
         const jfif = Buffer.from(body.subarray(0, 14));
         jfif[12] = jfif[13] = 0;
         out.push(segment(marker, jfif));
-      } else if ((marker === 0xe2 && tag(12) === "ICC_PROFILE\0") || (marker === 0xee && tag(5) === "Adobe")) {
+      } else if (marker === 0xee && tag(5) === "Adobe" && body.length >= 12) {
+        out.push(segment(marker, body.subarray(0, 12))); // version, flags, colour transform
+      } else if (marker === 0xe2 && tag(12) === "ICC_PROFILE\0") {
         out.push(buf.subarray(pos, end));
       }
       pos = end;
@@ -100,11 +103,12 @@ const STRIP = {
     }
   },
 
-  // Chunks up to IEND, only those that affect how the image looks (APNG
-  // included): no eXIf, text (XMP is iTXt), tIME, caBX (C2PA) or private
-  // chunks.
+  // Chunks up to IEND, only those that affect how the image looks: no eXIf,
+  // text (XMP is iTXt), tIME, caBX (C2PA) or private chunks. An APNG keeps
+  // only its still image: sharp decodes nothing else, so the other frames
+  // could never be checked (and the site only shows stills).
   png(buf) {
-    const keep = new Set(["IHDR", "PLTE", "IDAT", "IEND", "tRNS", "gAMA", "cHRM", "sRGB", "iCCP", "sBIT", "pHYs", "bKGD", "cICP", "mDCV", "cLLI", "acTL", "fcTL", "fdAT"]);
+    const keep = new Set(["IHDR", "PLTE", "IDAT", "IEND", "tRNS", "gAMA", "cHRM", "sRGB", "iCCP", "sBIT", "pHYs", "bKGD", "cICP", "mDCV", "cLLI"]);
     const out = [buf.subarray(0, 8)];
     let pos = 8;
     for (;;) {
