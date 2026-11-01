@@ -203,3 +203,22 @@ test("webp: known chunks where the decoder never reads them go", async () => {
   assert.ok(!stripped.includes("someone") && !stripped.includes("GPS"));
   assert.ok((await pixels(stripped)).equals(await pixels(still)));
 });
+
+test("webp: VP8X and ANIM keep their defined size, nothing behind them", async () => {
+  const frame = (v) => noise(20, 20).linear(1, v).webp().toBuffer();
+  const animated = await sharp([await frame(0), await frame(60)], { join: { animated: true } }).webp().toBuffer();
+  // Grows the chunk at `at` by "someone!" (8 bytes, so no padding changes).
+  const grow = (image, at) => {
+    const end = at + 8 + image.readUInt32LE(at + 4);
+    const out = Buffer.concat([image.subarray(0, end), Buffer.from("someone!"), image.subarray(end)]);
+    out.writeUInt32LE(out.readUInt32LE(at + 4) + 8, at + 4);
+    out.writeUInt32LE(out.length - 8, 4);
+    return out;
+  };
+  for (const type of ["VP8X", "ANIM"]) {
+    const tagged = grow(animated, animated.indexOf(type));
+    assert.equal((await sharp(tagged).metadata()).pages, 2, type);
+    const stripped = await strip(`grown-${type}.webp`, tagged);
+    assert.ok(stripped.equals(animated), type);
+  }
+});
