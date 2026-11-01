@@ -110,8 +110,10 @@ in the git history.
 
 - The server binds **only to `127.0.0.1`** (the admin on 8970, the preview on 8972).
   `tailscale serve` publishes them over HTTPS to the tailnet only, never through Funnel:
-  - admin: `https://rossi-linux-server-storage.tail41bd82.ts.net:8971/`
-  - preview: `https://rossi-linux-server-storage.tail41bd82.ts.net:8973/`
+  - admin: `https://<machine>.<tailnet>.ts.net:8971/`
+  - preview: `https://<machine>.<tailnet>.ts.net:8973/`
+
+  (`tailscale status --json | jq -r .Self.DNSName` prints this machine's name.)
 
   `tailscale serve` was chosen over binding to the tailnet IP because it gives HTTPS with a
   real certificate, and the server stays off every network interface. The tailscale
@@ -125,6 +127,12 @@ in the git history.
   MIME type. At most 40 MB per file and 20 files per upload. Names become ASCII slugs with an
   extension from the detected format, made unique, so there are no path separators, dot
   files or overwrites. Image URLs only serve files listed in their folder.
+- Uploads lose their metadata before they reach the workspace (`lib/metadata.js`): EXIF
+  (a phone photo's location, the camera, dates), XMP, IPTC/Photoshop blocks, comments and
+  PNG text chunks. The originals are committed to a public repo and shipped next to their
+  webp derivatives. The blocks are cut out of the file, so the pixels and the colour
+  profile are untouched; only an image that EXIF rotates is re-encoded with the rotation
+  applied.
 - Git and the deploy run without a shell (`execFile`/`spawn` with argument lists). Commit
   messages and file names are passed as arguments, and git never prompts.
 - Markdown (sidebar descriptions) is rendered with raw HTML disabled and an allowlist of
