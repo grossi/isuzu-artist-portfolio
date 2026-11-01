@@ -54,6 +54,15 @@
     "locationLarge": "gallery/large/10003.webp"
   },
   {
+    "name": "illustration",
+    "extension": "png",
+    "width": 919,
+    "height": 1300,
+    "location": "gallery/illustration.png",
+    "locationSmall": "gallery/small/illustration.webp",
+    "locationLarge": "gallery/large/illustration.webp"
+  },
+  {
     "name": "10041",
     "extension": "jpg",
     "width": 661,
