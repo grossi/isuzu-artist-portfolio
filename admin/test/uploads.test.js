@@ -15,7 +15,9 @@ before(async () => {
   server = http.createServer(async (req, res) => {
     try {
       const { files, fields } = await receiveUploads(req, { tempDir: spool, maxBytes: 200 * 1024, maxFiles: 2, fieldNames: ["entry"] });
-      res.end(JSON.stringify({ files: files.map(({ stem, extension }) => `${stem}.${extension}`), fields }));
+      const metadata = await Promise.all(files.map(({ path }) => sharp(path).metadata()));
+      const tagged = metadata.filter(({ exif, xmp }) => exif || xmp).length;
+      res.end(JSON.stringify({ files: files.map(({ stem, extension }) => `${stem}.${extension}`), fields, tagged }));
       removeTemp(files);
     } catch (error) {
       res.writeHead(error.status ?? 500).end(JSON.stringify({ error: error.message, code: error.code, params: error.params }));
@@ -44,8 +46,17 @@ const spoolEmpty = () => !fs.existsSync(spool) || fs.readdirSync(spool).length =
 test("real images pass; the extension comes from the content", async () => {
   const res = await post([["files", await png(), "Photo.JPG"], ["entry", '{"a":1}']]);
   assert.equal(res.status, 200);
-  assert.deepEqual(res.body, { files: ["photo.png"], fields: { entry: '{"a":1}' } });
+  assert.deepEqual(res.body, { files: ["photo.png"], fields: { entry: '{"a":1}' }, tagged: 0 });
   assert.ok(spoolEmpty());
+});
+
+test("uploads lose their EXIF and XMP (a phone photo's location)", async () => {
+  const gps = { IFD3: { GPSLatitudeRef: "N", GPSLatitude: "35/1 41/1 0/1" } };
+  const xmp = '<x:xmpmeta xmlns:x="adobe:ns:meta/"/>';
+  const photo = await sharp({ create: { width: 16, height: 16, channels: 3, background: "red" } }).withExif(gps).withXmp(xmp).jpeg().toBuffer();
+  assert.ok((await sharp(photo).metadata()).exif);
+  const res = await post([["files", photo, "IMG_0001.JPG"], ["files", await png(), "b.png"]]);
+  assert.deepEqual([res.status, res.body.files, res.body.tagged], [200, ["img-0001.jpg", "b.png"], 0]);
 });
 
 test("non-images, truncated images, oversize files and stray fields are refused, leaving no temp files", async () => {
@@ -63,6 +74,17 @@ test("non-images, truncated images, oversize files and stray fields are refused,
     assert.deepEqual([res.body.code, res.body.params], [code, params]);
     assert.ok(spoolEmpty(), `temp files left after ${res.body.error}`);
   }
+});
+
+test("every frame of an animation is decoded, not only the first", async () => {
+  const frame = (v) => sharp({ create: { width: 64, height: 64, channels: 3, background: { r: v, g: 255 - v, b: 0 } } }).webp({ lossless: true }).toBuffer();
+  const animated = await sharp([await frame(10), await frame(120), await frame(240)], { join: { animated: true } }).webp({ lossless: true }).toBuffer();
+  const damaged = Buffer.from(animated);
+  for (let i = damaged.lastIndexOf("ANMF") + 40; i < damaged.length - 4; i++) damaged[i] ^= 0xa5; // the last frame only
+  assert.equal((await post([["files", animated, "anim.webp"]])).status, 200);
+  const res = await post([["files", damaged, "anim.webp"]]);
+  assert.deepEqual([res.status, res.body.code], [415, "damaged-image"]);
+  assert.ok(spoolEmpty());
 });
 
 test("a write error fails the upload instead of crashing the server", { skip: process.getuid?.() === 0 }, async () => {
