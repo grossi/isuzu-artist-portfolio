@@ -27,6 +27,12 @@ const useStyles = makeStyles()((theme) => ({
     paddingBottom: theme.spacing(3),
     borderBottom: `1px solid ${theme.palette.divider}`,
     marginBottom: theme.spacing(3),
+    // The last book has no next book to separate from.
+    "&:last-child": {
+      paddingBottom: 0,
+      borderBottom: 0,
+      marginBottom: 0,
+    },
   },
   editionsList: {
     listStyle: "none",
@@ -80,7 +86,13 @@ const useStyles = makeStyles()((theme) => ({
 // The shape of src/sidebar.json
 export interface SidebarData {
   heading: Localized<string>;
-  entries: Array<{ id: string; image: string; link: string | null; description: Localized<string> }>;
+  entries: Array<{
+    id: string;
+    image: string;
+    link: string | null;
+    description: Localized<string>;
+    previousEditions: Array<{ id: string; image: string; link: string; title: Localized<string>; edition: Localized<string> }>;
+  }>;
 }
 
 interface Entry {
@@ -88,7 +100,7 @@ interface Entry {
   image: string;
   link: string | null;
   description: string;
-  previousEditions?: Array<{
+  previousEditions: Array<{
     id: string;
     image: string;
     link: string;
@@ -114,18 +126,19 @@ function SidebarEntry(props: Entry) {
     <React.Fragment>
       {props.link ? <Link href={props.link}>{image}</Link> : image}
       {props.description.trim() && <Markdown>{props.description}</Markdown>}
-      {Boolean(props.previousEditions?.length) && (
+      {props.previousEditions.length > 0 && (
         <section className={classes.previousEditions} aria-labelledby={headingId}>
-          <Typography component="h3" variant="subtitle2" id={headingId} gutterBottom>
+          {/* Under the box's h4 heading */}
+          <Typography component="h5" variant="subtitle2" id={headingId} gutterBottom>
             {t("sidebar.previousEditions")}
           </Typography>
           <ul className={classes.editionsList}>
-            {props.previousEditions?.map((edition) => (
+            {props.previousEditions.map((edition) => (
               <li key={edition.id}>
                 <Link href={edition.link} className={classes.editionLink}>
                   <img src={edition.image} alt="" width={40} height={56} loading="lazy" className={classes.editionCover} />
                   <span className={classes.editionText}>
-                    <Typography component="span" variant="caption" color="textSecondary">
+                    <Typography component="span" variant="caption" color="text.secondary">
                       {edition.edition}
                     </Typography>
                     <span className={classes.editionTitle}>{edition.title}</span>

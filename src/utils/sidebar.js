@@ -11,7 +11,16 @@ const path = require("path");
 //         "id": "isuzubook",
 //         "image": "isuzubook.webp",
 //         "link": "https://www.amazon.co.jp/dp/429713134X",
-//         "description": { "ja": "markdown", "en": "markdown" }
+//         "description": { "ja": "markdown", "en": "markdown" },
+//         "previousEditions": [
+//           {
+//             "id": "isuzubook-2018",
+//             "image": "isuzubook-2018.jpg",
+//             "link": "https://www.amazon.co.jp/dp/B07D55TSL4",
+//             "title": { "ja": "…", "en": "" },
+//             "edition": { "ja": "2018年版", "en": "2018 edition" }
+//           }
+//         ]
 //       }
 //     ]
 //   }
@@ -21,8 +30,16 @@ const path = require("path");
 // a web-ready file directly in public/ ("isuzubook.webp"), shipped as it is.
 // "link" is optional (null: the image is not a link) and must be http(s).
 // An empty description or heading falls back to the other language.
+//
+// "previousEditions" (optional) are older editions of that book, listed in
+// order under it with a small cover. Their images follow the same rules (the
+// build makes a cover-sized webp of a public/sidebar/ file), the link is
+// required, and the title and edition label each need at least one language.
+// Edition ids are unique across the whole file.
 const CONTENT_FILE = "src/sidebar-content.json";
 const SIDEBAR_DIR = "public/sidebar";
+const MAX_TITLE = 300;
+const MAX_EDITION_LABEL = 100;
 
 function isValidLink(link) {
   // URL() would silently drop tabs and newlines, so refuse any whitespace or control character.
@@ -40,6 +57,9 @@ function isValidImage(image) {
 }
 
 const isText = (value) => typeof value === "string";
+const isLocalized = (value) => Boolean(value) && isText(value.ja) && isText(value.en);
+const hasText = (value) => value.ja.trim() !== "" || value.en.trim() !== "";
+const isId = (id) => typeof id === "string" && /^[a-z0-9-]+$/.test(id);
 
 // Throws on anything the site can't render safely.
 function validateContent(content) {
@@ -51,14 +71,29 @@ function validateContent(content) {
   if (!heading || !isText(heading.ja) || !isText(heading.en)) fail('"heading" must have "ja" and "en" strings');
   if (!Array.isArray(entries)) fail('"entries" must be a list');
   const ids = new Set();
+  const editionIds = new Set();
   for (const entry of entries) {
     if (!entry || typeof entry !== "object") fail("every entry must be an object");
-    if (typeof entry.id !== "string" || !/^[a-z0-9-]+$/.test(entry.id) || ids.has(entry.id)) fail(`bad or repeated id "${entry.id}"`);
+    if (!isId(entry.id) || ids.has(entry.id)) fail(`bad or repeated id "${entry.id}"`);
     ids.add(entry.id);
     if (!isValidImage(entry.image)) fail(`${entry.id}: bad image "${entry.image}"`);
     if (entry.link !== null && !isValidLink(entry.link)) fail(`${entry.id}: the link must be an http(s) URL or null`);
     if (!entry.description || !isText(entry.description.ja) || !isText(entry.description.en)) {
       fail(`${entry.id}: "description" must have "ja" and "en" strings`);
+    }
+    if (entry.previousEditions === undefined) continue;
+    if (!Array.isArray(entry.previousEditions)) fail(`${entry.id}: "previousEditions" must be a list`);
+    for (const edition of entry.previousEditions) {
+      if (!edition || typeof edition !== "object") fail(`${entry.id}: every previous edition must be an object`);
+      if (!isId(edition.id) || editionIds.has(edition.id)) fail(`${entry.id}: bad or repeated previous edition id "${edition.id}"`);
+      editionIds.add(edition.id);
+      const name = `${entry.id}/${edition.id}`;
+      if (!isValidImage(edition.image)) fail(`${name}: bad image "${edition.image}"`);
+      if (!isValidLink(edition.link)) fail(`${name}: the link must be an http(s) URL`);
+      if (!isLocalized(edition.title) || !hasText(edition.title)) fail(`${name}: "title" must have "ja" and "en" strings, one of them not empty`);
+      if (!isLocalized(edition.edition) || !hasText(edition.edition)) fail(`${name}: "edition" must have "ja" and "en" strings, one of them not empty`);
+      if (edition.title.ja.length > MAX_TITLE || edition.title.en.length > MAX_TITLE) fail(`${name}: "title" is longer than ${MAX_TITLE} characters`);
+      if (edition.edition.ja.length > MAX_EDITION_LABEL || edition.edition.en.length > MAX_EDITION_LABEL) fail(`${name}: "edition" is longer than ${MAX_EDITION_LABEL} characters`);
     }
   }
   return { heading, entries };
@@ -76,4 +111,4 @@ function localized({ ja, en }) {
   return { ja: has(ja) ? ja : has(en) ? en : "", en: has(en) ? en : has(ja) ? ja : "" };
 }
 
-module.exports = { CONTENT_FILE, SIDEBAR_DIR, isValidLink, isValidImage, validateContent, readContent, localized };
+module.exports = { CONTENT_FILE, SIDEBAR_DIR, MAX_TITLE, MAX_EDITION_LABEL, isValidLink, isValidImage, validateContent, readContent, localized };
