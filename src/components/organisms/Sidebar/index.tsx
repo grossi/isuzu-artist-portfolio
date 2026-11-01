@@ -21,10 +21,10 @@ const useStyles = makeStyles()((theme) => ({
     marginTop: theme.spacing(3),
   },
   previousEditions: {
-    borderTop: `1px solid ${theme.palette.divider}`,
+    // Nest past editions under this book, with a larger gap before the next book.
+    marginInlineStart: theme.spacing(2),
     marginTop: theme.spacing(2),
-    marginBottom: theme.spacing(3),
-    paddingTop: theme.spacing(2),
+    marginBottom: theme.spacing(6),
   },
   editionsList: {
     listStyle: "none",
