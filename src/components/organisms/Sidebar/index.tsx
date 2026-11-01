@@ -20,6 +20,47 @@ const useStyles = makeStyles()((theme) => ({
   sidebarSection: {
     marginTop: theme.spacing(3),
   },
+  previousEditions: {
+    // Nest past editions under this book, with a larger gap before the next book.
+    marginInlineStart: theme.spacing(2),
+    marginTop: theme.spacing(2),
+    paddingBottom: theme.spacing(3),
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    marginBottom: theme.spacing(3),
+  },
+  editionsList: {
+    listStyle: "none",
+    padding: 0,
+    margin: 0,
+  },
+  editionLink: {
+    display: "flex",
+    alignItems: "center",
+    gap: theme.spacing(1.5),
+    minHeight: 64,
+    paddingBlock: theme.spacing(0.5),
+    color: theme.palette.text.primary,
+    "&:focus-visible": {
+      outline: `2px solid ${theme.palette.primary.main}`,
+      outlineOffset: 3,
+    },
+  },
+  editionCover: {
+    width: 40,
+    height: 56,
+    objectFit: "contain",
+    flexShrink: 0,
+  },
+  editionText: {
+    flex: 1,
+    minWidth: 0,
+    overflowWrap: "anywhere",
+  },
+  editionTitle: {
+    display: "block",
+    fontSize: "0.75rem",
+    lineHeight: 1.5,
+  },
   avatarGrid: {
     // 2 + the 1 unit of item padding v4 Grid added
     marginBottom: theme.spacing(3),
@@ -47,6 +88,13 @@ interface Entry {
   image: string;
   link: string | null;
   description: string;
+  previousEditions?: Array<{
+    id: string;
+    image: string;
+    link: string;
+    title: string;
+    edition: string;
+  }>;
 }
 
 interface SidebarProps {
@@ -58,11 +106,37 @@ interface SidebarProps {
 }
 
 function SidebarEntry(props: Entry) {
+  const { classes } = useStyles();
+  const { t } = useLanguage();
+  const headingId = React.useId();
   const image = <CardMedia component="img" src={props.image} />;
   return (
     <React.Fragment>
       {props.link ? <Link href={props.link}>{image}</Link> : image}
       {props.description.trim() && <Markdown>{props.description}</Markdown>}
+      {Boolean(props.previousEditions?.length) && (
+        <section className={classes.previousEditions} aria-labelledby={headingId}>
+          <Typography component="h3" variant="subtitle2" id={headingId} gutterBottom>
+            {t("sidebar.previousEditions")}
+          </Typography>
+          <ul className={classes.editionsList}>
+            {props.previousEditions?.map((edition) => (
+              <li key={edition.id}>
+                <Link href={edition.link} className={classes.editionLink}>
+                  <img src={edition.image} alt="" width={40} height={56} loading="lazy" className={classes.editionCover} />
+                  <span className={classes.editionText}>
+                    <Typography component="span" variant="caption" color="textSecondary">
+                      {edition.edition}
+                    </Typography>
+                    <span className={classes.editionTitle}>{edition.title}</span>
+                  </span>
+                  <span aria-hidden="true">↗</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </React.Fragment>
   );
 }
