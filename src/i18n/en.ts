@@ -1,7 +1,6 @@
 import type { Translations } from "i18n/ja";
 
 const en: Translations = {
-  "sidebar.previousEditions": "Previous editions",
   "meta.title": "isuZu's Gallery",
   "meta.description": "Artwork gallery and CV of illustrator isuZu",
   "nav.work": "Work",
@@ -10,6 +9,7 @@ const en: Translations = {
   "home.profile": "Profile",
   "home.books": "My Books",
   "sidebar.avatarAlt": "isuZu's avatar",
+  "sidebar.previousEditions": "Previous editions",
   "social.email": "Email",
   "workCard.bannerAlt": "{name} banner",
   "gallery.label": "Illustrations",

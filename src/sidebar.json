@@ -11,7 +11,22 @@
       "description": {
         "ja": "\n私が書いたデジタルイラストのハウツー本です。\n\n**[**プロが教える！ CLIP STUDIO PAINT PROの教科書 -増補改訂版- **]**\n\n  - [Amazon](https://www.amazon.co.jp/dp/429713134X)\n\n  - [その他の購入先](https://gihyo.jp/book/2022/978-4-297-13134-0)\n",
         "en": "\nCheck out my how-to book on digital illustration!\n\n**[**プロが教える！ CLIP STUDIO PAINT PROの教科書 -増補改訂版- **]**\n\n  - [Amazon Japan](https://www.amazon.co.jp/dp/429713134X)\n\n  - [Other retailers](https://gihyo.jp/book/2022/978-4-297-13134-0)\n"
-      }
+      },
+      "previousEditions": [
+        {
+          "id": "clip-studio-paint-pro-2018",
+          "image": "isuzubook-2018.jpg",
+          "link": "https://www.amazon.co.jp/dp/B07D55TSL4",
+          "title": {
+            "ja": "プロが教える！CLIP STUDIO PAINT PROの教科書",
+            "en": "プロが教える！CLIP STUDIO PAINT PROの教科書"
+          },
+          "edition": {
+            "ja": "2018年版",
+            "en": "2018 edition"
+          }
+        }
+      ]
     },
     {
       "id": "isuzubook2",
@@ -20,7 +35,8 @@
       "description": {
         "ja": "\n私が書いたキャラの描き方の本です。\n\n\n  - [Amazon](https://www.amazon.co.jp/o/ASIN/4297128349/gihyojp-22)\n\n  - [その他の購入先](https://gihyo.jp/book/2022/978-4-297-12834-0)\n",
         "en": "\nCheck out my book on the basics of drawing characters!\n\n\n  - [Amazon Japan](https://www.amazon.co.jp/o/ASIN/4297128349/gihyojp-22)\n\n  - [Other retailers](https://gihyo.jp/book/2022/978-4-297-12834-0)\n"
-      }
+      },
+      "previousEditions": []
     },
     {
       "id": "isuzubook3",
@@ -29,7 +45,8 @@
       "description": {
         "ja": "\n私が書いた色塗りの本です。\n\n色塗りワークショップ～塗りながら、楽しく学べる知識・コツ・考え方\n\n\n  - [Amazon](https://amazon.co.jp/dp/4297149761)\n\n  - [その他の購入先](https://gihyo.jp/book/2025/978-4-297-14976-5)\n",
         "en": "\nCheck out my book on coloring!\n\n色塗りワークショップ～塗りながら、楽しく学べる知識・コツ・考え方\n\n\n  - [Amazon Japan](https://amazon.co.jp/dp/4297149761)\n\n  - [Other retailers](https://gihyo.jp/book/2025/978-4-297-14976-5)\n"
-      }
+      },
+      "previousEditions": []
     }
   ]
 }

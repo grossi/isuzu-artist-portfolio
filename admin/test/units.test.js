@@ -3,6 +3,8 @@ import { test } from "node:test";
 import { assertPrivateHost, loadConfig } from "../lib/config.js";
 import { resolveInside } from "../lib/static.js";
 import { createRequire } from "node:module";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { sanitizeStem } from "../lib/uploads.js";
 import { commitMessage, describeChanges } from "../lib/workspace.js";
 
@@ -63,7 +65,8 @@ test("changes and commit message", () => {
   const same = describeChanges(head, head);
   assert.deepEqual(same, {
     added: [], removed: [], reordered: false, slidesAdded: [], slidesRemoved: [], carouselReordered: false,
-    entriesAdded: [], entriesRemoved: [], entriesEdited: [], entriesReordered: false, headingChanged: false,
+    entriesAdded: [], entriesRemoved: [], entriesEdited: [], entriesReordered: false,
+    editionsAdded: [], editionsRemoved: [], editionsEdited: [], editionsReordered: [], headingChanged: false,
   });
 
   const uploads = describeChanges(head, { ...head, gallery: ["new.png", ...head.gallery] });
@@ -80,6 +83,59 @@ test("changes and commit message", () => {
       "Added to the gallery:\n- new.png\nGallery order changed.\n" +
       "Carousel slides added:\n- gallery/new.png\nCarousel slides removed:\n- carousel/x.png\n"
   );
+});
+
+test("previous editions are reported one by one, not as an edited entry", () => {
+  const edition = (id, label = "2018年版") => ({ id, image: `sidebar/${id}.png`, link: "https://example.com/", title: { ja: "本", en: "" }, edition: { ja: label, en: "" } });
+  const book = (editions) => ({ id: "book", image: "book.webp", link: null, description: { ja: "", en: "" }, ...(editions && { previousEditions: editions }) });
+  const state = (entries) => ({ gallery: [], carousel: [], sidebar: { heading: { ja: "", en: "" }, entries } });
+  const head = state([book([edition("a"), edition("b")]), { ...book(), id: "gone", previousEditions: [edition("c")] }]);
+  const now = state([book([edition("b", "2019年版"), edition("new"), edition("a")])]);
+  const changes = describeChanges(head, now);
+  assert.deepEqual(changes.entriesEdited, []);
+  assert.deepEqual(changes.entriesRemoved, ["gone"]);
+  assert.deepEqual(changes.editionsAdded, ["book/new"]);
+  assert.deepEqual(changes.editionsEdited, ["book/b"]);
+  assert.deepEqual(changes.editionsRemoved, ["gone/c"]);
+  assert.deepEqual(changes.editionsReordered, ["book"]);
+  assert.match(commitMessage(changes), /^content: update the sidebar\n/);
+  assert.match(commitMessage(changes), /Previous editions added:\n- book\/new\nPrevious editions edited:\n- book\/b\nPrevious editions removed:\n- gone\/c\nPrevious editions reordered:\n- book\n/);
+  // The last edition removed: the entry loses its key, which is no entry edit either.
+  const emptied = describeChanges(state([book([edition("a")])]), state([book()]));
+  assert.deepEqual([emptied.entriesEdited, emptied.editionsRemoved], [[], ["book/a"]]);
+});
+
+test("previous editions: validated with their entry", () => {
+  const edition = { id: "old", image: "isuzubook-2018.jpg", link: "https://www.amazon.co.jp/dp/B07D55TSL4", title: { ja: "本", en: "" }, edition: { ja: "2018年版", en: "2018 edition" } };
+  const entry = { id: "a", image: "sidebar/a.png", link: null, description: { ja: "", en: "" } };
+  const content = (...editions) => ({ entries: [{ ...entry, previousEditions: editions }] });
+  assert.doesNotThrow(() => sidebar.validateContent(content(edition)));
+  assert.doesNotThrow(() => sidebar.validateContent(content()));
+  for (const link of ["javascript:alert(1)", "", null, "//example.com", "https://example.com/\tx"]) {
+    assert.throws(() => sidebar.validateContent(content({ ...edition, link })), /a\/old: the link must be an http\(s\) URL/, String(link));
+  }
+  assert.throws(() => sidebar.validateContent(content({ ...edition, image: "../x.png" })), /bad image/);
+  assert.throws(() => sidebar.validateContent(content({ ...edition, title: { ja: " ", en: "" } })), /"title"/);
+  assert.throws(() => sidebar.validateContent(content({ ...edition, title: { ja: "本" } })), /"title"/);
+  assert.throws(() => sidebar.validateContent(content({ ...edition, edition: { ja: "", en: "" } })), /"edition"/);
+  assert.throws(() => sidebar.validateContent(content({ ...edition, title: { ja: "x".repeat(301), en: "" } })), /longer/);
+  assert.throws(() => sidebar.validateContent(content(edition, edition)), /repeated previous edition id/);
+  assert.throws(() => sidebar.validateContent(content({ ...edition, id: "Old" })), /bad or repeated previous edition id/);
+  // Ids are unique across entries too.
+  assert.throws(() => sidebar.validateContent({ entries: [content(edition).entries[0], { ...entry, id: "b", previousEditions: [edition] }] }), /repeated previous edition id/);
+  assert.throws(() => sidebar.validateContent({ entries: [{ ...entry, previousEditions: {} }] }), /must be a list/);
+});
+
+test("the site's sidebar content is valid, with the 2018 edition under its book", () => {
+  const content = sidebar.readContent(path.join(path.dirname(fileURLToPath(import.meta.url)), "../.."));
+  const book = content.entries.find((entry) => entry.id === "isuzubook");
+  assert.deepEqual(book.previousEditions, [{
+    id: "clip-studio-paint-pro-2018",
+    image: "isuzubook-2018.jpg",
+    link: "https://www.amazon.co.jp/dp/B07D55TSL4",
+    title: { ja: "プロが教える！CLIP STUDIO PAINT PROの教科書", en: "プロが教える！CLIP STUDIO PAINT PROの教科書" },
+    edition: { ja: "2018年版", en: "2018 edition" },
+  }]);
 });
 
 test("sidebar entries: links, images and fallbacks", () => {

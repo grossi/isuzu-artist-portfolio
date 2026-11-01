@@ -23,9 +23,13 @@ const BANNER_ASPECT_RATIO = 4;
 // The sidebar column is at most ~560px wide; the hand-made covers are 600px.
 const SIDEBAR_WIDTH = 800;
 
-function rescale({ imagePath, width, destinationPath, quality, crop }) {
+// A previous edition's cover is drawn in a 40x56 box (object-fit: contain):
+// three times that covers every screen density.
+const EDITION_BOX = { width: 120, height: 168 };
+
+function rescale({ imagePath, width, height, destinationPath, quality, crop }) {
   const image = crop ? sharp(imagePath).extract(crop) : sharp(imagePath);
-  return image.resize({ width, withoutEnlargement: true }).webp({effort: 6, quality}).toFile(`${destinationPath}.webp`);
+  return image.resize({ width, height, fit: 'inside', withoutEnlargement: true }).webp({effort: 6, quality}).toFile(`${destinationPath}.webp`);
 }
 
 function rescaleLarge({ imagePath, destinationPath }) {
@@ -127,9 +131,30 @@ async function main() {
   const sidebarContent = sidebar.readContent(require("path").join(__dirname, "../.."));
 
   freshDir('public/sidebar/large');
+  freshDir('public/sidebar/small');
+
+  // A previous edition's cover: public/sidebar/ files get a small webp (one
+  // per file, even if two editions share it), others ship as they are.
+  const editionCovers = new Map();
+  const editionCover = (name, image) => {
+    if (!fs.existsSync(`public/${image}`)) throw new Error(`${sidebar.CONTENT_FILE}: ${name}: public/${image} does not exist`);
+    if (!image.startsWith('sidebar/')) return image;
+    const stem = require("path").parse(image).name;
+    if (editionCovers.has(stem) && editionCovers.get(stem) !== image) throw new Error(`${sidebar.CONTENT_FILE}: two previous edition images are named "${stem}"`);
+    if (!editionCovers.has(stem)) {
+      editionCovers.set(stem, image);
+      rescaleJobs.push(rescale({
+        imagePath: `public/${image}`,
+        ...EDITION_BOX,
+        destinationPath: `public/sidebar/small/${stem}`,
+        quality: LARGE_QUALITY,
+      }));
+    }
+    return `sidebar/small/${stem}.webp`;
+  };
 
   const sidebarNames = new Set();
-  const sidebarEntries = sidebarContent.entries.map(({ id, image, link, description }) => {
+  const sidebarEntries = sidebarContent.entries.map(({ id, image, link, description, previousEditions = [] }) => {
     if (!fs.existsSync(`public/${image}`)) throw new Error(`${sidebar.CONTENT_FILE}: ${id}: public/${image} does not exist`);
     let shipped = image;
     if (image.startsWith('sidebar/')) {
@@ -144,7 +169,19 @@ async function main() {
       }));
       shipped = `sidebar/large/${name}.webp`;
     }
-    return { id, image: shipped, link, description: sidebar.localized(description) };
+    return {
+      id,
+      image: shipped,
+      link,
+      description: sidebar.localized(description),
+      previousEditions: previousEditions.map((edition) => ({
+        id: edition.id,
+        image: editionCover(`${id}/${edition.id}`, edition.image),
+        link: edition.link,
+        title: sidebar.localized(edition.title),
+        edition: sidebar.localized(edition.edition),
+      })),
+    };
   });
 
   fs.writeFileSync('./src/sidebar.json', JSON.stringify({ heading: sidebar.localized(sidebarContent.heading), entries: sidebarEntries }, null, 2), 'utf-8');

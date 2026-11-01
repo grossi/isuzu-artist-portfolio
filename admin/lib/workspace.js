@@ -25,6 +25,7 @@ const CONTENT_PATHS = [GALLERY_DIR, CAROUSEL_DIR, SIDEBAR_DIR, ORDER_FILE, SIDEB
 const OPTIONAL_PATHS = [ORDER_FILE, SIDEBAR_DIR];
 const MAX_HEADING = 200;
 const MAX_DESCRIPTION = 20000;
+const { MAX_TITLE, MAX_EDITION_LABEL } = sidebarRules;
 
 // Git never prompts (a missing credential fails instead of hanging), never
 // opens an editor, and read-only commands such as the status refresh behind
@@ -296,6 +297,7 @@ export class Workspace {
 
   // entry: { id?, link, description: { ja, en } }. Without an id it is a new
   // entry at the top, and needs an image. image: a validated temp upload.
+  // The entry's previous editions are kept as they are.
   saveSidebarEntry(entry, image) {
     const content = this.readSidebar();
     const link = typeof entry?.link === "string" && entry.link.trim() ? entry.link.trim() : null;
@@ -305,41 +307,118 @@ export class Workspace {
     if (entry?.id !== undefined && !existing) throw new HttpError(409, "entry-gone");
     if (!existing && !image) throw new HttpError(400, "entry-needs-image");
 
-    let imagePath = existing?.image;
-    if (image) {
-      const dir = this.file(SIDEBAR_DIR);
-      fs.mkdirSync(dir, { recursive: true });
-      const taken = new Set(fs.readdirSync(dir).map((name) => path.parse(name).name.toLowerCase()));
-      let stem = image.stem;
-      for (let n = 2; taken.has(stem.toLowerCase()); n++) stem = `${image.stem}-${n}`;
-      fs.copyFileSync(image.path, path.join(dir, `${stem}.${image.extension}`), fs.constants.COPYFILE_EXCL);
-      imagePath = `sidebar/${stem}.${image.extension}`;
-    }
+    const imagePath = image ? this.storeSidebarImage(image) : existing.image;
     const ids = new Set(content.entries.map((e) => e.id));
     const base = path.parse(imagePath).name; // a sanitized stem
     let id = existing?.id ?? base;
     for (let n = 2; !existing && ids.has(id); n++) id = `${base}-${n}`;
 
-    const saved = { id, image: imagePath, link, description };
+    const saved = withEditions({ id, image: imagePath, link, description }, existing?.previousEditions);
     const entries = existing ? content.entries.map((e) => (e.id === id ? saved : e)) : [saved, ...content.entries];
-    this.writeSidebar({ ...content, entries });
+    this.writeSidebarImage({ ...content, entries }, image && imagePath);
     if (existing && existing.image !== imagePath) this.dropSidebarImage(existing.image, entries);
     return saved;
   }
 
+  // Its previous editions go with it.
   removeSidebarEntry(id) {
     const content = this.readSidebar();
     const entry = content.entries.find((e) => e.id === id);
     if (!entry) throw new HttpError(409, "entry-gone");
     const entries = content.entries.filter((e) => e !== entry);
     this.writeSidebar({ ...content, entries });
-    this.dropSidebarImage(entry.image, entries);
+    for (const image of [entry.image, ...(entry.previousEditions ?? []).map((e) => e.image)]) this.dropSidebarImage(image, entries);
   }
 
-  // Deletes an image from public/sidebar/ once no entry uses it (a committed
-  // one stays in the git history). Images elsewhere in public/ are kept.
+  // edition: { id?, link, title: { ja, en }, edition: { ja, en } }, a
+  // previous edition of the entry entryId. Without an id it is a new one at
+  // the top of the entry's list, and needs an image (a validated temp upload).
+  saveEdition(entryId, edition, image) {
+    const content = this.readSidebar();
+    const parent = content.entries.find((e) => e.id === entryId);
+    if (!parent) throw new HttpError(409, "entry-gone");
+    const editions = parent.previousEditions ?? [];
+    const existing = edition?.id === undefined ? null : editions.find((e) => e.id === edition.id);
+    if (edition?.id !== undefined && !existing) throw new HttpError(409, "edition-gone");
+    const title = { ja: cleanLine(edition?.title?.ja, MAX_TITLE, "title-too-long"), en: cleanLine(edition?.title?.en, MAX_TITLE, "title-too-long") };
+    const label = {
+      ja: cleanLine(edition?.edition?.ja, MAX_EDITION_LABEL, "edition-label-too-long"),
+      en: cleanLine(edition?.edition?.en, MAX_EDITION_LABEL, "edition-label-too-long"),
+    };
+    const link = typeof edition?.link === "string" ? edition.link.trim() : "";
+    if (!existing && !image) throw new HttpError(400, "edition-needs-image");
+    if (!label.ja && !label.en) throw new HttpError(400, "edition-needs-label");
+    if (!title.ja && !title.en) throw new HttpError(400, "edition-needs-title");
+    if (!link) throw new HttpError(400, "edition-needs-link");
+    if (!sidebarRules.isValidLink(link)) throw new HttpError(400, "invalid-link");
+
+    const imagePath = image ? this.storeSidebarImage(image) : existing.image;
+    // Unique across every entry's editions.
+    const ids = new Set(content.entries.flatMap((e) => (e.previousEditions ?? []).map((ed) => ed.id)));
+    const base = path.parse(imagePath).name;
+    let id = existing?.id ?? base;
+    for (let n = 2; !existing && ids.has(id); n++) id = `${base}-${n}`;
+
+    const saved = { id, image: imagePath, link, title, edition: label };
+    const next = existing ? editions.map((e) => (e.id === id ? saved : e)) : [saved, ...editions];
+    const entries = content.entries.map((e) => (e === parent ? withEditions(e, next) : e));
+    this.writeSidebarImage({ ...content, entries }, image && imagePath);
+    if (existing && existing.image !== imagePath) this.dropSidebarImage(existing.image, entries);
+    return saved;
+  }
+
+  removeEdition(entryId, id) {
+    const content = this.readSidebar();
+    const parent = content.entries.find((e) => e.id === entryId);
+    if (!parent) throw new HttpError(409, "entry-gone");
+    const edition = (parent.previousEditions ?? []).find((e) => e.id === id);
+    if (!edition) throw new HttpError(409, "edition-gone");
+    const entries = content.entries.map((e) => (e === parent ? withEditions(e, parent.previousEditions.filter((ed) => ed !== edition)) : e));
+    this.writeSidebar({ ...content, entries });
+    this.dropSidebarImage(edition.image, entries);
+  }
+
+  // order: every edition id of the entry, in the new order.
+  setEditionOrder(entryId, order) {
+    const content = this.readSidebar();
+    const parent = content.entries.find((e) => e.id === entryId);
+    if (!parent) throw new HttpError(409, "entry-gone");
+    const editions = parent.previousEditions ?? [];
+    const ids = editions.map((e) => e.id);
+    if (!Array.isArray(order) || order.length !== ids.length || new Set(order).size !== ids.length || !order.every((id) => ids.includes(id))) {
+      throw new HttpError(409, "editions-changed");
+    }
+    const entries = content.entries.map((e) => (e === parent ? withEditions(e, order.map((id) => editions.find((ed) => ed.id === id))) : e));
+    this.writeSidebar({ ...content, entries });
+  }
+
+  // Copies an upload into public/sidebar/ under a free name; returns its
+  // "sidebar/…" path.
+  storeSidebarImage(image) {
+    const dir = this.file(SIDEBAR_DIR);
+    fs.mkdirSync(dir, { recursive: true });
+    const taken = new Set(fs.readdirSync(dir).map((name) => path.parse(name).name.toLowerCase()));
+    let stem = image.stem;
+    for (let n = 2; taken.has(stem.toLowerCase()); n++) stem = `${image.stem}-${n}`;
+    fs.copyFileSync(image.path, path.join(dir, `${stem}.${image.extension}`), fs.constants.COPYFILE_EXCL);
+    return `sidebar/${stem}.${image.extension}`;
+  }
+
+  // Writes the content; if that fails, the image just stored for it goes.
+  writeSidebarImage(content, stored) {
+    try {
+      this.writeSidebar(content);
+    } catch (error) {
+      if (stored) fs.rmSync(this.file("public", stored), { force: true });
+      throw error;
+    }
+  }
+
+  // Deletes an image from public/sidebar/ once no entry or previous edition
+  // uses it (a committed one stays in the git history). Images elsewhere in
+  // public/ are kept.
   dropSidebarImage(image, entries) {
-    if (!image.startsWith("sidebar/") || entries.some((e) => e.image === image)) return;
+    if (!image.startsWith("sidebar/") || entries.some((e) => e.image === image || (e.previousEditions ?? []).some((ed) => ed.image === image))) return;
     fs.rmSync(this.file("public", image), { force: true });
   }
 
@@ -510,7 +589,17 @@ export function describeChanges(head, now) {
   const ids = (sidebar) => sidebar.entries.map((entry) => entry.id);
   const headIds = ids(head.sidebar);
   const nowIds = ids(now.sidebar);
-  const entry = (sidebar, id) => JSON.stringify(sidebar.entries.find((e) => e.id === id));
+  // An entry without its previous editions, which are compared one by one.
+  const entry = (sidebar, id) => {
+    const { previousEditions, ...rest } = sidebar.entries.find((e) => e.id === id);
+    return JSON.stringify(rest);
+  };
+  // "entry/edition" → the edition, as JSON.
+  const editions = (sidebar) =>
+    new Map(sidebar.entries.flatMap((e) => (e.previousEditions ?? []).map((ed) => [`${e.id}/${ed.id}`, JSON.stringify(ed)])));
+  const headEditions = editions(head.sidebar);
+  const nowEditions = editions(now.sidebar);
+  const editionIds = (sidebar, id) => (sidebar.entries.find((e) => e.id === id).previousEditions ?? []).map((ed) => ed.id);
   return {
     added,
     removed,
@@ -522,6 +611,11 @@ export function describeChanges(head, now) {
     entriesRemoved: headIds.filter((id) => !nowIds.includes(id)),
     entriesEdited: nowIds.filter((id) => headIds.includes(id) && entry(head.sidebar, id) !== entry(now.sidebar, id)),
     entriesReordered: !sameOrder(headIds, nowIds),
+    editionsAdded: [...nowEditions.keys()].filter((key) => !headEditions.has(key)),
+    editionsRemoved: [...headEditions.keys()].filter((key) => !nowEditions.has(key)),
+    editionsEdited: [...nowEditions.keys()].filter((key) => headEditions.has(key) && headEditions.get(key) !== nowEditions.get(key)),
+    // The entries whose editions were reordered.
+    editionsReordered: nowIds.filter((id) => headIds.includes(id) && !sameOrder(editionIds(head.sidebar, id), editionIds(now.sidebar, id))),
     headingChanged: JSON.stringify(head.sidebar.heading) !== JSON.stringify(now.sidebar.heading),
   };
 }
@@ -529,13 +623,15 @@ export function describeChanges(head, now) {
 export function commitMessage(changes) {
   const { added, removed, reordered, slidesAdded, slidesRemoved, carouselReordered } = changes;
   const { entriesAdded, entriesRemoved, entriesEdited, entriesReordered, headingChanged } = changes;
+  const { editionsAdded, editionsRemoved, editionsEdited, editionsReordered } = changes;
+  const editionsChanged = editionsAdded.length || editionsRemoved.length || editionsEdited.length || editionsReordered.length;
   const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
   const subject = [
     added.length && `add ${plural(added.length, "illustration")}`,
     removed.length && `remove ${plural(removed.length, "illustration")}`,
     reordered && "reorder the gallery",
     (slidesAdded.length || slidesRemoved.length || carouselReordered) && "update the carousel",
-    (entriesAdded.length || entriesRemoved.length || entriesEdited.length || entriesReordered || headingChanged) && "update the sidebar",
+    (entriesAdded.length || entriesRemoved.length || entriesEdited.length || entriesReordered || headingChanged || editionsChanged) && "update the sidebar",
   ].filter(Boolean);
   const body = [
     ...(added.length ? ["Added to the gallery:", ...added.map((f) => `- ${f}`)] : []),
@@ -549,6 +645,10 @@ export function commitMessage(changes) {
     ...(entriesRemoved.length ? ["Sidebar entries removed:", ...entriesRemoved.map((id) => `- ${id}`)] : []),
     ...(entriesReordered ? ["Sidebar order changed."] : []),
     ...(headingChanged ? ["Sidebar heading changed."] : []),
+    ...(editionsAdded.length ? ["Previous editions added:", ...editionsAdded.map((key) => `- ${key}`)] : []),
+    ...(editionsEdited.length ? ["Previous editions edited:", ...editionsEdited.map((key) => `- ${key}`)] : []),
+    ...(editionsRemoved.length ? ["Previous editions removed:", ...editionsRemoved.map((key) => `- ${key}`)] : []),
+    ...(editionsReordered.length ? ["Previous editions reordered:", ...editionsReordered.map((id) => `- ${id}`)] : []),
   ];
   return `content: ${subject.length ? subject.join(", ") : "update the image manifests"}${body.length ? `\n\n${body.join("\n")}` : ""}\n`;
 }
@@ -566,6 +666,19 @@ function readable(file, read) {
 function cleanHeading(text) {
   if (typeof text !== "string" || text.length > MAX_HEADING) throw new HttpError(400, "heading-too-long", { max: MAX_HEADING });
   return text.replace(/\s+/g, " ").trim();
+}
+
+// A one-line text (a title, an edition label): whitespace collapsed.
+function cleanLine(text, max, code) {
+  if (text === undefined) return "";
+  if (typeof text !== "string" || text.length > max) throw new HttpError(400, code, { max });
+  return text.replace(/\s+/g, " ").trim();
+}
+
+// The entry with these previous editions; none: no "previousEditions" key.
+function withEditions(entry, editions) {
+  const { previousEditions, ...rest } = entry;
+  return editions?.length ? { ...rest, previousEditions: editions } : rest;
 }
 
 function cleanDescription(text) {

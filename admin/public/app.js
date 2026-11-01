@@ -300,6 +300,10 @@ function renderStatus() {
     draft.entriesRemoved.length && t("change.entriesRemoved", { list: list(draft.entriesRemoved) }),
     draft.entriesReordered && t("change.entriesReordered"),
     draft.headingChanged && t("change.headingChanged"),
+    draft.editionsAdded.length && t("change.editionsAdded", { list: list(draft.editionsAdded) }),
+    draft.editionsEdited.length && t("change.editionsEdited", { list: list(draft.editionsEdited) }),
+    draft.editionsRemoved.length && t("change.editionsRemoved", { list: list(draft.editionsRemoved) }),
+    draft.editionsReordered.length && t("change.editionsReordered", { list: list(draft.editionsReordered) }),
   ].filter(Boolean);
   const previewText = !preview
     ? t("status.noPreview")
@@ -485,8 +489,9 @@ function entryCard(entry, index) {
       controlButton("⤒", t("entry.moveTop", { id: entry.id }), moveTo(0, "top"), index === 0, `entry:${entry.id}:top`),
       controlButton("↑", t("entry.moveUp", { id: entry.id }), moveTo(index - 1, "up"), index === 0, `entry:${entry.id}:up`),
       controlButton("↓", t("entry.moveDown", { id: entry.id }), moveTo(index + 1, "down"), index === order.length - 1, `entry:${entry.id}:down`),
-      el("button", { type: "button", onclick: () => openEntry(entry), disabled: busy() }, t("entry.edit")),
-      el("button", { type: "button", class: "danger", onclick: () => removeEntry(entry), disabled: busy() }, t("entry.remove"))));
+      el("button", { type: "button", "aria-label": t("entry.editNamed", { id: entry.id }), onclick: () => openEntry(entry), disabled: busy() }, t("entry.edit")),
+      el("button", { type: "button", class: "danger", "aria-label": t("entry.removeNamed", { id: entry.id }), onclick: () => removeEntry(entry), disabled: busy() }, t("entry.remove"))),
+    editionsBlock(entry));
 }
 
 function renderSidebar() {
@@ -500,7 +505,8 @@ function renderSidebar() {
 }
 
 async function removeEntry(entry) {
-  if (!confirm(t("entry.confirmRemove", { id: entry.id }))) return;
+  const editions = entry.previousEditions?.length ?? 0;
+  if (!confirm(editions ? t("entry.confirmRemoveWithEditions", { id: entry.id, n: editions }) : t("entry.confirmRemove", { id: entry.id }))) return;
   await act(edit("POST", "/api/sidebar/remove", { id: entry.id }), () => t("toast.removed", { name: entry.id }));
 }
 
@@ -509,23 +515,26 @@ let editing = null;
 let editingVersion = null; // the draft version the edited entry was read at
 let entryImage = null;
 
+const isImage = (file) => Boolean(file) && /^image\/(jpeg|png|webp)$/.test(file.type);
+
 function setEntryImage(file) {
-  if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) return toast(() => t("toast.chooseImage"), true);
+  if (!isImage(file)) return toast(() => t("toast.chooseImage"), true);
   entryImage = file;
-  showEntryImage(URL.createObjectURL(file));
+  showDialogImage("entry", URL.createObjectURL(file));
 }
 
-function showEntryImage(src) {
-  const img = $("entry-image-preview");
+// The image of the entry or edition dialog (prefix "entry" or "edition").
+function showDialogImage(prefix, src) {
+  const img = $(`${prefix}-image-preview`);
   if (img.src.startsWith("blob:")) URL.revokeObjectURL(img.src);
   img.hidden = !src;
   if (src) img.src = src;
   else img.removeAttribute("src");
-  renderEntryImageHint();
+  renderImageHint(prefix);
 }
 
-function renderEntryImageHint() {
-  $("entry-image-hint").replaceChildren(...rich($("entry-image-preview").hidden ? "entryDialog.imageHint" : "entryDialog.replaceHint"));
+function renderImageHint(prefix) {
+  $(`${prefix}-image-hint`).replaceChildren(...rich($(`${prefix}-image-preview`).hidden ? "entryDialog.imageHint" : "entryDialog.replaceHint"));
 }
 
 function updateEntryPreview() {
@@ -546,6 +555,7 @@ function updateEntryPreview() {
   $("entry-link").setAttribute("aria-invalid", String(Boolean(error)));
 }
 
+// Also the server's rule (src/utils/sidebar.js).
 function validLink(link) {
   try {
     const url = new URL(link);
@@ -567,7 +577,13 @@ function showEntryError(error) {
   $("entry-error").hidden = !error;
 }
 
+// Bumped each time a dialog opens: a submission answers only the session it
+// was sent from, not a dialog reopened meanwhile.
+let entrySession = 0;
+let editionSession = 0;
+
 function openEntry(entry = null) {
+  entrySession++;
   editing = entry;
   // After the edits already queued: the entry shown includes them.
   editingVersion = edits.then(() => state.version);
@@ -577,7 +593,7 @@ function openEntry(entry = null) {
   $("entry-ja").value = entry?.description.ja ?? "";
   $("entry-en").value = entry?.description.en ?? "";
   showEntryError(null);
-  showEntryImage(entry ? `/thumb/sidebar/${entry.id}?v=${encodeURIComponent(entry.image)}` : null);
+  showDialogImage("entry", entry ? `/thumb/sidebar/${entry.id}?v=${encodeURIComponent(entry.image)}` : null);
   updateEntryPreview();
   showModal($("entry-dialog"));
 }
@@ -591,7 +607,10 @@ async function submitEntry(event) {
   showEntryError(null);
   // The field's own message already says what is wrong.
   if (link && !validLink(link)) return $("entry-link").focus();
-  if (!editing && !entryImage) return fail({ code: "entry-needs-image" });
+  if (!editing && !entryImage) {
+    $("entry-drop").focus();
+    return fail({ code: "entry-needs-image" });
+  }
   // Everything is read before waiting for queued edits: the dialog may be
   // closed and reopened on another entry meanwhile.
   submitting = true;
@@ -599,17 +618,20 @@ async function submitEntry(event) {
   const entry = { id: editing?.id, link, description: { ja: $("entry-ja").value, en: $("entry-en").value } };
   const image = entryImage;
   const isEdit = Boolean(editing);
+  const session = entrySession;
+  const current = () => session === entrySession && $("entry-dialog").open;
   try {
     entry.version = await editingVersion;
     const form = new FormData();
     form.append("entry", JSON.stringify(entry));
     if (image) form.append("image", image, image.name);
     const data = await queue(() => api("POST", "/api/sidebar/entry", form));
-    $("entry-dialog").close();
+    if (current()) $("entry-dialog").close();
     toast(() => t(isEdit ? "toast.entryUpdated" : "toast.entryAdded", { id: data.saved.id }));
     await refresh();
   } catch (error) {
-    fail(error);
+    if (current()) fail(error);
+    else toast(() => errorText(error), true);
   } finally {
     submitting = false;
     $("entry-submit").disabled = false;
@@ -631,6 +653,218 @@ let headingVersion;
 for (const code of LANGS) {
   $(`heading-${code}`).addEventListener("focus", () => (headingVersion = edits.then(() => state.version)));
   $(`heading-${code}`).addEventListener("change", () => saveSidebar(headingInputs(), sidebarOrder(), undefined, headingVersion));
+}
+
+// ---- Previous editions -----------------------------------------------------
+
+// The site's heading above them (src/i18n/), shown in the dialog's preview.
+const SITE_EDITIONS_HEADING = { ja: "過去のバージョン", en: "Previous editions" };
+
+const editionThumb = (entry, edition) => `/thumb/edition/${entry.id}/${edition.id}?v=${encodeURIComponent(edition.image)}`;
+
+// A { ja, en } text in one language, the other one when it is empty (the
+// site's rule). borrowed: it came from the other language.
+function inLang(texts, code) {
+  const own = texts[code].trim();
+  return { text: own || texts[otherLang(code)].trim(), borrowed: !own };
+}
+
+// A previous edition as the site draws it.
+function editionRow(src, label, title) {
+  return el("div", { class: "edition-row" },
+    src ? el("img", { class: "edition-cover", src, alt: "" }) : el("span", { class: "edition-cover" }),
+    el("span", { class: "edition-text" }, el("span", { class: "edition-label" }, label), el("span", { class: "edition-name" }, title)),
+    el("span", { "aria-hidden": "true" }, "↗"));
+}
+
+function editionItem(entry, edition, index) {
+  const order = entry.previousEditions.map((e) => e.id);
+  const key = `edition:${entry.id}/${edition.id}`;
+  const name = inLang(edition.edition, lang).text;
+  const moveTo = (to, k) => () => saveEditionOrder(entry.id, move(order, edition.id, to), `${key}:${k}`);
+  return el("li", { class: "edition" },
+    el("img", { class: "edition-thumb", src: editionThumb(entry, edition), alt: "", draggable: "false" }),
+    el("div", { class: "edition-info" },
+      LANGS.map((code) => {
+        const label = inLang(edition.edition, code);
+        const title = inLang(edition.title, code);
+        return el("div", {},
+          el("span", { class: "lang" }, t(`lang.${code}`)), " ",
+          el("span", { class: `edition-label${label.borrowed ? " muted" : ""}` }, label.text), " ",
+          el("span", { class: title.borrowed ? "muted" : undefined }, title.text));
+      }),
+      el("a", { href: edition.link, target: "_blank", rel: "noopener noreferrer" }, edition.link)),
+    el("div", { class: "edition-controls" },
+      controlButton("↑", t("edition.moveUp", { name }), moveTo(index - 1, "up"), index === 0 || busy(), `${key}:up`),
+      controlButton("↓", t("edition.moveDown", { name }), moveTo(index + 1, "down"), index === order.length - 1 || busy(), `${key}:down`),
+      el("button", { type: "button", "aria-label": t("edition.edit", { name }), onclick: () => openEdition(entry, edition), disabled: busy() }, t("entry.edit")),
+      el("button", { type: "button", class: "danger", "aria-label": t("edition.remove", { name }), onclick: () => removeEdition(entry, edition), disabled: busy() }, t("entry.remove"))));
+}
+
+function editionsBlock(entry) {
+  const editions = entry.previousEditions ?? [];
+  return el("div", { class: "editions" },
+    el("div", { class: "editions-head" },
+      el("strong", {}, t("edition.heading")),
+      el("span", { class: "muted" }, t("edition.hint")),
+      el("button", { type: "button", "aria-label": t("edition.addNamed", { id: entry.id }), onclick: () => openEdition(entry), disabled: busy() }, t("edition.add"))),
+    editions.length ? el("ol", { class: "edition-list" }, editions.map((edition, i) => editionItem(entry, edition, i))) : null);
+}
+
+async function saveEditionOrder(entryId, order, focus) {
+  pendingFocus = focus;
+  // Optimistic: show the new order at once, the server confirms it.
+  const entry = state.sidebar.entries.find((e) => e.id === entryId);
+  const byId = new Map(entry.previousEditions.map((edition) => [edition.id, edition]));
+  entry.previousEditions = order.map((id) => byId.get(id));
+  render();
+  await act(edit("PUT", "/api/sidebar/editions", { entryId, order }));
+}
+
+async function removeEdition(entry, edition) {
+  const name = inLang(edition.edition, lang).text;
+  if (!confirm(t("edition.confirmRemove", { name, title: inLang(edition.title, lang).text, id: entry.id }))) return;
+  await act(edit("POST", "/api/sidebar/edition/remove", { entryId: entry.id, id: edition.id }), () => t("toast.removed", { name }));
+}
+
+// The add / edit dialog. editionTarget: { entry, edition (null: a new one) }.
+let editionTarget = null;
+let editionVersion = null; // the draft version the edited edition was read at
+let editionImage = null; // a newly chosen File, if any
+let editionSubmitted = false; // after a first submit, an empty link is an error too
+
+function setEditionImage(file) {
+  if (!isImage(file)) return toast(() => t("toast.chooseImage"), true);
+  editionImage = file;
+  showDialogImage("edition", URL.createObjectURL(file));
+  updateEditionPreview();
+}
+
+const editionTexts = () => ({
+  edition: { ja: $("edition-label-ja").value, en: $("edition-label-en").value },
+  title: { ja: $("edition-title-ja").value, en: $("edition-title-en").value },
+});
+
+function updateEditionPreview() {
+  const { edition, title } = editionTexts();
+  const img = $("edition-image-preview");
+  for (const code of LANGS) {
+    const label = inLang(edition, code);
+    const name = inLang(title, code);
+    const borrowed = (label.borrowed && label.text) || (name.borrowed && name.text);
+    $(`edition-${code}-preview`).replaceChildren(
+      el("span", { class: "lang" }, t("entryDialog.sitePreview", { lang: t(`lang.${code}`) })),
+      ...(borrowed ? [el("p", { class: "muted" }, t("editionDialog.showingOther", { other: t(`lang.${otherLang(code)}`) }))] : []),
+      el("div", { class: "edition-site-heading", lang: code }, SITE_EDITIONS_HEADING[code]),
+      editionRow(img.hidden ? null : img.src, label.text, name.text));
+  }
+  const link = $("edition-link").value.trim();
+  const error = link ? (validLink(link) ? "" : t("entryDialog.linkInvalid")) : editionSubmitted ? t("editionDialog.linkRequired") : "";
+  $("edition-link-error").textContent = error;
+  $("edition-link-error").hidden = !error;
+  $("edition-link").setAttribute("aria-invalid", String(Boolean(error)));
+}
+
+function renderEditionHeading() {
+  if (!editionTarget) return;
+  const { entry, edition } = editionTarget;
+  $("edition-heading").textContent = edition
+    ? t("editionDialog.editTitle", { name: inLang(edition.edition, lang).text, id: entry.id })
+    : t("editionDialog.addTitle", { id: entry.id });
+}
+
+let editionError = null;
+function showEditionError(error) {
+  editionError = error;
+  $("edition-error").textContent = error ? errorText(error) : "";
+  $("edition-error").hidden = !error;
+}
+
+function openEdition(entry, edition = null) {
+  editionSession++;
+  editionTarget = { entry, edition };
+  editionVersion = edits.then(() => state.version);
+  editionImage = null;
+  editionSubmitted = false;
+  renderEditionHeading();
+  $("edition-link").value = edition?.link ?? "";
+  for (const code of LANGS) {
+    $(`edition-label-${code}`).value = edition?.edition[code] ?? "";
+    $(`edition-title-${code}`).value = edition?.title[code] ?? "";
+  }
+  showEditionError(null);
+  showDialogImage("edition", edition ? editionThumb(entry, edition) : null);
+  updateEditionPreview();
+  showModal($("edition-dialog"));
+}
+
+let submittingEdition = false;
+async function submitEdition(event) {
+  event.preventDefault();
+  if (submittingEdition) return;
+  const { entry, edition: editing } = editionTarget;
+  const { edition: label, title } = editionTexts();
+  const link = $("edition-link").value.trim();
+  editionSubmitted = true;
+  showEditionError(null);
+  updateEditionPreview();
+  // The same checks as the server, in the order of the form.
+  if (!editing && !editionImage) {
+    $("edition-drop").focus();
+    return showEditionError({ code: "edition-needs-image" });
+  }
+  if (!label.ja.trim() && !label.en.trim()) {
+    $("edition-label-ja").focus();
+    return showEditionError({ code: "edition-needs-label" });
+  }
+  if (!title.ja.trim() && !title.en.trim()) {
+    $("edition-title-ja").focus();
+    return showEditionError({ code: "edition-needs-title" });
+  }
+  // The field's own message already says what is wrong.
+  if (!link || !validLink(link)) return $("edition-link").focus();
+  // Everything is read before waiting for queued edits (see submitEntry).
+  submittingEdition = true;
+  $("edition-submit").disabled = true;
+  const body = { entryId: entry.id, id: editing?.id, link, title, edition: label };
+  const image = editionImage;
+  const session = editionSession;
+  const current = () => session === editionSession && $("edition-dialog").open;
+  try {
+    body.version = await editionVersion;
+    const form = new FormData();
+    form.append("edition", JSON.stringify(body));
+    if (image) form.append("image", image, image.name);
+    const data = await queue(() => api("POST", "/api/sidebar/edition", form));
+    if (current()) $("edition-dialog").close();
+    const name = inLang(data.saved.edition, lang).text;
+    toast(() => t(editing ? "toast.editionUpdated" : "toast.editionAdded", { name, id: entry.id }));
+    await refresh();
+  } catch (error) {
+    if (current()) showEditionError(error);
+    else toast(() => errorText(error), true);
+  } finally {
+    submittingEdition = false;
+    $("edition-submit").disabled = false;
+  }
+}
+
+$("edition-form").addEventListener("submit", submitEdition);
+$("edition-cancel").addEventListener("click", () => $("edition-dialog").close());
+$("edition-picker").addEventListener("change", (e) => {
+  setEditionImage(e.target.files[0]);
+  e.target.value = "";
+});
+for (const id of ["edition-label-ja", "edition-label-en", "edition-title-ja", "edition-title-en", "edition-link"]) $(id).addEventListener("input", updateEditionPreview);
+
+// The image areas are labels around a hidden file input: Enter or Space
+// opens it for keyboard users, as a click does.
+for (const prefix of ["entry", "edition"]) {
+  $(`${prefix}-drop`).addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    $(`${prefix}-picker`).click();
+  });
 }
 
 // ---- Actions ---------------------------------------------------------------
@@ -716,7 +950,13 @@ function renderLang() {
   }
   translatePage();
   renderToast();
-  renderEntryImageHint();
+  renderImageHint("entry");
+  renderImageHint("edition");
+  if ($("edition-dialog").open) {
+    renderEditionHeading();
+    updateEditionPreview();
+    showEditionError(editionError);
+  }
   if ($("entry-dialog").open) {
     renderEntryTitle();
     updateEntryPreview();
@@ -759,7 +999,7 @@ window.addEventListener("dragend", () => {
 window.addEventListener("dragenter", (e) => {
   if (!hasFiles(e)) return;
   dragDepth++;
-  $("drop").hidden = busy() || $("entry-dialog").open;
+  $("drop").hidden = busy() || $("entry-dialog").open || $("edition-dialog").open;
 });
 window.addEventListener("dragleave", (e) => {
   if (hasFiles(e) && --dragDepth <= 0) {
@@ -774,6 +1014,7 @@ window.addEventListener("drop", (e) => {
   dragDepth = 0;
   $("drop").hidden = true;
   if ($("entry-dialog").open) return setEntryImage(e.dataTransfer.files[0]);
+  if ($("edition-dialog").open) return setEditionImage(e.dataTransfer.files[0]);
   if (busy()) return toast(() => (state.busy ? errorText({ code: "busy", params: { kind: state.busy }, message: state.busy }) : t("toast.workspaceUnavailable")), true);
   upload(e.dataTransfer.files);
 });
