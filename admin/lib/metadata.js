@@ -124,7 +124,8 @@ const STRIP = {
   // RIFF chunks, only where the format reads them: a simple file's one image
   // chunk; in an extended one, the ICC profile if flagged, then either the
   // animation (inside each frame only its image and alpha) or one image with
-  // its alpha. The VP8X EXIF and XMP flags are cleared and the sizes fixed.
+  // its alpha. VP8X and ANIM keep their defined size, the VP8X EXIF and XMP
+  // flags are cleared and the sizes fixed.
   webp(buf) {
     const isImage = (type) => type === "VP8 " || type === "VP8L";
     const chunks = (start, end) => {
@@ -153,15 +154,20 @@ const STRIP = {
       if (!image) throw new Error("no image");
       out.push(image.chunk);
     } else {
-      const flags = all[0].chunk[8];
-      const vp8x = Buffer.from(all[0].chunk);
+      // Fixed-size chunks are rewritten to their defined size, so nothing rides behind.
+      const fixed = (data, size) => {
+        if (data.readUInt32LE(4) < size) throw new Error("short chunk");
+        return chunk(data.toString("latin1", 0, 4), Buffer.from(data.subarray(8, 8 + size)));
+      };
+      const vp8x = fixed(all[0].chunk, 10);
+      const flags = vp8x[8];
       vp8x[8] &= ~(0x08 | 0x04); // EXIF, XMP
       out.push(vp8x);
       const icc = all.find((c) => c.type === "ICCP");
       if (flags & 0x20 && icc) out.push(icc.chunk);
       if (flags & 0x02) {
         for (const { type, chunk: data } of all) {
-          if (type === "ANIM") out.push(data);
+          if (type === "ANIM") out.push(fixed(data, 6));
           else if (type === "ANMF") {
             // A 16-byte frame header (position, size, duration, flags), then the frame's chunks.
             const offset = data.byteOffset - buf.byteOffset;
