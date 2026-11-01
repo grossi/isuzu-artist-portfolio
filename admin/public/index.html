@@ -99,7 +99,7 @@
           </label>
           <div class="entry-fields">
             <label for="entry-link" data-i18n="entryDialog.link"></label>
-            <input id="entry-link" aria-describedby="entry-link-error" type="url" inputmode="url" placeholder="https://…" maxlength="2000" />
+            <input id="entry-link" autofocus aria-describedby="entry-link-error" type="url" inputmode="url" placeholder="https://…" maxlength="2000" />
             <p class="hint" data-i18n="entryDialog.linkHint"></p>
             <p class="field-error" id="entry-link-error" hidden></p>
           </div>
@@ -117,7 +117,7 @@
           </div>
         </div>
         <p class="hint" data-i18n="entryDialog.markdownHint"></p>
-        <p class="banner error" id="entry-error" hidden></p>
+        <p class="banner error" id="entry-error" role="alert" hidden></p>
         <div class="dialog-actions">
           <button type="button" id="entry-cancel" data-i18n="common.cancel"></button>
           <button type="submit" class="primary" id="entry-submit" data-i18n="entryDialog.submit"></button>
@@ -137,7 +137,7 @@
           </label>
           <div class="entry-fields">
             <label for="edition-link" data-i18n="editionDialog.link"></label>
-            <input id="edition-link" aria-describedby="edition-link-error" type="url" inputmode="url" placeholder="https://…" maxlength="2000" />
+            <input id="edition-link" autofocus aria-describedby="edition-link-error" type="url" inputmode="url" placeholder="https://…" maxlength="2000" />
             <p class="hint" data-i18n="editionDialog.linkHint"></p>
             <p class="field-error" id="edition-link-error" hidden></p>
           </div>
@@ -159,7 +159,7 @@
           </div>
         </div>
         <p class="hint" data-i18n="editionDialog.fallbackHint"></p>
-        <p class="banner error" id="edition-error" hidden></p>
+        <p class="banner error" id="edition-error" role="alert" hidden></p>
         <div class="dialog-actions">
           <button type="button" id="edition-cancel" data-i18n="common.cancel"></button>
           <button type="submit" class="primary" id="edition-submit" data-i18n="entryDialog.submit"></button>

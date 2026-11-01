@@ -607,7 +607,10 @@ async function submitEntry(event) {
   showEntryError(null);
   // The field's own message already says what is wrong.
   if (link && !validLink(link)) return $("entry-link").focus();
-  if (!editing && !entryImage) return fail({ code: "entry-needs-image" });
+  if (!editing && !entryImage) {
+    $("entry-drop").focus();
+    return fail({ code: "entry-needs-image" });
+  }
   // Everything is read before waiting for queued edits: the dialog may be
   // closed and reopened on another entry meanwhile.
   submitting = true;
@@ -806,7 +809,10 @@ async function submitEdition(event) {
   showEditionError(null);
   updateEditionPreview();
   // The same checks as the server, in the order of the form.
-  if (!editing && !editionImage) return showEditionError({ code: "edition-needs-image" });
+  if (!editing && !editionImage) {
+    $("edition-drop").focus();
+    return showEditionError({ code: "edition-needs-image" });
+  }
   if (!label.ja.trim() && !label.en.trim()) {
     $("edition-label-ja").focus();
     return showEditionError({ code: "edition-needs-label" });
