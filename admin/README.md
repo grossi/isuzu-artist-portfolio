@@ -132,10 +132,10 @@ in the git history.
   only what draws the image stays: the image data, its colour profile and its animation.
   EXIF (a phone photo's location, the camera, dates), XMP, IPTC/Photoshop blocks,
   thumbnails, comments, text chunks, content credentials and unknown blocks go. They are
-  cut out of the file, so the pixels are untouched; only an image that EXIF rotates is
-  re-encoded with the rotation applied.
-- The site's build refuses symlinks in `public/` or `src/` that point outside the project
-  (`src/utils/symlinks.js`): it would copy the target and the deploy would publish it.
+  cut out of the file, so the pixels are untouched; only a still image that EXIF rotates
+  is re-encoded with the rotation applied (an animation keeps its frames and loses the tag).
+- The site's build refuses any symlink in `public/` or `src/` (`src/utils/symlinks.js`):
+  it would copy the target, wherever it points, and the deploy would publish it.
 - Git and the deploy run without a shell (`execFile`/`spawn` with argument lists). Commit
   messages and file names are passed as arguments, and git never prompts.
 - Markdown (sidebar descriptions) is rendered with raw HTML disabled and an allowlist of
