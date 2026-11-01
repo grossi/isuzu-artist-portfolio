@@ -15,7 +15,9 @@ before(async () => {
   server = http.createServer(async (req, res) => {
     try {
       const { files, fields } = await receiveUploads(req, { tempDir: spool, maxBytes: 200 * 1024, maxFiles: 2, fieldNames: ["entry"] });
-      res.end(JSON.stringify({ files: files.map(({ stem, extension }) => `${stem}.${extension}`), fields }));
+      const metadata = await Promise.all(files.map(({ path }) => sharp(path).metadata()));
+      const tagged = metadata.filter(({ exif, xmp }) => exif || xmp).length;
+      res.end(JSON.stringify({ files: files.map(({ stem, extension }) => `${stem}.${extension}`), fields, tagged }));
       removeTemp(files);
     } catch (error) {
       res.writeHead(error.status ?? 500).end(JSON.stringify({ error: error.message, code: error.code, params: error.params }));
@@ -44,8 +46,17 @@ const spoolEmpty = () => !fs.existsSync(spool) || fs.readdirSync(spool).length =
 test("real images pass; the extension comes from the content", async () => {
   const res = await post([["files", await png(), "Photo.JPG"], ["entry", '{"a":1}']]);
   assert.equal(res.status, 200);
-  assert.deepEqual(res.body, { files: ["photo.png"], fields: { entry: '{"a":1}' } });
+  assert.deepEqual(res.body, { files: ["photo.png"], fields: { entry: '{"a":1}' }, tagged: 0 });
   assert.ok(spoolEmpty());
+});
+
+test("uploads lose their EXIF and XMP (a phone photo's location)", async () => {
+  const gps = { IFD3: { GPSLatitudeRef: "N", GPSLatitude: "35/1 41/1 0/1" } };
+  const xmp = '<x:xmpmeta xmlns:x="adobe:ns:meta/"/>';
+  const photo = await sharp({ create: { width: 16, height: 16, channels: 3, background: "red" } }).withExif(gps).withXmp(xmp).jpeg().toBuffer();
+  assert.ok((await sharp(photo).metadata()).exif);
+  const res = await post([["files", photo, "IMG_0001.JPG"], ["files", await png(), "b.png"]]);
+  assert.deepEqual([res.status, res.body.files, res.body.tagged], [200, ["img-0001.jpg", "b.png"], 0]);
 });
 
 test("non-images, truncated images, oversize files and stray fields are refused, leaving no temp files", async () => {
