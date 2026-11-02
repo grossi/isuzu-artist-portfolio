@@ -317,7 +317,7 @@ export function Profile({ className, title, description, socialLinks }: ProfileP
       <div className={classes.me}>
         <img className={classes.avatar} alt={t("sidebar.avatarAlt")} src={`${import.meta.env.BASE_URL}isuzu.jpg`} />
         <p className={classes.name}>
-          isuZu<span className={classes.reading}>うずし</span>
+          isuZu<span className={classes.reading} lang="ja">うずし</span>
         </p>
       </div>
       <div className={classes.about}>
