@@ -166,7 +166,9 @@ const useStyles = makeStyles()({
       fontSize: "inherit",
     },
     "& li a::after": {
-      content: '" ↗"',
+      // The arrow is decoration: screen readers skip it (the alt text after
+      // the slash), the plain declaration is the fallback for older browsers
+      content: ['" ↗"', '" ↗" / ""'],
     },
   },
   previous: {
@@ -203,14 +205,14 @@ const useStyles = makeStyles()({
     flexDirection: "column",
     gap: 4,
     minWidth: 0,
+    // Wraps when the row is narrower than the label or the title: on phones,
+    // or with long ones (the admin allows 100 and 300 characters)
+    overflowWrap: "anywhere",
   },
   previousLabel: {
     fontSize: 12,
     letterSpacing: "0.08em",
     color: "#5f5f5f",
-    // Wraps when the row is narrower than the label: on phones, or with a
-    // long edition label (the admin allows up to 100 characters)
-    overflowWrap: "anywhere",
   },
   previousTitle: {
     fontSize: 14,
@@ -292,7 +294,9 @@ function SidebarEntry(props: Entry & { number: number }) {
           </span>
           <span className={classes.previousText}>
             <span className={classes.previousLabel}>{t("sidebar.previousEdition", { edition: edition.edition })}</span>
-            <span className={classes.previousTitle}>{edition.title} ↗</span>
+            <span className={classes.previousTitle}>
+              {edition.title} <span aria-hidden="true">↗</span>
+            </span>
           </span>
         </a>
       ))}

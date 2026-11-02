@@ -769,7 +769,7 @@ function updateEditionPreview() {
     $(`edition-${code}-preview`).replaceChildren(
       el("span", { class: "lang" }, t("entryDialog.sitePreview", { lang: t(`lang.${code}`) })),
       ...(borrowed ? [el("p", { class: "muted" }, t("editionDialog.showingOther", { other: t(`lang.${otherLang(code)}`) }))] : []),
-      editionRow(img.hidden ? null : img.src, SITE_EDITION_LABEL[code].replace("{edition}", label.text), name.text));
+      editionRow(img.hidden ? null : img.src, SITE_EDITION_LABEL[code].replace("{edition}", () => label.text), name.text));
   }
   const link = $("edition-link").value.trim();
   const error = link ? (validLink(link) ? "" : t("entryDialog.linkInvalid")) : editionSubmitted ? t("editionDialog.linkRequired") : "";

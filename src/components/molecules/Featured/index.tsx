@@ -46,9 +46,16 @@ const useStyles = makeStyles()({
       width: "auto",
       margin: 0,
       display: "flex",
+      // The row grows 28px per slide (the admin sets how many): it stops
+      // short of the wordmark (about 2.6em wide with its margin) and wraps
+      // upward instead of running into it.
+      maxWidth: `calc(100% - var(--wm) * 2.6 - 2 * ${SIDE})`,
+      flexWrap: "wrap-reverse",
+      justifyContent: "flex-end",
       // On phones the wordmark reaches under the dots: they sit above it
       "@media (max-width: 599.95px)": {
         bottom: "calc(var(--wm) * 0.6 + 4px)",
+        maxWidth: `calc(100% - 2 * ${SIDE})`,
       },
     },
     "& .slick-dots li": {
