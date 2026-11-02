@@ -8,7 +8,7 @@ A small web app, reachable only on the tailnet, for managing the site's content 
   `public/carousel/` or any gallery image.
 - **Sidebar**: the box under the profile (著書 / My Books). Add, edit, reorder and remove
   entries (an image, an optional link, a ja/en markdown description), and edit its heading.
-  Under each entry, its **previous editions** (過去のバージョン): older editions of the book,
+  Under each entry, its **previous editions** (過去バージョン): older editions of the book,
   shown on the site as a small cover, an edition label and a title, the whole row a link.
   Add (a cover, the ja/en edition label and title, a link), edit, reorder and remove them.
 - **Preview** the real site built from the draft, then **Save** (commit) and **Deploy**.
