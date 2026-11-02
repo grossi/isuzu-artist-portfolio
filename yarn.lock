@@ -331,6 +331,16 @@
     "@eslint/core" "^1.2.1"
     levn "^0.4.1"
 
+"@fontsource-variable/bodoni-moda@5.3.0":
+  version "5.3.0"
+  resolved "https://registry.yarnpkg.com/@fontsource-variable/bodoni-moda/-/bodoni-moda-5.3.0.tgz#a61d65957b893ad4c0bd4d49dfcb82c19977cef5"
+  integrity sha512-yTDXk4+/J8I20KjtkHBbXDQNeE5PR3BZa0gv/YRza+kyxsz+mmg0la/n/hsr6+WvSfVP7Lc8lRTjHGIYwBW43A==
+
+"@fontsource/zen-kaku-gothic-new@5.3.1":
+  version "5.3.1"
+  resolved "https://registry.yarnpkg.com/@fontsource/zen-kaku-gothic-new/-/zen-kaku-gothic-new-5.3.1.tgz#583f58d0019bf29af539e78ef8c561be68d13028"
+  integrity sha512-L69mE6bkzeVK3UdTenxOmCIWvTwMxohJRNm1dAj+W+UiCULQ91b7M77ENVw+pjGmFL6zKPFYFeH3g8x2ugAJNw==
+
 "@humanfs/core@^0.19.2":
   version "0.19.2"
   resolved "https://registry.yarnpkg.com/@humanfs/core/-/core-0.19.2.tgz#a8272ca03b2acf492670222b2320b6c421bfde60"

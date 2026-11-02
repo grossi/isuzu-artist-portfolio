@@ -15,12 +15,17 @@
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
     -->
     <link rel="manifest" href="/manifest.json" />
-    <!-- Bodoni Moda: the isuZu wordmark and section headings. Zen Kaku Gothic New: body text. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      The isuZu wordmark's face (Bodoni Moda, see src/assets/css/fonts.css), so
+      the hero's large wordmark doesn't wait for the CSS and page to load first.
+      Keep the path in sync with the url() there, so both name the same file.
+    -->
     <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;1,6..96,400&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap"
+      rel="preload"
+      href="/node_modules/@fontsource-variable/bodoni-moda/files/bodoni-moda-latin-opsz-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />
     <title>isuZuの画廊</title>
   </head>

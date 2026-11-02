@@ -59,3 +59,7 @@ Lints the project with ESLint.
 ### `yarn deploy`
 
 Builds the app, then uploads `build/` to S3 with Cache-Control headers and invalidates CloudFront (`yarn push-s3`, see `scripts/push-s3.sh`).
+
+## Fonts
+
+The home page's fonts are served from the site itself, not from Google Fonts: Zen Kaku Gothic New (body text, weights 400, 500 and 700) and Bodoni Moda (the wordmark and headings). They come from the pinned Fontsource packages and are imported in `src/index.tsx` and `src/assets/css/fonts.css`; Vite puts the `.woff2` files in `build/assets/`. Zen Kaku Gothic New stays split by `unicode-range`, so a page downloads only the slices for its characters. To use another weight or style, import it there as well. `index.html` preloads the wordmark's face. Both fonts are under the SIL Open Font License (`public/fonts/OFL.txt`).
