@@ -46,6 +46,10 @@ const useStyles = makeStyles()({
       width: "auto",
       margin: 0,
       display: "flex",
+      // On phones the wordmark reaches under the dots: they sit above it
+      "@media (max-width: 599.95px)": {
+        bottom: "calc(var(--wm) * 0.6 + 4px)",
+      },
     },
     "& .slick-dots li": {
       width: 28,

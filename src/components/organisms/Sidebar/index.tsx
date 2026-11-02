@@ -222,6 +222,8 @@ const useStyles = makeStyles()({
     letterSpacing: "0.08em",
     color: "#5f5f5f",
     whiteSpace: "nowrap",
+    // On phones the row is narrower than "Previous edition (2018 edition)"
+    "@media (max-width: 599.95px)": { whiteSpace: "normal" },
   },
   previousTitle: {
     fontSize: 14,

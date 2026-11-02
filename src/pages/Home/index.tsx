@@ -20,7 +20,8 @@ const useStyles = makeStyles()({
     boxSizing: "border-box",
     padding: "72px clamp(16px, 5vw, 80px) 0",
     display: "flex",
-    flexWrap: "wrap",
+    // Side by side down to 1081px, where the two bases (560 + 380 + the gap)
+    // don't quite fit: wrapping there would put the profile under every work.
     alignItems: "flex-start",
     gap: 64,
     "@media (max-width: 1080px)": {
