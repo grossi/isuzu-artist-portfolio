@@ -41,7 +41,11 @@ for ext in jpg jpeg png webp gif svg ico; do
 done
 
 # Hashed bundles first and HTML last, so index.html never points at missing files.
-push "public,max-age=31536000,immutable" --exclude "*" --include "assets/*"
+# The web fonts get their type set explicitly: the AWS CLI guesses types from its
+# Python's table, and not every version knows .woff2 (it would upload them as
+# binary/octet-stream).
+push "public,max-age=31536000,immutable" --exclude "*" --include "assets/*.woff2" --content-type "font/woff2"
+push "public,max-age=31536000,immutable" --exclude "*" --include "assets/*" --exclude "assets/*.woff2"
 push "public,max-age=604800" --exclude "*" "${include_images[@]}" --exclude "assets/*"
 # Everything else (index.html, manifest.json, robots.txt, markdown, ...) is revalidated on every load.
 push "no-cache" "${exclude_images[@]}" --exclude "assets/*"

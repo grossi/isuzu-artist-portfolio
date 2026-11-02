@@ -1,8 +1,22 @@
-import { defineConfig } from "vite";
+import { defineConfig, Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
+// Fontsource's CSS lists a .woff fallback after each .woff2. Every browser
+// that understands unicode-range reads woff2, so the woff copies (about 9 MB
+// for Zen Kaku Gothic New's 3 weights) would only weigh down every upload.
+function woff2Only(): Plugin {
+  return {
+    name: "fontsource-woff2-only",
+    enforce: "pre",
+    transform(code, id) {
+      if (!/[\\/]@fontsource[\\/][^?]*\.css(\?|$)/.test(id)) return null;
+      return { code: code.replace(/,\s*url\([^)]*\.woff\)\s*format\(['"]woff['"]\)/g, ""), map: null };
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [woff2Only(), react()],
   resolve: {
     // Resolve bare imports such as "components/..." from src/ (tsconfig paths)
     tsconfigPaths: true,
@@ -13,6 +27,9 @@ export default defineConfig({
   build: {
     outDir: "build",
     sourcemap: false,
+    // Fonts are always separate files: Vite would otherwise inline the smallest
+    // Japanese slices into the CSS, where every page pays for them.
+    assetsInlineLimit: (file) => (/\.woff2?$/.test(file) ? false : undefined),
     rolldownOptions: {
       output: {
         // Keep rarely-changing libraries in their own long-cacheable chunks
