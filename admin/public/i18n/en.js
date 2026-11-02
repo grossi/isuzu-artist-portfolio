@@ -139,7 +139,7 @@ export default {
   "entryDialog.sitePreview": "{lang} site",
   "entryDialog.noDescription": "(no description)",
   "entryDialog.showingOther": "(empty: showing the {other} text)",
-  "entryDialog.markdownHint": "An empty language shows the other one on the site. `**bold**`, `[text](https://…)`, `- list`; HTML is shown as text.",
+  "entryDialog.markdownHint": "The site shows a description in three parts: a short lead-in paragraph (small, grey), then the book title in bold, `**Title**` (shown as the heading; `**first line** **second line**` puts it on two lines), then the shop links as a list, `- [Amazon](https://…)` (shown in a row, each with ↗). An empty language shows the other one on the site; HTML is shown as text.",
   "entryDialog.submit": "Save to draft",
 
   "editionDialog.addTitle": "Add a previous edition to \"{id}\"",

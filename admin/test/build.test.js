@@ -51,7 +51,7 @@ test("the build ships a cover-sized webp of an uploaded edition cover, and the l
     title: { ja: "本", en: "本" }, edition: { ja: "First edition", en: "First edition" },
   });
   assert.deepEqual(other.previousEditions, []);
-  // Three times the 40x56 box, never more, never the source file.
+  // Over twice the 52px-wide cover the site draws, never more, never the source file.
   const size = async (file) => sharp(path.join(root, "public/sidebar/small", file)).metadata().then(({ width, height }) => [width, height]);
   assert.deepEqual(await size("big-cover.webp"), [120, 168]);
   assert.deepEqual(await size("wide.webp"), [120, 40]);

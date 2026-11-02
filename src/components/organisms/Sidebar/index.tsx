@@ -1,87 +1,226 @@
 import * as React from "react";
 import { makeStyles } from "tss-react/mui";
-import Grid from "@mui/material/Grid";
-import Paper from "@mui/material/Paper";
-import Typography from "@mui/material/Typography";
 import Markdown from "components/molecules/Markdown";
-import Link from "@mui/material/Link";
-import CardMedia from "@mui/material/CardMedia";
-import Avatar from "@mui/material/Avatar";
+import SectionHeading from "components/molecules/SectionHeading";
 import SocialLinks, { SocialLink } from "components/molecules/SocialLinks";
 import useMarkdown from "hooks/useMarkdown";
 import { Localized, useLanguage } from "i18n/LanguageContext";
+import { bodyFont, displayFont } from "theme";
 
-const useStyles = makeStyles()((theme) => ({
-  sidebarAboutBox: {
-    padding: theme.spacing(2),
-    backgroundColor: theme.palette.grey[200],
-    marginBottom: theme.spacing(3),
+// A book cover drawn as a hardcover: a crease by the spine, the page edges
+// showing on the right, and a soft shadow.
+const hardcover = {
+  position: "relative",
+  alignSelf: "start",
+  filter: "drop-shadow(0 14px 12px rgba(0,0,0,.22)) drop-shadow(0 2px 2px rgba(0,0,0,.18))",
+  transition: "transform .4s cubic-bezier(.2,.7,.2,1)",
+  "& img": {
+    display: "block",
+    width: "100%",
+    height: "auto",
+    position: "relative",
+    zIndex: 1,
+    borderRadius: "1px 3px 3px 1px",
   },
-  sidebarSection: {
-    marginTop: theme.spacing(3),
+  "&::before": {
+    content: '""',
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: "12%",
+    zIndex: 2,
+    borderRadius: "1px 0 0 1px",
+    background:
+      "linear-gradient(to right, rgba(0,0,0,.30) 0, rgba(0,0,0,.08) 18%, rgba(255,255,255,.35) 32%, rgba(0,0,0,.14) 55%, rgba(0,0,0,0) 100%)",
   },
-  previousEditions: {
-    // Nest past editions under this book, with a larger gap before the next book.
-    marginInlineStart: theme.spacing(2),
-    marginTop: theme.spacing(2),
-    paddingBottom: theme.spacing(3),
-    borderBottom: `1px solid ${theme.palette.divider}`,
-    marginBottom: theme.spacing(3),
-    // The last book has no next book to separate from.
-    "&:last-child": {
-      paddingBottom: 0,
-      borderBottom: 0,
+  "&::after": {
+    content: '""',
+    position: "absolute",
+    top: 3,
+    bottom: 3,
+    right: -6,
+    width: 8,
+    zIndex: 0,
+    borderRadius: "0 2px 2px 0",
+    background: "repeating-linear-gradient(to right, #fff 0 1px, #dcdcdc 1px 2px)",
+  },
+} as const;
+
+const useStyles = makeStyles()({
+  me: {
+    display: "flex",
+    alignItems: "center",
+    gap: 18,
+    marginBottom: 20,
+  },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: "50%",
+    objectFit: "cover",
+  },
+  name: {
+    margin: 0,
+    fontFamily: displayFont,
+    fontSize: 36,
+    letterSpacing: "-0.02em",
+  },
+  reading: {
+    marginLeft: 8,
+    fontFamily: bodyFont,
+    fontSize: 13,
+    letterSpacing: "0.3em",
+    color: "#5f5f5f",
+  },
+  // A one-paragraph profile renders as inline text, a longer one as paragraphs
+  about: {
+    marginBottom: 22,
+    fontSize: 14,
+    lineHeight: 1.9,
+    "& p": {
+      margin: "0 0 8px",
+      fontSize: 14,
+      lineHeight: 1.9,
+    },
+    "& p:last-child": {
       marginBottom: 0,
     },
   },
-  editionsList: {
-    listStyle: "none",
-    padding: 0,
-    margin: 0,
+  book: {
+    display: "grid",
+    gridTemplateColumns: "40px 112px minmax(0, 1fr)",
+    gap: 16,
+    paddingBottom: 28,
+    marginBottom: 28,
+    borderBottom: "1px solid #ddd",
   },
-  editionLink: {
+  number: {
+    fontFamily: displayFont,
+    fontStyle: "italic",
+    fontSize: 30,
+    lineHeight: 1,
+    color: "#8a8a8a",
+  },
+  cover: {
+    ...hardcover,
+    display: "block",
+    width: 100,
+    "&:focus-visible": { outline: "2px solid #3f51b5", outlineOffset: 3 },
+    "article:hover > &": { transform: "translateY(-6px)" },
+    "@media (prefers-reduced-motion: reduce)": {
+      "article:hover > &": { transform: "none" },
+    },
+  },
+  // The entry's markdown: first paragraph a short lead-in with a dash, the
+  // bold title, then the shop links in a row. Only the top-level blocks
+  // (markdown-to-jsx wraps them in a div) take these roles: a list written
+  // with blank lines between its items puts each link in a <p> of its own.
+  text: {
+    minWidth: 0,
+    "& p": {
+      margin: "0 0 12px",
+    },
+    "& > div > p:first-child": {
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 8,
+      margin: "0 0 8px",
+      fontSize: 12,
+      lineHeight: 1.6,
+      letterSpacing: 0,
+      color: "#6b6b6b",
+      "&::before": {
+        content: '""',
+        flex: "0 0 14px",
+        height: 1,
+        marginTop: 9,
+        background: "#9e9e9e",
+      },
+    },
+    "& > div > p:not(:first-child) > strong": {
+      display: "block",
+      fontSize: 15,
+      lineHeight: 1.55,
+      fontWeight: 700,
+      color: "#111",
+    },
+    "& ul": {
+      listStyle: "none",
+      margin: 0,
+      padding: 0,
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "4px 14px",
+    },
+    "& li": {
+      margin: 0,
+    },
+    "& li > span": {
+      fontSize: 13,
+      lineHeight: 1.6,
+    },
+    "& li p": {
+      display: "inline",
+      margin: 0,
+      fontSize: "inherit",
+    },
+    "& li a::after": {
+      // The arrow is decoration: screen readers skip it (the alt text after
+      // the slash), the plain declaration is the fallback for older browsers
+      content: ['" ↗"', '" ↗" / ""'],
+    },
+  },
+  previous: {
+    gridColumn: "2 / 4",
     display: "flex",
     alignItems: "center",
-    gap: theme.spacing(1.5),
-    minHeight: 64,
-    paddingBlock: theme.spacing(0.5),
-    color: theme.palette.text.primary,
-    "&:focus-visible": {
-      outline: `2px solid ${theme.palette.primary.main}`,
-      outlineOffset: 3,
+    gap: 18,
+    minHeight: 76,
+    marginTop: 6,
+    // The small cover tucks under the big one and the text lines up with the text above
+    marginLeft: 58,
+    minWidth: 0,
+    color: "#111",
+    textDecoration: "none",
+    "&:focus-visible": { outline: "2px solid #3f51b5", outlineOffset: 3 },
+  },
+  previousCover: {
+    ...hardcover,
+    display: "block",
+    alignSelf: "center",
+    width: 52,
+    flex: "0 0 52px",
+    filter: "drop-shadow(0 6px 6px rgba(0,0,0,.22)) drop-shadow(0 1px 1px rgba(0,0,0,.15))",
+    "&::after": {
+      ...hardcover["&::after"],
+      right: -4,
+      width: 5,
+      top: 2,
+      bottom: 2,
     },
   },
-  editionCover: {
-    width: 40,
-    height: 56,
-    objectFit: "contain",
-    flexShrink: 0,
-  },
-  editionText: {
-    flex: 1,
+  previousText: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
     minWidth: 0,
+    // Wraps when the row is narrower than the label or the title: on phones,
+    // or with long ones (the admin allows 100 and 300 characters)
     overflowWrap: "anywhere",
   },
-  editionTitle: {
-    display: "block",
-    fontSize: "0.75rem",
-    lineHeight: 1.5,
+  previousLabel: {
+    fontSize: 12,
+    letterSpacing: "0.08em",
+    color: "#5f5f5f",
   },
-  avatarGrid: {
-    // 2 + the 1 unit of item padding v4 Grid added
-    marginBottom: theme.spacing(3),
+  previousTitle: {
+    fontSize: 14,
+    lineHeight: 1.6,
+    fontWeight: 500,
+    "a:hover > span > &": { textDecoration: "underline" },
   },
-  avatar: {
-    width: theme.spacing(7),
-    height: theme.spacing(7),
-  },
-  sidebarGrid: {
-    order: 2,
-    [theme.breakpoints.down("md")]: {
-      order: 1,
-    },
-  },
-}));
+});
 
 // The shape of src/sidebar.json
 export interface SidebarData {
@@ -109,84 +248,94 @@ interface Entry {
   }>;
 }
 
-interface SidebarProps {
+interface ProfileProps {
+  className?: string;
   title: string;
   description: string;
-  entriesHeader: string;
-  entries: Entry[];
   socialLinks: SocialLink[];
 }
 
-function SidebarEntry(props: Entry) {
+interface BooksProps {
+  className?: string;
+  entriesHeader: string;
+  entries: Entry[];
+}
+
+function SidebarEntry(props: Entry & { number: number }) {
   const { classes } = useStyles();
   const { t } = useLanguage();
-  const headingId = React.useId();
-  const image = <CardMedia component="img" src={props.image} />;
+  // When the text beside it links to the same page, the cover link is skipped
+  // by keyboard and screen readers. Otherwise (the link and the description
+  // are separate fields in the admin) it is the only way there.
+  const repeated = Boolean(props.link) && props.description.includes(`](${props.link})`);
+  const image = <img src={props.image} alt={props.link && !repeated ? t("sidebar.coverAlt") : ""} />;
   return (
-    <React.Fragment>
-      {props.link ? <Link href={props.link}>{image}</Link> : image}
-      {props.description.trim() && <Markdown>{props.description}</Markdown>}
-      {props.previousEditions.length > 0 && (
-        <section className={classes.previousEditions} aria-labelledby={headingId}>
-          {/* Under the box's h4 heading */}
-          <Typography component="h5" variant="subtitle2" id={headingId} gutterBottom>
-            {t("sidebar.previousEditions")}
-          </Typography>
-          <ul className={classes.editionsList}>
-            {props.previousEditions.map((edition) => (
-              <li key={edition.id}>
-                <Link href={edition.link} className={classes.editionLink}>
-                  <img src={edition.image} alt="" width={40} height={56} loading="lazy" className={classes.editionCover} />
-                  <span className={classes.editionText}>
-                    <Typography component="span" variant="caption" color="text.secondary">
-                      {edition.edition}
-                    </Typography>
-                    <span className={classes.editionTitle}>{edition.title}</span>
-                  </span>
-                  <span aria-hidden="true">↗</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
+    <article className={classes.book}>
+      <span className={classes.number}>{String(props.number).padStart(2, "0")}</span>
+      {props.link ? (
+        <a
+          href={props.link}
+          className={classes.cover}
+          tabIndex={repeated ? -1 : undefined}
+          aria-hidden={repeated || undefined}
+        >
+          {image}
+        </a>
+      ) : (
+        <div className={classes.cover}>{image}</div>
       )}
-    </React.Fragment>
+      <div className={classes.text}>
+        {props.description.trim() && <Markdown>{props.description}</Markdown>}
+      </div>
+      {props.previousEditions.map((edition) => (
+        <a key={edition.id} href={edition.link} className={classes.previous}>
+          <span className={classes.previousCover}>
+            <img src={edition.image} alt="" width={52} loading="lazy" />
+          </span>
+          <span className={classes.previousText}>
+            <span className={classes.previousLabel}>{t("sidebar.previousEdition", { edition: edition.edition })}</span>
+            <span className={classes.previousTitle}>
+              {edition.title} <span aria-hidden="true">↗</span>
+            </span>
+          </span>
+        </a>
+      ))}
+    </article>
   );
 }
 
-export default function Sidebar(props: SidebarProps) {
+// The home page's right-hand column: the profile, and under it the books
+// (著書 / My Books). The page places them (see pages/Home).
+export function Profile({ className, title, description, socialLinks }: ProfileProps) {
   const { classes } = useStyles();
-  const { title, description, entriesHeader, entries, socialLinks } = props;
   const { t } = useLanguage();
   const loadedAbout = useMarkdown(description);
 
   return (
-    <Grid size={{ xs: 12, md: 4 }} className={classes.sidebarGrid}>
-      <Paper elevation={0} className={classes.sidebarAboutBox}>
-        <Typography variant="h6" gutterBottom>
-          {title}
-        </Typography>
-        <Grid container direction="row" alignItems="center" spacing={2} className={classes.avatarGrid}>
-          <Grid>
-            <Avatar className={classes.avatar} alt={t("sidebar.avatarAlt")} src={`${import.meta.env.BASE_URL}isuzu.jpg`} />
-          </Grid>
-          <Grid>
-            <Typography variant="h4">isuZu</Typography>
-          </Grid>
-        </Grid>
+    <section className={className} aria-labelledby="home-profile home-profile-label">
+      <SectionHeading id="home-profile" title="Profile" label={title} />
+      <div className={classes.me}>
+        <img className={classes.avatar} alt={t("sidebar.avatarAlt")} src={`${import.meta.env.BASE_URL}isuzu.jpg`} />
+        <p className={classes.name}>
+          isuZu<span className={classes.reading} lang="ja">うずし</span>
+        </p>
+      </div>
+      <div className={classes.about}>
         <Markdown>{loadedAbout}</Markdown>
-        <SocialLinks socialLinks={socialLinks} />
-      </Paper>
-      {entries.length > 0 && (
-        <Paper elevation={0} className={classes.sidebarAboutBox}>
-          <Typography variant="h4" gutterBottom>
-            {entriesHeader}
-          </Typography>
-          {entries.map((entry) => (
-            <SidebarEntry key={entry.id} {...entry} />
-          ))}
-        </Paper>
-      )}
-    </Grid>
+      </div>
+      <SocialLinks socialLinks={socialLinks} />
+    </section>
+  );
+}
+
+export function Books({ className, entriesHeader, entries }: BooksProps) {
+  if (entries.length === 0) return null;
+  return (
+    <section className={className} aria-labelledby="home-books home-books-label">
+      <SectionHeading id="home-books" title="Books" label={entriesHeader} height="short" />
+      {entries.map((entry, index) => (
+        <SidebarEntry key={entry.id} number={index + 1} {...entry} />
+      ))}
+    </section>
   );
 }

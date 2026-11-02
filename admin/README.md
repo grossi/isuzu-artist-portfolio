@@ -8,7 +8,7 @@ A small web app, reachable only on the tailnet, for managing the site's content 
   `public/carousel/` or any gallery image.
 - **Sidebar**: the box under the profile (著書 / My Books). Add, edit, reorder and remove
   entries (an image, an optional link, a ja/en markdown description), and edit its heading.
-  Under each entry, its **previous editions** (過去のバージョン): older editions of the book,
+  Under each entry, its **previous editions** (過去バージョン): older editions of the book,
   shown on the site as a small cover, an edition label and a title, the whole row a link.
   Add (a cover, the ja/en edition label and title, a link), edit, reorder and remove them.
 - **Preview** the real site built from the draft, then **Save** (commit) and **Deploy**.
@@ -117,13 +117,27 @@ is not a link. An empty language falls back to the other one, and an entry with 
 all shows only its image. Removing an entry deletes its `public/sidebar/` image, which stays
 in the git history.
 
+The home page styles a description in three parts, so write it in this shape: a one-line
+lead-in (shown small and grey), the book title in bold (`**…**`, shown as the heading; two
+bold parts side by side, `**first line** **second line**`, put the title on two lines), and
+the shop links as a list (shown in a row, each with ↗):
+
+```markdown
+私が書いた色塗りの本です。
+
+**色塗りワークショップ～塗りながら、楽しく学べる知識・コツ・考え方**
+
+- [Amazon](https://…)
+- [その他の購入先](https://…)
+```
+
 `previousEditions` (optional, left out when empty) belong to their entry, so removing the
 entry removes them too and none can be left pointing at a book that is gone. New ones go
 first; their ids are unique in the whole file. The link is required (http(s), checked by the
 server and the build), and the title and the edition label each need one language, the other
 one falling back to it like the descriptions. Their covers are uploaded like entry images
 (same checks, same metadata stripping, into `public/sidebar/`), and the build ships a webp
-that fits 120×168 px (`public/sidebar/small/`, three times the 40×56 box the site draws).
+that fits 120×168 px (`public/sidebar/small/`; the site draws the cover 52 px wide, so this is over twice that).
 The 2018 cover (`isuzubook-2018.jpg`) is, like the book covers, a web-ready file directly in
 `public/`, shipped as it is. An edition's image is deleted with it only when nothing else
 uses it.

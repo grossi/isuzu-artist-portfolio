@@ -139,7 +139,7 @@ export default {
   "entryDialog.sitePreview": "{lang}版サイトでの表示",
   "entryDialog.noDescription": "（説明文なし）",
   "entryDialog.showingOther": "（空欄のため{other}の文章を表示）",
-  "entryDialog.markdownHint": "説明文が空欄の場合、サイトにはもう一方の言語の文章が表示されます。`**太字**` で太字、`[文字](https://…)` でリンク、`- 項目` で箇条書きになります。HTML はタグのまま文字として表示されます。",
+  "entryDialog.markdownHint": "サイトでは3つに分けて表示されます。1段落目は短い紹介文（小さな灰色の文字）、次の段落は `**書名**` のように太字にした書名（見出しになります。`**1行目** **2行目**` と並べると2行に分かれます）、最後は `- [Amazon](https://…)` のような購入先リンクの箇条書き（横に並び、↗ が付きます）。説明文が空欄の場合、サイトにはもう一方の言語の文章が表示されます。HTML はタグのまま文字として表示されます。",
   "entryDialog.submit": "下書きに反映",
 
   "editionDialog.addTitle": "「{id}」に過去のバージョンを追加",

@@ -463,12 +463,24 @@ async function saveSidebar(heading, order, focus, version) {
 const sidebarOrder = () => state.sidebar.entries.map((entry) => entry.id);
 const headingInputs = () => ({ ja: $("heading-ja").value, en: $("heading-en").value });
 
+// A description styled like the site's book text (components/organisms/Sidebar):
+// the first paragraph a small grey lead-in, each **bold** part a title line,
+// and the list of links in a row, each with ↗.
+const bookText = (text) => el("div", { class: "book-text" }, renderMarkdown(text));
+
+// What a new description looks like, in the description's own language (see
+// "Sidebar" in admin/README.md), shown in the empty fields.
+const DESCRIPTION_EXAMPLE = {
+  ja: "私が書いた〇〇の本です。\n\n**書名**\n\n- [Amazon](https://…)\n- [その他の購入先](https://…)",
+  en: "Check out my book on …!\n\n**Title**\n\n- [Amazon Japan](https://…)\n- [Other retailers](https://…)",
+};
+
 // code: the description's language, not the page's.
 function description(entry, code) {
   const text = entry.description[code];
   return el("div", { class: "md-preview small" },
     el("span", { class: "lang" }, t(`lang.${code}`)),
-    text.trim() ? renderMarkdown(text) : el("p", { class: "muted" }, t("entry.emptyLang", { other: t(`lang.${otherLang(code)}`) })));
+    text.trim() ? bookText(text) : el("p", { class: "muted" }, t("entry.emptyLang", { other: t(`lang.${otherLang(code)}`) })));
 }
 
 function entryCard(entry, index) {
@@ -546,7 +558,7 @@ function updateEntryPreview() {
     $(`entry-${code}-preview`).replaceChildren(
       el("span", { class: "lang" }, t("entryDialog.sitePreview", { lang: t(`lang.${code}`) })),
       ...(note ? [el("p", { class: "muted" }, note)] : []),
-      ...(shown.trim() ? [renderMarkdown(shown)] : []));
+      ...(shown.trim() ? [bookText(shown)] : []));
   }
   const link = $("entry-link").value.trim();
   const error = link && !validLink(link) ? t("entryDialog.linkInvalid") : "";
@@ -646,6 +658,7 @@ $("entry-picker").addEventListener("change", (e) => {
   e.target.value = "";
 });
 for (const id of ["entry-ja", "entry-en", "entry-link"]) $(id).addEventListener("input", updateEntryPreview);
+for (const code of LANGS) $(`entry-${code}`).placeholder = DESCRIPTION_EXAMPLE[code];
 // A heading is based on the version it was focused at (after this tab's
 // queued edits): a refresh while typing keeps the typed text on screen, and
 // must not let it overwrite another tab's newer heading.
@@ -657,8 +670,9 @@ for (const code of LANGS) {
 
 // ---- Previous editions -----------------------------------------------------
 
-// The site's heading above them (src/i18n/), shown in the dialog's preview.
-const SITE_EDITIONS_HEADING = { ja: "過去のバージョン", en: "Previous editions" };
+// The site's label above an edition's title (sidebar.previousEdition in
+// src/i18n/), shown in the dialog's preview.
+const SITE_EDITION_LABEL = { ja: "過去バージョン（{edition}）", en: "Previous edition ({edition})" };
 
 const editionThumb = (entry, edition) => `/thumb/edition/${entry.id}/${edition.id}?v=${encodeURIComponent(edition.image)}`;
 
@@ -755,8 +769,7 @@ function updateEditionPreview() {
     $(`edition-${code}-preview`).replaceChildren(
       el("span", { class: "lang" }, t("entryDialog.sitePreview", { lang: t(`lang.${code}`) })),
       ...(borrowed ? [el("p", { class: "muted" }, t("editionDialog.showingOther", { other: t(`lang.${otherLang(code)}`) }))] : []),
-      el("div", { class: "edition-site-heading", lang: code }, SITE_EDITIONS_HEADING[code]),
-      editionRow(img.hidden ? null : img.src, label.text, name.text));
+      editionRow(img.hidden ? null : img.src, SITE_EDITION_LABEL[code].replace("{edition}", () => label.text), name.text));
   }
   const link = $("edition-link").value.trim();
   const error = link ? (validLink(link) ? "" : t("entryDialog.linkInvalid")) : editionSubmitted ? t("editionDialog.linkRequired") : "";
