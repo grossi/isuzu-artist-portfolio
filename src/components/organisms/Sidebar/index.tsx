@@ -7,11 +7,6 @@ import useMarkdown from "hooks/useMarkdown";
 import { Localized, useLanguage } from "i18n/LanguageContext";
 import { bodyFont, displayFont } from "theme";
 
-// The home page's columns stack below this width (see pages/Home): the aside
-// then lets its two sections take their own places, profile first and books
-// after the works.
-const STACKED = "@media (max-width: 1080px)";
-
 // A book cover drawn as a hardcover: a crease by the spine, the page edges
 // showing on the right, and a soft shadow.
 const hardcover = {
@@ -53,23 +48,6 @@ const hardcover = {
 } as const;
 
 const useStyles = makeStyles()({
-  aside: {
-    flex: "1 1 380px",
-    maxWidth: 440,
-    minWidth: 0,
-    display: "flex",
-    flexDirection: "column",
-    gap: 56,
-    [STACKED]: {
-      display: "contents",
-    },
-  },
-  profile: {
-    [STACKED]: { order: 1 },
-  },
-  books: {
-    [STACKED]: { order: 3 },
-  },
   me: {
     display: "flex",
     alignItems: "center",
@@ -268,12 +246,17 @@ interface Entry {
   }>;
 }
 
-interface SidebarProps {
+interface ProfileProps {
+  className?: string;
   title: string;
   description: string;
+  socialLinks: SocialLink[];
+}
+
+interface BooksProps {
+  className?: string;
   entriesHeader: string;
   entries: Entry[];
-  socialLinks: SocialLink[];
 }
 
 function SidebarEntry(props: Entry & { number: number }) {
@@ -317,35 +300,38 @@ function SidebarEntry(props: Entry & { number: number }) {
   );
 }
 
-export default function Sidebar(props: SidebarProps) {
+// The home page's right-hand column: the profile, and under it the books
+// (著書 / My Books). The page places them (see pages/Home).
+export function Profile({ className, title, description, socialLinks }: ProfileProps) {
   const { classes } = useStyles();
-  const { title, description, entriesHeader, entries, socialLinks } = props;
   const { t } = useLanguage();
   const loadedAbout = useMarkdown(description);
 
   return (
-    <aside className={classes.aside}>
-      <section className={classes.profile} aria-labelledby="home-profile">
-        <SectionHeading id="home-profile" title="Profile" label={title} />
-        <div className={classes.me}>
-          <img className={classes.avatar} alt={t("sidebar.avatarAlt")} src={`${import.meta.env.BASE_URL}isuzu.jpg`} />
-          <p className={classes.name}>
-            isuZu<span className={classes.reading}>うずし</span>
-          </p>
-        </div>
-        <div className={classes.about}>
-          <Markdown>{loadedAbout}</Markdown>
-        </div>
-        <SocialLinks socialLinks={socialLinks} />
-      </section>
-      {entries.length > 0 && (
-        <section className={classes.books} aria-labelledby="home-books">
-          <SectionHeading id="home-books" title="Books" label={entriesHeader} height="short" />
-          {entries.map((entry, index) => (
-            <SidebarEntry key={entry.id} number={index + 1} {...entry} />
-          ))}
-        </section>
-      )}
-    </aside>
+    <section className={className} aria-labelledby="home-profile home-profile-label">
+      <SectionHeading id="home-profile" title="Profile" label={title} />
+      <div className={classes.me}>
+        <img className={classes.avatar} alt={t("sidebar.avatarAlt")} src={`${import.meta.env.BASE_URL}isuzu.jpg`} />
+        <p className={classes.name}>
+          isuZu<span className={classes.reading}>うずし</span>
+        </p>
+      </div>
+      <div className={classes.about}>
+        <Markdown>{loadedAbout}</Markdown>
+      </div>
+      <SocialLinks socialLinks={socialLinks} />
+    </section>
+  );
+}
+
+export function Books({ className, entriesHeader, entries }: BooksProps) {
+  if (entries.length === 0) return null;
+  return (
+    <section className={className} aria-labelledby="home-books home-books-label">
+      <SectionHeading id="home-books" title="Books" label={entriesHeader} height="short" />
+      {entries.map((entry, index) => (
+        <SidebarEntry key={entry.id} number={index + 1} {...entry} />
+      ))}
+    </section>
   );
 }

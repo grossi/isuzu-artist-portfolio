@@ -9,18 +9,7 @@ import { GalleryPhotoData, GalleryPhotoSource, usePhotoAlts } from "components/m
 import galleryData from "gallery.json";
 import { useLanguage } from "i18n/LanguageContext";
 
-// The home page's columns stack below this width (see pages/Home)
-const STACKED = "@media (max-width: 1080px)";
-
 const useStyles = makeStyles()((theme) => ({
-  section: {
-    flex: "999 1 560px",
-    minWidth: 0,
-    [STACKED]: {
-      flex: "none",
-      order: 2,
-    },
-  },
   // The first work is shown large (two columns by two rows), the rest in a
   // grid of equal 4:5 tiles: three columns, two on phones.
   grid: {
@@ -35,6 +24,11 @@ const useStyles = makeStyles()((theme) => ({
   lead: {
     gridColumn: "span 2",
     gridRow: "span 2",
+    // On phones nothing sits beside it to size its rows, so it keeps the
+    // 4:5 of the 2×2 block it is on wider screens.
+    [theme.breakpoints.down("sm")]: {
+      aspectRatio: "4 / 5",
+    },
   },
   tile: {
     aspectRatio: "4 / 5",
@@ -84,7 +78,7 @@ const paintings: GalleryPhotoSource[] = galleryData.map((image) => {
   };
 });
 
-export default function Gallery() {
+export default function Gallery({ className }: { className?: string }) {
   const { classes } = useStyles();
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [viewerIsOpen, setViewerIsOpen] = React.useState(false);
@@ -99,7 +93,7 @@ export default function Gallery() {
 
   return (
     <React.Fragment>
-      <section className={classes.section} aria-labelledby="home-works">
+      <section className={className} aria-labelledby="home-works home-works-label">
         <SectionHeading id="home-works" title="Works" label={t("home.works")} size="large" />
         <div className={classes.grid} aria-label={t("gallery.label")} role="list">
           {photos.map((photo, index) => (
@@ -109,9 +103,8 @@ export default function Gallery() {
                   src={photo.src}
                   alt={photo.alt}
                   // The works start below the hero (and on phones below the
-                  // profile too), so only the large first one is fetched up
-                  // front; the rest don't compete with the hero's image.
-                  loading={index === 0 ? "eager" : "lazy"}
+                  // profile too): none competes with the hero's image.
+                  loading="lazy"
                   decoding="async"
                 />
               </button>

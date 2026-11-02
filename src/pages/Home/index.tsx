@@ -1,7 +1,7 @@
 import * as React from "react";
 import { makeStyles } from "tss-react/mui";
 import Featured from "components/molecules/Featured";
-import Sidebar, { SidebarData } from "components/organisms/Sidebar";
+import { Books, Profile, SidebarData } from "components/organisms/Sidebar";
 import Galery from 'components/organisms/Gallery';
 import aboutJa from "assets/md/about.ja.md?url";
 import aboutEn from "assets/md/about.en.md?url";
@@ -12,9 +12,10 @@ import { ThemeProvider } from "@mui/material/styles";
 import { Localized, useLanguage } from "i18n/LanguageContext";
 import { bodyFont, homeTheme } from "theme";
 
-// Works on the left, profile and books on the right. When the two columns
-// stack (phones, narrow tablets) the order becomes profile, works, books:
-// see STACKED in the Gallery and Sidebar components.
+// The sections come in reading order on phones: profile, works, books. Above
+// 1080px the works take the left column and the profile, then the books, the
+// right one (the works span both rows; the second row takes the extra height
+// so the books sit right under the profile).
 const useStyles = makeStyles()({
   page: {
     fontFamily: bodyFont,
@@ -24,16 +25,33 @@ const useStyles = makeStyles()({
     margin: "0 auto",
     boxSizing: "border-box",
     padding: "72px clamp(16px, 5vw, 80px) 0",
-    display: "flex",
-    // Side by side down to 1081px, where the two bases (560 + 380 + the gap)
-    // don't quite fit: wrapping there would put the profile under every work.
-    alignItems: "flex-start",
-    gap: 64,
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) minmax(0, 380px)",
+    gridTemplateRows: "auto 1fr",
+    alignItems: "start",
+    columnGap: 64,
+    rowGap: 56,
     "@media (max-width: 1080px)": {
+      display: "flex",
       flexDirection: "column",
       alignItems: "stretch",
       gap: 56,
     },
+  },
+  works: {
+    gridColumn: 1,
+    gridRow: "1 / span 2",
+    minWidth: 0,
+  },
+  profile: {
+    gridColumn: 2,
+    gridRow: 1,
+    minWidth: 0,
+  },
+  books: {
+    gridColumn: 2,
+    gridRow: 2,
+    minWidth: 0,
   },
 });
 
@@ -58,10 +76,15 @@ export default function Home() {
       <div className={classes.page}>
         <Featured />
         <main className={classes.main}>
-          <Galery />
-          <Sidebar
+          <Profile
+            className={classes.profile}
             title={t("home.profile")}
             description={about[lang]}
+            socialLinks={socialLinks}
+          />
+          <Galery className={classes.works} />
+          <Books
+            className={classes.books}
             entriesHeader={sidebar.heading[lang] || t("home.books")}
             entries={sidebar.entries.map((entry) => ({
               ...entry,
@@ -74,7 +97,6 @@ export default function Home() {
                 edition: edition.edition[lang],
               })),
             }))}
-            socialLinks={socialLinks}
           />
         </main>
       </div>

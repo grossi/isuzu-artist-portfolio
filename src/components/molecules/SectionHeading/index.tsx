@@ -47,10 +47,12 @@ export default function SectionHeading({ id, title, label, size = "small", heigh
   const { classes, cx } = useStyles();
   return (
     <div className={cx(classes.root, classes[height])}>
-      <h2 id={id} className={cx(classes.title, classes[size])}>
+      {/* The display titles are English on both languages' pages */}
+      <h2 id={id} lang="en" className={cx(classes.title, classes[size])}>
         {title}
       </h2>
-      {label && label !== title && <span className={classes.label}>{label}</span>}
+      {/* The section names itself with both: aria-labelledby="{id} {id}-label" */}
+      {label && label !== title && <span id={`${id}-label`} className={classes.label}>{label}</span>}
     </div>
   );
 }

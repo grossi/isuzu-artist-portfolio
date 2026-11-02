@@ -189,6 +189,10 @@ export default function Featured() {
   const nextIndex = (index: number) => (index + 1) % paintings.length;
   const loadAllSlides = () => loadSlides(...paintings.map((_, index) => index));
 
+  // Visitors who ask for less motion get the slides without the autoplay
+  // (the dots still change them).
+  const [reducedMotion] = React.useState(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
+
   const settings = {
     dots: true,
     arrows: false,
@@ -196,7 +200,7 @@ export default function Featured() {
     speed: 500,
     slidesToShow: 1,
     slidesToScroll: 1,
-    autoplay: true,
+    autoplay: !reducedMotion,
     pauseOnHover: false,
     beforeChange: (current: number, next: number) =>
       loadSlides(next, nextIndex(next)),
