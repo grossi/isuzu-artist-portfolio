@@ -10,7 +10,10 @@ function woff2Only(): Plugin {
     enforce: "pre",
     transform(code, id) {
       if (!/[\\/]@fontsource[\\/][^?]*\.css(\?|$)/.test(id)) return null;
-      return { code: code.replace(/,\s*url\([^)]*\.woff\)\s*format\(['"]woff['"]\)/g, ""), map: null };
+      const stripped = code.replace(/,\s*url\([^)]*\.woff\)\s*format\(['"]woff['"]\)/g, "");
+      // Fails loudly if a Fontsource update writes its CSS differently
+      if (/\.woff\)/.test(stripped)) this.error(`woff2Only: a .woff fallback is left in ${id}`);
+      return { code: stripped, map: null };
     },
   };
 }

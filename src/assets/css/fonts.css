@@ -8,6 +8,8 @@
  *
  * Zen Kaku Gothic New (bodyFont) comes from its Fontsource CSS, imported in
  * index.tsx. Licenses: public/fonts/OFL.txt.
+ *
+ * index.html preloads the normal face: keep its href in sync with the url().
  */
 @font-face {
   font-family: 'Bodoni Moda';
