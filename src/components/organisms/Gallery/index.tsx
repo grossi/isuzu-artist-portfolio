@@ -62,6 +62,10 @@ const useStyles = makeStyles()((theme) => ({
       outline: "2px solid #3f51b5",
       outlineOffset: 3,
     },
+    "@media (prefers-reduced-motion: reduce)": {
+      "& img": { transition: "none" },
+      "&:hover img": { transform: "none" },
+    },
   },
   closeButton: {
     position: 'absolute',
@@ -104,7 +108,10 @@ export default function Gallery() {
                 <img
                   src={photo.src}
                   alt={photo.alt}
-                  loading={index < 4 ? "eager" : "lazy"}
+                  // The works start below the hero (and on phones below the
+                  // profile too), so only the large first one is fetched up
+                  // front; the rest don't compete with the hero's image.
+                  loading={index === 0 ? "eager" : "lazy"}
                   decoding="async"
                 />
               </button>

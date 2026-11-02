@@ -8,12 +8,17 @@ import aboutEn from "assets/md/about.en.md?url";
 import sidebarData from "sidebar.json";
 import { SiX, SiPixiv, SiFiverr } from "react-icons/si";
 import { MdEmail } from "react-icons/md";
+import { ThemeProvider } from "@mui/material/styles";
 import { Localized, useLanguage } from "i18n/LanguageContext";
+import { bodyFont, homeTheme } from "theme";
 
 // Works on the left, profile and books on the right. When the two columns
 // stack (phones, narrow tablets) the order becomes profile, works, books:
 // see STACKED in the Gallery and Sidebar components.
 const useStyles = makeStyles()({
+  page: {
+    fontFamily: bodyFont,
+  },
   main: {
     maxWidth: 1440,
     margin: "0 auto",
@@ -49,28 +54,30 @@ export default function Home() {
   ];
 
   return (
-    <React.Fragment>
-      <Featured />
-      <main className={classes.main}>
-        <Galery />
-        <Sidebar
-          title={t("home.profile")}
-          description={about[lang]}
-          entriesHeader={sidebar.heading[lang] || t("home.books")}
-          entries={sidebar.entries.map((entry) => ({
-            ...entry,
-            image: `${import.meta.env.BASE_URL}${entry.image}`,
-            description: entry.description[lang],
-            previousEditions: entry.previousEditions.map((edition) => ({
-              ...edition,
-              image: `${import.meta.env.BASE_URL}${edition.image}`,
-              title: edition.title[lang],
-              edition: edition.edition[lang],
-            })),
-          }))}
-          socialLinks={socialLinks}
-        />
-      </main>
-    </React.Fragment>
+    <ThemeProvider theme={homeTheme}>
+      <div className={classes.page}>
+        <Featured />
+        <main className={classes.main}>
+          <Galery />
+          <Sidebar
+            title={t("home.profile")}
+            description={about[lang]}
+            entriesHeader={sidebar.heading[lang] || t("home.books")}
+            entries={sidebar.entries.map((entry) => ({
+              ...entry,
+              image: `${import.meta.env.BASE_URL}${entry.image}`,
+              description: entry.description[lang],
+              previousEditions: entry.previousEditions.map((edition) => ({
+                ...edition,
+                image: `${import.meta.env.BASE_URL}${edition.image}`,
+                title: edition.title[lang],
+                edition: edition.edition[lang],
+              })),
+            }))}
+            socialLinks={socialLinks}
+          />
+        </main>
+      </div>
+    </ThemeProvider>
   );
 }

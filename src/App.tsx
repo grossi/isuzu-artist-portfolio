@@ -17,6 +17,12 @@ function SiteHeader() {
   return pathname === "/" ? null : <Header title="isuZu" />;
 }
 
+// The redesigned footer is the home page's; the other pages keep theirs.
+function SiteFooter() {
+  const { pathname } = useLocation();
+  return <Footer home={pathname === "/"} />;
+}
+
 export default function App() {
   return (
     <ThemeProvider theme={theme}>
@@ -29,7 +35,7 @@ export default function App() {
             <Route path="/work/*" element={<WorkGallery />} />
             <Route path="/history/*" element={<WorkHistory />} />
           </Routes>
-          <Footer />
+          <SiteFooter />
         </BrowserRouter>
       </LanguageProvider>
     </ThemeProvider>

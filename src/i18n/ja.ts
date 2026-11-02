@@ -9,6 +9,7 @@ const ja = {
   "home.profile": "プロフィール",
   "home.books": "著書",
   "sidebar.avatarAlt": "isuZuのアイコン",
+  "sidebar.coverAlt": "本の表紙",
   "sidebar.previousEdition": "過去バージョン（{edition}）",
   "social.email": "メール",
   "workCard.bannerAlt": "{name}のバナー",

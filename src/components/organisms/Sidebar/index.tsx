@@ -128,19 +128,22 @@ const useStyles = makeStyles()({
     ...hardcover,
     display: "block",
     width: 100,
+    "&:focus-visible": { outline: "2px solid #3f51b5", outlineOffset: 3 },
     "article:hover > &": { transform: "translateY(-6px)" },
     "@media (prefers-reduced-motion: reduce)": {
       "article:hover > &": { transform: "none" },
     },
   },
   // The entry's markdown: first paragraph a short lead-in with a dash, the
-  // bold title, then the shop links in a row.
+  // bold title, then the shop links in a row. Only the top-level blocks
+  // (markdown-to-jsx wraps them in a div) take these roles: a list written
+  // with blank lines between its items puts each link in a <p> of its own.
   text: {
     minWidth: 0,
     "& p": {
       margin: "0 0 12px",
     },
-    "& p:first-of-type": {
+    "& > div > p:first-child": {
       display: "flex",
       alignItems: "flex-start",
       gap: 8,
@@ -157,7 +160,7 @@ const useStyles = makeStyles()({
         background: "#9e9e9e",
       },
     },
-    "& strong": {
+    "& > div > p:not(:first-child) > strong": {
       display: "block",
       fontSize: 15,
       lineHeight: 1.55,
@@ -179,6 +182,11 @@ const useStyles = makeStyles()({
       fontSize: 13,
       lineHeight: 1.6,
     },
+    "& li p": {
+      display: "inline",
+      margin: 0,
+      fontSize: "inherit",
+    },
     "& li a::after": {
       content: '" ↗"',
     },
@@ -192,6 +200,7 @@ const useStyles = makeStyles()({
     marginTop: 6,
     // The small cover tucks under the big one and the text lines up with the text above
     marginLeft: 58,
+    minWidth: 0,
     color: "#111",
     textDecoration: "none",
     "&:focus-visible": { outline: "2px solid #3f51b5", outlineOffset: 3 },
@@ -221,9 +230,9 @@ const useStyles = makeStyles()({
     fontSize: 12,
     letterSpacing: "0.08em",
     color: "#5f5f5f",
-    whiteSpace: "nowrap",
-    // On phones the row is narrower than "Previous edition (2018 edition)"
-    "@media (max-width: 599.95px)": { whiteSpace: "normal" },
+    // Wraps when the row is narrower than the label: on phones, or with a
+    // long edition label (the admin allows up to 100 characters)
+    overflowWrap: "anywhere",
   },
   previousTitle: {
     fontSize: 14,
@@ -270,13 +279,21 @@ interface SidebarProps {
 function SidebarEntry(props: Entry & { number: number }) {
   const { classes } = useStyles();
   const { t } = useLanguage();
-  const image = <img src={props.image} alt="" />;
+  // When the text beside it links to the same page, the cover link is skipped
+  // by keyboard and screen readers. Otherwise (the link and the description
+  // are separate fields in the admin) it is the only way there.
+  const repeated = Boolean(props.link) && props.description.includes(`](${props.link})`);
+  const image = <img src={props.image} alt={props.link && !repeated ? t("sidebar.coverAlt") : ""} />;
   return (
     <article className={classes.book}>
       <span className={classes.number}>{String(props.number).padStart(2, "0")}</span>
       {props.link ? (
-        // The text beside it links to the same page, so the cover is skipped by keyboard and screen readers.
-        <a href={props.link} className={classes.cover} tabIndex={-1} aria-hidden="true">
+        <a
+          href={props.link}
+          className={classes.cover}
+          tabIndex={repeated ? -1 : undefined}
+          aria-hidden={repeated || undefined}
+        >
           {image}
         </a>
       ) : (

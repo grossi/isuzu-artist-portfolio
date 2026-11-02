@@ -11,6 +11,7 @@ const en: Translations = {
   "home.profile": "Profile",
   "home.books": "My Books",
   "sidebar.avatarAlt": "isuZu's avatar",
+  "sidebar.coverAlt": "Book cover",
   "sidebar.previousEdition": "Previous edition ({edition})",
   "social.email": "Email",
   "workCard.bannerAlt": "{name} banner",
