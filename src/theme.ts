@@ -1,7 +1,13 @@
 import { createTheme } from "@mui/material/styles";
 
+// The isuZu wordmark and the italic section headings (Works, Profile, Books).
+export const displayFont = "'Bodoni Moda', 'Didot', 'Bodoni 72', Georgia, serif";
+export const bodyFont =
+  "'Zen Kaku Gothic New', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif";
+
 // Material-UI v4 defaults the site was designed with, which MUI v5+ changed.
 const theme = createTheme({
+  typography: { fontFamily: bodyFont },
   breakpoints: {
     values: { xs: 0, sm: 600, md: 960, lg: 1280, xl: 1920 },
   },

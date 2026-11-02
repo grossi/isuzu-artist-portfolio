@@ -4,27 +4,74 @@ import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
 import CardMedia from "@mui/material/CardMedia";
 import Dialog from "@mui/material/Dialog";
-import Grid from "@mui/material/Grid";
-import PhotoRows, { GalleryPhotoData, GalleryPhotoSource, usePhotoAlts } from "components/molecules/PhotoRows";
+import SectionHeading from "components/molecules/SectionHeading";
+import { GalleryPhotoData, GalleryPhotoSource, usePhotoAlts } from "components/molecules/PhotoRows";
 import galleryData from "gallery.json";
 import { useLanguage } from "i18n/LanguageContext";
 
+// The home page's columns stack below this width (see pages/Home)
+const STACKED = "@media (max-width: 1080px)";
+
 const useStyles = makeStyles()((theme) => ({
+  section: {
+    flex: "999 1 560px",
+    minWidth: 0,
+    [STACKED]: {
+      flex: "none",
+      order: 2,
+    },
+  },
+  // The first work is shown large (two columns by two rows), the rest in a
+  // grid of equal 4:5 tiles: three columns, two on phones.
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 16,
+    [theme.breakpoints.down("sm")]: {
+      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+      gap: 10,
+    },
+  },
+  lead: {
+    gridColumn: "span 2",
+    gridRow: "span 2",
+  },
+  tile: {
+    aspectRatio: "4 / 5",
+  },
+  card: {
+    display: "block",
+    width: "100%",
+    height: "100%",
+    padding: 0,
+    border: 0,
+    background: "#eee",
+    overflow: "hidden",
+    cursor: "zoom-in",
+    "& img": {
+      display: "block",
+      width: "100%",
+      height: "100%",
+      objectFit: "cover",
+      transition: "transform .7s cubic-bezier(.2,.7,.2,1)",
+    },
+    "&:hover img": {
+      transform: "scale(1.04)",
+    },
+    "&:focus-visible": {
+      outline: "2px solid #3f51b5",
+      outlineOffset: 3,
+    },
+  },
   closeButton: {
     position: 'absolute',
     right: theme.spacing(1),
     top: theme.spacing(1),
     color: theme.palette.grey[200],
   },
-  galleryGrid: {
-    order: 1,
-    [theme.breakpoints.down('md')]: {
-      order: 2,
-    },
-  },
 }));
 
-const paintings: GalleryPhotoSource[] = galleryData.map((image, k) => {
+const paintings: GalleryPhotoSource[] = galleryData.map((image) => {
   return {
     src: `${import.meta.env.BASE_URL}${image.locationSmall}`,
     srcBig: `${import.meta.env.BASE_URL}${image.locationLarge}`,
@@ -32,16 +79,6 @@ const paintings: GalleryPhotoSource[] = galleryData.map((image, k) => {
     height: image.height,
   };
 });
-
-const calculateTargetRowHeight = (containerWidth: number) => {
-  if (containerWidth > 800) {
-    return 700;
-  } else {
-    return 450;
-  }
-};
-
-const maxPhotosPerRow = () => 4;
 
 export default function Gallery() {
   const { classes } = useStyles();
@@ -58,14 +95,23 @@ export default function Gallery() {
 
   return (
     <React.Fragment>
-      <Grid size={{ xs: 12, md: 8 }} className={classes.galleryGrid}>
-        <PhotoRows
-          photos={photos}
-          targetRowHeight={calculateTargetRowHeight}
-          maxPhotosPerRow={maxPhotosPerRow}
-          onClick={openDialog}
-        />
-      </Grid>
+      <section className={classes.section} aria-labelledby="home-works">
+        <SectionHeading id="home-works" title="Works" label={t("home.works")} size="large" />
+        <div className={classes.grid} aria-label={t("gallery.label")} role="list">
+          {photos.map((photo, index) => (
+            <div key={photo.src} role="listitem" className={index === 0 ? classes.lead : classes.tile}>
+              <button type="button" className={classes.card} onClick={() => openDialog(index)}>
+                <img
+                  src={photo.src}
+                  alt={photo.alt}
+                  loading={index < 4 ? "eager" : "lazy"}
+                  decoding="async"
+                />
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
       <Dialog
         open={viewerIsOpen}
         onClose={() => setViewerIsOpen(false)}

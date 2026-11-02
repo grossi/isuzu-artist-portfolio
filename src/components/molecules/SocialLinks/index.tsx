@@ -1,34 +1,48 @@
 import * as React from "react";
-import { darken } from "@mui/material/styles";
 import { makeStyles } from "tss-react/mui";
-import Button from "@mui/material/Button";
-import Typography from "@mui/material/Typography";
-import Link from "@mui/material/Link";
 import { IconType } from "react-icons";
 
-const useStyles = makeStyles()((theme) => ({
-  linkGrid: {
-    justifyContent: 'flex-start',
-    color: theme.palette.text.primary,
-    paddingLeft: theme.spacing(2),
-    textTransform: 'none',
-    // MUI v7 sizes the button's zero-width ::before by this line height,
-    // which made each link 0.5px taller than in v4
-    lineHeight: 'normal',
-    transition: 'background-color 0.3s ease',
-    '&:hover': {
-      backgroundColor: darken(theme.palette.grey[200], 0.2),
+const useStyles = makeStyles()({
+  list: {
+    listStyle: "none",
+    margin: 0,
+    padding: 0,
+  },
+  // A row per account: the icon pops and the row slides right on hover
+  link: {
+    display: "flex",
+    alignItems: "center",
+    gap: 16,
+    minHeight: 44,
+    padding: "0 20px",
+    color: "#111",
+    fontSize: 14,
+    textDecoration: "none",
+    transition: "background-color .3s, padding-left .35s cubic-bezier(.2,.7,.2,1)",
+    "&:hover": {
+      backgroundColor: "#eeeeee",
+      paddingLeft: 28,
+    },
+    "&:hover svg": {
+      transform: "scale(1.22) rotate(-8deg)",
+    },
+    "&:focus-visible": {
+      outline: "2px solid #3f51b5",
+      outlineOffset: -2,
+    },
+    "@media (prefers-reduced-motion: reduce)": {
+      transition: "background-color .3s",
+      "&:hover": { paddingLeft: 20 },
+      "&:hover svg": { transform: "none" },
     },
   },
   icon: {
-    height: theme.spacing(2.5),
-    width: theme.spacing(2.5),
+    width: 18,
+    height: 18,
+    flex: "0 0 18px",
+    transition: "transform .45s cubic-bezier(.34,1.56,.64,1)",
   },
-  linksContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-  }
-}));
+});
 
 export interface SocialLink {
   label: string;
@@ -45,23 +59,23 @@ const isExternal = (href: string) => /^https?:\/\//.test(href);
 export default function SocialLinks(props: SocialLinksProps) {
   const { classes } = useStyles();
   return (
-    <div className={classes.linksContainer}>
+    <ul className={classes.list}>
       {props.socialLinks.map(({ label, href, Icon }) => {
         const external = isExternal(href);
         return (
-          <Button
-            key={href}
-            className={classes.linkGrid}
-            component={Link}
-            href={href}
-            target={external ? "_blank" : undefined}
-            rel={external ? "noopener noreferrer" : undefined}
-            startIcon={<Icon className={classes.icon} aria-hidden />}
-          >
-            <Typography variant="body1">{label}</Typography>
-          </Button>
+          <li key={href}>
+            <a
+              className={classes.link}
+              href={href}
+              target={external ? "_blank" : undefined}
+              rel={external ? "noopener noreferrer" : undefined}
+            >
+              <Icon className={classes.icon} aria-hidden />
+              {label}
+            </a>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }

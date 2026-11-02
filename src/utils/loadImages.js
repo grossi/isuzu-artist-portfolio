@@ -23,8 +23,8 @@ const BANNER_ASPECT_RATIO = 4;
 // The sidebar column is at most ~560px wide; the hand-made covers are 600px.
 const SIDEBAR_WIDTH = 800;
 
-// A previous edition's cover is drawn in a 40x56 box (object-fit: contain):
-// three times that covers every screen density.
+// A previous edition's cover is drawn 52px wide (about 52x73): this box is over
+// twice that, enough for high-density screens.
 const EDITION_BOX = { width: 120, height: 168 };
 
 function rescale({ imagePath, width, height, destinationPath, quality, crop }) {
