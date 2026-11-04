@@ -587,7 +587,15 @@ function renderEntryTitle() {
   // Moving the current edition: saved together with this dialog.
   $("entry-move-hint").hidden = !entryMove;
   $("entry-move-hint").textContent = entryMove
-    ? t(entryMove.stale ? "entryDialog.moveSavedReloadHint" : entryMove.saved ? "entryDialog.moveSavedHint" : "entryDialog.moveHint", { name: inLang(entryMove.body.edition, lang).text })
+    ? t(
+        entryMove.stale
+          ? "entryDialog.moveSavedReloadHint"
+          : entryMove.saved
+            ? "entryDialog.moveSavedHint"
+            : entryMove.unsure
+              ? "entryDialog.moveUnsureHint"
+              : "entryDialog.moveHint",
+        { name: inLang(entryMove.body.edition, lang).text })
     : "";
 }
 
@@ -618,8 +626,9 @@ function movedEdition(move, sidebar) {
 // move: the book's current edition, held back by the move dialog to be saved
 // along with this one ({ body, image, imageName, before: the ids of the
 // editions it had then, version: the draft version the move dialog was
-// opened at, sent: sent at least once, saved: the edition once saved, stale:
-// saved, but the draft changed since }).
+// opened at, sent: sent at least once, saved: the edition once saved, unsure:
+// sent, but whether it was saved couldn't be checked, stale: saved, but this
+// dialog can't save the book any more }).
 function openEntry(entry = null, move = null) {
   entrySession++;
   editing = entry;
@@ -685,9 +694,11 @@ async function submitEntry(event) {
         // The draft as it is now, not as last shown. A move sent by an earlier
         // try whose answer was lost is in it if it was saved. An edit from
         // another tab since the move dialog opened stops both before either
-        // is saved (the server checks only the book's version, after the move).
+        // is saved. (The server checks only the book's version: an edit landing
+        // between this check and the move is caught by the book's check.)
         const now = await api("GET", "/api/state");
         if (!now.sidebar) throw new ApiError({ code: now.errorCode, params: now.errorParams, error: now.error }, "request-failed");
+        move.unsure = false;
         if (move.sent) move.saved = movedEdition(move, now.sidebar) ?? null;
         if (!move.saved && now.version !== entry.version) throw new ApiError({ code: "draft-changed", error: t("error.draft-changed") });
         if (move.saved && now.version === entry.version + 1) entry.version = now.version;
@@ -725,14 +736,17 @@ async function submitEntry(event) {
       await edits;
       const now = await api("GET", "/api/state").catch(() => null);
       if (now?.sidebar) move.saved = movedEdition(move, now.sidebar) ?? null;
+      // Not known (the connection is still down): not "cancel saves neither".
+      move.unsure = !now?.sidebar;
       // Saved, though its answer was lost: the book is based on the draft
       // right after it, unless another tab edited in between.
       if (move.saved && now.version === entry.version + 1 && session === entrySession) editingVersion = Promise.resolve(now.version);
     }
     // Moved, but the draft changed since (another tab, or this book's own
-    // save whose answer was lost): this dialog can't save the book any more,
-    // so the hint says to reload and check instead of to try again.
-    if (move?.saved && error.code === "draft-changed") move.stale = true;
+    // save whose answer was lost) or the book is gone: this dialog can't save
+    // the book any more, so the hint says to reload and check instead of to
+    // try again.
+    if (move?.saved && ["draft-changed", "entry-gone"].includes(error.code)) move.stale = true;
     if (move && current()) renderEntryTitle();
     if (move) refresh();
     if (current()) fail(error);
@@ -1039,7 +1053,7 @@ async function submitEdition(event) {
   if (moving) {
     $("edition-dialog").close();
     const book = state.sidebar.entries.find((e) => e.id === entry.id) ?? entry;
-    openEntry(book, { body, image, imageName, before: (book.previousEditions ?? []).map((e) => e.id), version: editionVersion, saved: null });
+    openEntry(book, { body, image, imageName, before: (book.previousEditions ?? []).map((e) => e.id), version: editionVersion, sent: false, saved: null, unsure: false, stale: false });
     return;
   }
   // Everything is read before waiting for queued edits (see submitEntry).
