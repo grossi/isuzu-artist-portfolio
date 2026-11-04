@@ -41,7 +41,7 @@ const useStyles = makeStyles()((theme) => ({
     },
   },
   lead: {
-    aspectRatio: "var(--lead-aspect)",
+    aspectRatio: "var(--lead-aspect) / 1",
     [theme.breakpoints.down("sm")]: {
       gridColumn: "span 2",
       aspectRatio: "4 / 5",
@@ -163,15 +163,15 @@ export default function Gallery({ className }: { className?: string }) {
         <SectionHeading id="home-works" title="Works" label={t("home.works")} size="large" />
         <div className={classes.works} aria-label={t("gallery.label")} role="list">
           {featured.length > 0 && (
-            <div className={classes.top} style={{ "--lead-aspect": leadAspect } as React.CSSProperties}>
+            <div role="none" className={classes.top} style={{ "--lead-aspect": leadAspect } as React.CSSProperties}>
               {item(featured[0], 0, classes.lead)}
-              <div className={classes.side}>
+              <div role="none" className={classes.side}>
                 {featured.slice(1).map((photo, i) => item(photo, i + 1, classes.sideTile))}
               </div>
             </div>
           )}
           {rest.length > 0 && (
-            <div className={classes.grid}>
+            <div role="none" className={classes.grid}>
               {rest.map((photo, i) => item(photo, featured.length + i, classes.tile))}
             </div>
           )}
