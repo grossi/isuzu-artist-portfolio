@@ -30,7 +30,8 @@ export function sanitizeStem(filename) {
 // jpg/png/webp and strips its metadata (lib/metadata.js). Text parts are only
 // accepted under the given field names.
 // Returns { files: [{ path, stem, extension, originalName }], fields }; on any
-// error the temp files are deleted and an HttpError is thrown.
+// error the temp files are removed (best effort, see removeTemp) and an
+// HttpError is thrown.
 export async function receiveUploads(req, { tempDir, maxBytes, maxFiles, fieldNames = [] }) {
   fs.mkdirSync(tempDir, { recursive: true });
   const files = [];

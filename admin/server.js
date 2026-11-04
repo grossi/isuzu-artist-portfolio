@@ -266,8 +266,11 @@ const routes = {
   },
 
   // Multipart: an "edition" JSON field ({ entryId, id?, link, title,
-  // edition, version }) and an optional "image" file (required for a new
-  // one). Like entries, only an edit needs the version it was opened at.
+  // edition, version, checkVersion? }) and an optional "image" file (required
+  // for a new one). Like entries, only an edit needs the version it was opened
+  // at, unless checkVersion asks for it: moving a book's current edition,
+  // which is saved along with the book and must not land on a draft changed
+  // since (nor twice, when a retry follows a lost answer).
   "POST /api/sidebar/edition": async (req, res) => {
     const saved = await withUpload(req, "sidebar", { maxFiles: 1, fieldNames: ["edition"] }, ({ files, fields }) => {
       let edition;
@@ -277,7 +280,7 @@ const routes = {
         throw new HttpError(400, "invalid-edition");
       }
       return {
-        seenVersion: edition?.id === undefined ? ANY_VERSION : edition.version,
+        seenVersion: edition?.id === undefined && edition?.checkVersion !== true ? ANY_VERSION : edition.version,
         apply: () => workspace.saveEdition(edition?.entryId, edition, files[0]),
       };
     });

@@ -690,23 +690,24 @@ async function submitEntry(event) {
     entry.version = await editingVersion;
     // One queued call: no other edit of this tab comes between the two.
     const data = await queue(async () => {
-      if (move && !move.saved) {
-        // The draft as it is now, not as last shown. A move sent by an earlier
-        // try whose answer was lost is in it if it was saved. An edit from
-        // another tab since the move dialog opened stops both before either
-        // is saved. (The server checks only the book's version: an edit landing
-        // between this check and the move is caught by the book's check.)
+      if (move && !move.saved && move.sent) {
+        // A try after one whose move got no answer: the draft as it is now
+        // (not as last shown) has the move if it was saved, and then only the
+        // book is left to save.
         const now = await api("GET", "/api/state");
         if (!now.sidebar) throw new ApiError({ code: now.errorCode, params: now.errorParams, error: now.error }, "request-failed");
         move.unsure = false;
-        if (move.sent) move.saved = movedEdition(move, now.sidebar) ?? null;
-        if (!move.saved && now.version !== entry.version) throw new ApiError({ code: "draft-changed", error: t("error.draft-changed") });
+        move.saved = movedEdition(move, now.sidebar) ?? null;
         if (move.saved && now.version === entry.version + 1) entry.version = now.version;
         if (move.saved && session === entrySession) editingVersion = Promise.resolve(entry.version);
       }
       if (move && !move.saved) {
+        // Checked by the server against the draft version the move dialog was
+        // opened at: an edit since then (another tab's, or this same move
+        // saved by a try whose answer is still on its way) stops both before
+        // either is saved.
         const form = new FormData();
-        form.append("edition", JSON.stringify(move.body));
+        form.append("edition", JSON.stringify({ ...move.body, version: entry.version, checkVersion: true }));
         form.append("image", move.image, move.imageName);
         move.sent = true;
         const moved = await api("POST", "/api/sidebar/edition", form);
@@ -729,9 +730,12 @@ async function submitEntry(event) {
         : t(isEdit ? "toast.entryUpdated" : "toast.entryAdded", { id: data.saved.id }));
     await refresh();
   } catch (error) {
+    // Moved before the error: the error is the book's.
+    const bookFailed = Boolean(move?.saved);
     // The move may have gone through: the hint then says so, and the next
     // try saves only the book. (That try checks the draft again itself: this
     // request fails too while the connection is down.)
+    let repeat = false;
     if (move && move.sent && !move.saved) {
       await edits;
       const now = await api("GET", "/api/state").catch(() => null);
@@ -739,17 +743,21 @@ async function submitEntry(event) {
       // Not known (the connection is still down): not "cancel saves neither".
       move.unsure = !now?.sidebar;
       // Saved, though its answer was lost: the book is based on the draft
-      // right after it, unless another tab edited in between.
-      if (move.saved && now.version === entry.version + 1 && session === entrySession) editingVersion = Promise.resolve(now.version);
+      // right after it. Anything more since (another tab, a restarted
+      // server) and this dialog can't save the book.
+      if (move.saved && now.version !== entry.version + 1) move.stale = true;
+      else if (move.saved && session === entrySession) editingVersion = Promise.resolve(now.version);
+      // A repeat of a move already saved, refused as such: the hint says so.
+      repeat = Boolean(move.saved) && !move.stale && error.code === "draft-changed";
     }
     // Moved, but the draft changed since (another tab, or this book's own
     // save whose answer was lost) or the book is gone: this dialog can't save
     // the book any more, so the hint says to reload and check instead of to
     // try again.
-    if (move?.saved && ["draft-changed", "entry-gone"].includes(error.code)) move.stale = true;
+    if (bookFailed && ["draft-changed", "entry-gone"].includes(error.code)) move.stale = true;
     if (move && current()) renderEntryTitle();
     if (move) refresh();
-    if (current()) fail(error);
+    if (current()) fail(repeat ? null : error);
     else toast(() => errorText(error), true);
   } finally {
     submitting = false;
