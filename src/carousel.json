@@ -18,6 +18,12 @@
     "locationLarge": "carousel/large/30147.webp"
   },
   {
+    "name": "10000",
+    "extension": "png",
+    "location": "gallery/10000.png",
+    "locationLarge": "gallery/large/10000.webp"
+  },
+  {
     "name": "640995_p0",
     "extension": "jpg",
     "location": "carousel/640995_p0.jpg",
