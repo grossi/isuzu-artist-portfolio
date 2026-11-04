@@ -10,8 +10,53 @@ import galleryData from "gallery.json";
 import { useLanguage } from "i18n/LanguageContext";
 
 const useStyles = makeStyles()((theme) => ({
-  // The first work is shown large (two columns by two rows), the rest in a
-  // grid of equal 4:5 tiles: three columns, two on phones.
+  // The first work is shown large, uncropped, with the next two stacked
+  // beside it; the rest follow in a grid of equal 4:5 tiles: three columns.
+  //
+  // The lead keeps its own shape (--lead-aspect, width / height) and sets the
+  // block's height. The side column is as wide as two 4:5 tiles stacked to
+  // that height need, but never narrower than one grid column, so a wide
+  // lead doesn't squeeze them: they then turn a little wide themselves.
+  // With W the block's width, a the lead's aspect and H its height:
+  //   a·H + 16 + 0.4·(H − 16) = W  →  H = (W − 9.6px) / (a + 0.4)
+  //   side = max((W − 32px) / 3, 0.4·(H − 16px))
+  // On phones it is the old 2×2 block: a 4:5 lead across both columns, the
+  // two side works as ordinary tiles below it.
+  top: {
+    display: "grid",
+    gridTemplateColumns:
+      "minmax(0, 1fr) max(calc((100% - 32px) / 3), calc(0.4 * ((100% - 9.6px) / (var(--lead-aspect) + 0.4) - 16px)))",
+    gap: 16,
+    marginBottom: 16,
+    [theme.breakpoints.down("sm")]: {
+      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+      gap: 10,
+      marginBottom: 10,
+    },
+  },
+  lead: {
+    aspectRatio: "var(--lead-aspect)",
+    [theme.breakpoints.down("sm")]: {
+      gridColumn: "span 2",
+      aspectRatio: "4 / 5",
+    },
+  },
+  side: {
+    display: "grid",
+    gridTemplateRows: "repeat(2, minmax(0, 1fr))",
+    gap: 16,
+    // Its pictures must not size the row: the lead does.
+    contain: "size",
+    [theme.breakpoints.down("sm")]: {
+      display: "contents",
+    },
+  },
+  sideTile: {
+    minHeight: 0,
+    [theme.breakpoints.down("sm")]: {
+      aspectRatio: "4 / 5",
+    },
+  },
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
@@ -19,15 +64,6 @@ const useStyles = makeStyles()((theme) => ({
     [theme.breakpoints.down("sm")]: {
       gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
       gap: 10,
-    },
-  },
-  lead: {
-    gridColumn: "span 2",
-    gridRow: "span 2",
-    // On phones nothing sits beside it to size its rows, so it keeps the
-    // 4:5 of the 2×2 block it is on wider screens.
-    [theme.breakpoints.down("sm")]: {
-      aspectRatio: "4 / 5",
     },
   },
   tile: {
@@ -91,25 +127,44 @@ export default function Gallery({ className }: { className?: string }) {
     setViewerIsOpen(true);
   }, []);
 
+  // The lead block needs a lead and two works beside it; with fewer, every
+  // work is an ordinary tile.
+  const featured = photos.length >= 3 ? photos.slice(0, 3) : [];
+  const rest = photos.slice(featured.length);
+  const lead = featured[0];
+  const leadAspect = lead && lead.width > 0 && lead.height > 0 ? lead.width / lead.height : 4 / 5;
+
+  const item = (photo: GalleryPhotoData, index: number, className: string) => (
+    <div key={photo.src} role="listitem" className={className}>
+      <button type="button" className={classes.card} onClick={() => openDialog(index)}>
+        <img
+          src={photo.src}
+          alt={photo.alt}
+          // The works start below the hero (and on phones below the
+          // profile too): none competes with the hero's image.
+          loading="lazy"
+          decoding="async"
+        />
+      </button>
+    </div>
+  );
+
   return (
     <React.Fragment>
       <section className={className} aria-labelledby="home-works home-works-label">
         <SectionHeading id="home-works" title="Works" label={t("home.works")} size="large" />
-        <div className={classes.grid} aria-label={t("gallery.label")} role="list">
-          {photos.map((photo, index) => (
-            <div key={photo.src} role="listitem" className={index === 0 ? classes.lead : classes.tile}>
-              <button type="button" className={classes.card} onClick={() => openDialog(index)}>
-                <img
-                  src={photo.src}
-                  alt={photo.alt}
-                  // The works start below the hero (and on phones below the
-                  // profile too): none competes with the hero's image.
-                  loading="lazy"
-                  decoding="async"
-                />
-              </button>
+        <div aria-label={t("gallery.label")} role="list">
+          {featured.length > 0 && (
+            <div className={classes.top} style={{ "--lead-aspect": leadAspect } as React.CSSProperties}>
+              {item(featured[0], 0, classes.lead)}
+              <div className={classes.side}>
+                {featured.slice(1).map((photo, i) => item(photo, i + 1, classes.sideTile))}
+              </div>
             </div>
-          ))}
+          )}
+          <div className={classes.grid}>
+            {rest.map((photo, i) => item(photo, featured.length + i, classes.tile))}
+          </div>
         </div>
       </section>
       <Dialog
