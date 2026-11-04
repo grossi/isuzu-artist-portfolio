@@ -91,17 +91,23 @@ async function state() {
   };
   try {
     await workspace.check({ duringJob: Boolean(jobs.busy()) });
-    const now = workspace.current();
     const [draft, history] = await Promise.all([workspace.draft(), workspace.history()]);
+    const restartNeeded = Boolean(startedCodeVersion) && (await codeVersion()) !== startedCodeVersion;
+    // The content and its version read together, after the awaits: an edit
+    // made meanwhile is in both or in neither (a browser compares them).
+    const now = workspace.current();
+    const sidebar = workspace.readSidebar();
     return {
       ...base,
+      version,
+      preview: preview && { ...preview, stale: preview.version !== version },
       gallery: now.gallery,
       carouselFiles: now.carouselFiles,
       carousel: now.carousel,
-      sidebar: workspace.readSidebar(),
+      sidebar,
       draft: { ...draft, message: commitMessage(draft) },
       history,
-      restartNeeded: Boolean(startedCodeVersion) && (await codeVersion()) !== startedCodeVersion,
+      restartNeeded,
     };
   } catch (error) {
     const { message, code, params } = describeError(error);

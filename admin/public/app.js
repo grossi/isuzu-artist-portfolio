@@ -696,7 +696,6 @@ async function submitEntry(event) {
         // book is left to save.
         const now = await api("GET", "/api/state");
         if (!now.sidebar) throw new ApiError({ code: now.errorCode, params: now.errorParams, error: now.error }, "request-failed");
-        move.unsure = false;
         move.saved = movedEdition(move, now.sidebar) ?? null;
         if (move.saved && now.version === entry.version + 1) entry.version = now.version;
         if (move.saved && session === entrySession) editingVersion = Promise.resolve(entry.version);
@@ -740,8 +739,14 @@ async function submitEntry(event) {
       await edits;
       const now = await api("GET", "/api/state").catch(() => null);
       if (now?.sidebar) move.saved = movedEdition(move, now.sidebar) ?? null;
-      // Not known (the connection is still down): not "cancel saves neither".
-      move.unsure = !now?.sidebar;
+      // Not known, and then not "cancel saves neither": no answer came from the
+      // server (a move it is still receiving may yet be saved, even though
+      // the draft doesn't have it now), or the draft can't be read. Settled
+      // when the move is found, or when the server refused it as based on an
+      // older draft (then any earlier copy is refused too).
+      if (move.saved) move.unsure = false;
+      else if (["network", "request-failed"].includes(error.code) || !now?.sidebar) move.unsure = true;
+      else if (error.code === "draft-changed") move.unsure = false;
       // Saved, though its answer was lost: the book is based on the draft
       // right after it. Anything more since (another tab, a restarted
       // server) and this dialog can't save the book.
