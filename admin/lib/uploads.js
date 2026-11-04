@@ -109,6 +109,15 @@ export async function receiveUploads(req, { tempDir, maxBytes, maxFiles, fieldNa
   }
 }
 
+// Best effort: it runs after the edit is saved (or after the error being
+// reported), so a file it can't remove (one still open on Windows) must not
+// turn the answer into an error. The spool is emptied at the next start.
 export function removeTemp(files) {
-  for (const file of files) fs.rmSync(file.path, { force: true });
+  for (const file of files) {
+    try {
+      fs.rmSync(file.path, { force: true });
+    } catch (error) {
+      console.warn(`Could not remove the temp upload ${file.path}: ${error.message}`);
+    }
+  }
 }

@@ -99,3 +99,13 @@ test("a write error fails the upload instead of crashing the server", { skip: pr
     fs.chmodSync(spool, 0o700);
   }
 });
+
+test("removing temp files is best effort: one that can't be removed doesn't throw or keep the others", (t) => {
+  const dir = path.join(tmp, "cleanup");
+  fs.mkdirSync(path.join(dir, "stuck"), { recursive: true }); // rmSync refuses a directory without "recursive"
+  fs.writeFileSync(path.join(dir, "a"), "a");
+  const warn = t.mock.method(console, "warn", () => {});
+  removeTemp([{ path: path.join(dir, "stuck") }, { path: path.join(dir, "a") }, { path: path.join(dir, "gone") }]);
+  assert.equal(warn.mock.callCount(), 1);
+  assert.deepEqual(fs.readdirSync(dir), ["stuck"]);
+});
