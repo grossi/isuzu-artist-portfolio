@@ -199,6 +199,7 @@ input:not([type="file"]) { font: inherit; font-size: 14px; padding: 7px 10px; bo
 .editions-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 13px; }
 .editions-head .muted { font-size: 12px; }
 .editions-head button { margin-left: auto; padding: 4px 10px; }
+.editions-head button + button { margin-left: 0; }
 .edition-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .edition { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 13px; line-height: 1.45; }
 .edition-thumb { display: block; width: 40px; height: 56px; object-fit: contain; background: #ecebe8; border-radius: 3px; }

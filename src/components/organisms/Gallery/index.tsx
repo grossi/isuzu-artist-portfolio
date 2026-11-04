@@ -10,11 +10,30 @@ import galleryData from "gallery.json";
 import { useLanguage } from "i18n/LanguageContext";
 
 const useStyles = makeStyles()((theme) => ({
-  // The first work is shown large (two columns by two rows), the rest in a
-  // grid of equal 4:5 tiles: three columns, two on phones.
-  grid: {
+  // The first work is shown large, uncropped, with the next two stacked
+  // beside it; the rest follow in a grid of equal 4:5 tiles: three columns.
+  //
+  // The lead keeps its own shape (--lead-aspect, width / height) and sets the
+  // block's height. The side column is as wide as two 4:5 tiles stacked to
+  // that height need, but never narrower than one grid column, so a wide
+  // lead doesn't squeeze them: they then turn a little wide themselves.
+  // With W the block's width, a the lead's aspect and H its height:
+  //   a·H + 16 + 0.4·(H − 16) = W  →  H = (W − 9.6px) / (a + 0.4)
+  //   side = max((W − 32px) / 3, 0.4·(H − 16px))
+  // On phones it is the old 2×2 block: a 4:5 lead across both columns, the
+  // two side works as ordinary tiles below it.
+  // The top block and the grid below it, one above the other.
+  works: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 16,
+    [theme.breakpoints.down("sm")]: {
+      gap: 10,
+    },
+  },
+  top: {
+    display: "grid",
+    gridTemplateColumns:
+      "minmax(0, 1fr) max(calc((100% - 32px) / 3), calc(0.4 * ((100% - 9.6px) / (var(--lead-aspect) + 0.4) - 16px)))",
     gap: 16,
     [theme.breakpoints.down("sm")]: {
       gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
@@ -22,12 +41,35 @@ const useStyles = makeStyles()((theme) => ({
     },
   },
   lead: {
-    gridColumn: "span 2",
-    gridRow: "span 2",
-    // On phones nothing sits beside it to size its rows, so it keeps the
-    // 4:5 of the 2×2 block it is on wider screens.
+    aspectRatio: "var(--lead-aspect) / 1",
+    [theme.breakpoints.down("sm")]: {
+      gridColumn: "span 2",
+      aspectRatio: "4 / 5",
+    },
+  },
+  side: {
+    display: "grid",
+    gridTemplateRows: "repeat(2, minmax(0, 1fr))",
+    gap: 16,
+    // Its pictures must not size the row: the lead does.
+    contain: "size",
+    [theme.breakpoints.down("sm")]: {
+      display: "contents",
+    },
+  },
+  sideTile: {
+    minHeight: 0,
     [theme.breakpoints.down("sm")]: {
       aspectRatio: "4 / 5",
+    },
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 16,
+    [theme.breakpoints.down("sm")]: {
+      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+      gap: 10,
     },
   },
   tile: {
@@ -91,25 +133,50 @@ export default function Gallery({ className }: { className?: string }) {
     setViewerIsOpen(true);
   }, []);
 
+  // The lead block needs a lead and two works beside it; with fewer, every
+  // work is an ordinary tile.
+  const featured = photos.length >= 3 ? photos.slice(0, 3) : [];
+  const rest = photos.slice(featured.length);
+  const lead = featured[0];
+  // A size missing from gallery.json falls back to the tiles' 4:5, and so
+  // does a shape beyond 1:4 or 4:1 (the works range from about 1:3.6 to
+  // 16:9): much wider and the side works would shrink to nothing.
+  const aspect = lead ? lead.width / lead.height : NaN;
+  const leadAspect = aspect >= 1 / 4 && aspect <= 4 ? aspect : 4 / 5;
+
+  const item = (photo: GalleryPhotoData, index: number, className: string) => (
+    <div key={photo.src} role="listitem" className={className}>
+      <button type="button" className={classes.card} onClick={() => openDialog(index)}>
+        <img
+          src={photo.src}
+          alt={photo.alt}
+          // The works start below the hero (and on phones below the
+          // profile too): none competes with the hero's image.
+          loading="lazy"
+          decoding="async"
+        />
+      </button>
+    </div>
+  );
+
   return (
     <React.Fragment>
       <section className={className} aria-labelledby="home-works home-works-label">
         <SectionHeading id="home-works" title="Works" label={t("home.works")} size="large" />
-        <div className={classes.grid} aria-label={t("gallery.label")} role="list">
-          {photos.map((photo, index) => (
-            <div key={photo.src} role="listitem" className={index === 0 ? classes.lead : classes.tile}>
-              <button type="button" className={classes.card} onClick={() => openDialog(index)}>
-                <img
-                  src={photo.src}
-                  alt={photo.alt}
-                  // The works start below the hero (and on phones below the
-                  // profile too): none competes with the hero's image.
-                  loading="lazy"
-                  decoding="async"
-                />
-              </button>
+        <div className={classes.works} aria-label={t("gallery.label")} role="list">
+          {featured.length > 0 && (
+            <div role="none" className={classes.top} style={{ "--lead-aspect": leadAspect } as React.CSSProperties}>
+              {item(featured[0], 0, classes.lead)}
+              <div role="none" className={classes.side}>
+                {featured.slice(1).map((photo, i) => item(photo, i + 1, classes.sideTile))}
+              </div>
             </div>
-          ))}
+          )}
+          {rest.length > 0 && (
+            <div role="none" className={classes.grid}>
+              {rest.map((photo, i) => item(photo, featured.length + i, classes.tile))}
+            </div>
+          )}
         </div>
       </section>
       <Dialog

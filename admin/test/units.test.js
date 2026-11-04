@@ -129,13 +129,16 @@ test("previous editions: validated with their entry", () => {
 test("the site's sidebar content is valid, with the 2018 edition under its book", () => {
   const content = sidebar.readContent(path.join(path.dirname(fileURLToPath(import.meta.url)), "../.."));
   const book = content.entries.find((entry) => entry.id === "isuzubook");
-  assert.deepEqual(book.previousEditions, [{
+  assert.ok(book, "the isuzubook entry");
+  // Newer editions are added (and may be reordered) from the admin: only the
+  // 2018 one is pinned.
+  assert.deepEqual((book.previousEditions ?? []).find((edition) => edition.id === "clip-studio-paint-pro-2018"), {
     id: "clip-studio-paint-pro-2018",
     image: "isuzubook-2018.jpg",
     link: "https://www.amazon.co.jp/dp/B07D55TSL4",
     title: { ja: "プロが教える！CLIP STUDIO PAINT PROの教科書", en: "プロが教える！CLIP STUDIO PAINT PROの教科書" },
     edition: { ja: "2018年版", en: "2018 edition" },
-  }]);
+  });
 });
 
 test("sidebar entries: links, images and fallbacks", () => {

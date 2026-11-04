@@ -721,6 +721,7 @@ function editionsBlock(entry) {
     el("div", { class: "editions-head" },
       el("strong", {}, t("edition.heading")),
       el("span", { class: "muted" }, t("edition.hint")),
+      el("button", { type: "button", "aria-label": t("edition.moveCurrentNamed", { id: entry.id }), onclick: () => openMoveToEditions(entry), disabled: busy() }, t("edition.moveCurrent")),
       el("button", { type: "button", "aria-label": t("edition.addNamed", { id: entry.id }), onclick: () => openEdition(entry), disabled: busy() }, t("edition.add"))),
     editions.length ? el("ol", { class: "edition-list" }, editions.map((edition, i) => editionItem(entry, edition, i))) : null);
 }
@@ -750,6 +751,8 @@ let editionSubmitted = false; // after a first submit, an empty link is an error
 function setEditionImage(file) {
   if (!isImage(file)) return toast(() => t("toast.chooseImage"), true);
   editionImage = file;
+  // A cover answers a submit that asked for one, or a failed cover copy.
+  if (["edition-needs-image", "cover-copy-failed"].includes(editionError?.code)) showEditionError(null);
   showDialogImage("edition", URL.createObjectURL(file));
   updateEditionPreview();
 }
@@ -780,10 +783,11 @@ function updateEditionPreview() {
 
 function renderEditionHeading() {
   if (!editionTarget) return;
-  const { entry, edition } = editionTarget;
+  const { entry, edition, moving } = editionTarget;
   $("edition-heading").textContent = edition
     ? t("editionDialog.editTitle", { name: inLang(edition.edition, lang).text, id: entry.id })
-    : t("editionDialog.addTitle", { id: entry.id });
+    : t(moving ? "editionDialog.moveTitle" : "editionDialog.addTitle", { id: entry.id });
+  $("edition-move-hint").hidden = !moving;
 }
 
 let editionError = null;
@@ -811,11 +815,95 @@ function openEdition(entry, edition = null) {
   showModal($("edition-dialog"));
 }
 
+// ---- Moving the current edition to the previous editions --------------------
+// When a new edition of a book comes out, the book's current cover, link and
+// title become a previous edition, then the book itself gets the new ones.
+
+// The edition label for a year, as the site's own previous editions read.
+const EDITION_YEAR_LABEL = { ja: "{year}年版", en: "{year} edition" };
+
+// The book's title in its description: the paragraph in bold (how the
+// sidebar writes it, maybe as two bold parts), else the first one with some
+// bold, else the first plain paragraph after the introduction. Lists (the
+// shop links) are never the title.
+function titleFromDescription(markdown) {
+  const paragraphs = markdown
+    .split(/\n\s*\n/)
+    .map((p) => p.split("\n").filter((line) => !/^\s*([-*+]|\d+[.)])\s/.test(line)).join("\n").trim())
+    .filter(Boolean);
+  const title =
+    paragraphs.find((p) => /^\*\*.*\*\*$/s.test(p)) ?? paragraphs.find((p) => p.includes("**")) ?? paragraphs.slice(1)[0] ?? "";
+  return title
+    .replace(/\*\*/g, "")
+    .replace(/\\([\\`*_{}[\]()#+\-.!])/g, "$1")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^\[\s*([^]*?)\s*\]$/, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// The edition's year, from the book's links: a publisher's book page
+// (gihyo.jp/book/2026/…) first, else the first link with a year in its path.
+// None: no label.
+function editionYear(entry) {
+  const text = [entry.link ?? "", entry.description.ja, entry.description.en].join("\n");
+  // Only the links' paths: a year in a query or fragment says nothing.
+  const pathOf = (url) => {
+    try {
+      return new URL(url).pathname;
+    } catch {
+      return "";
+    }
+  };
+  const paths = (text.match(/https?:\/\/[^\s)<>]+/g) ?? []).map(pathOf);
+  const find = (pattern) => paths.map((p) => pattern.exec(p)?.[1]).find(Boolean);
+  return find(/\/book\/((?:19|20)\d{2})(?:\/|$)/) ?? find(/\/((?:19|20)\d{2})(?:\/|$)/) ?? "";
+}
+
+async function openMoveToEditions(entry) {
+  const year = editionYear(entry);
+  // Moved already (the book itself not updated yet): asked first, so a second
+  // click doesn't silently add the same edition twice.
+  const titles = { ja: titleFromDescription(entry.description.ja), en: titleFromDescription(entry.description.en) };
+  const sameYear = (e) => Boolean(year) && LANGS.some((code) => e.edition[code].trim() === EDITION_YEAR_LABEL[code].replace("{year}", year));
+  // Either guess against either saved title: a guess in one language is
+  // saved in the other when its own is empty.
+  const sameTitle = (e) => LANGS.some((code) => LANGS.some((guess) => Boolean(titles[guess]) && e.title[code].trim() === titles[guess]));
+  const moved = (entry.previousEditions ?? []).find((e) => (entry.link && e.link === entry.link) || sameYear(e) || sameTitle(e));
+  if (moved && !confirm(t("edition.confirmMoveAgain", { id: entry.id, name: inLang(moved.edition, lang).text }))) return;
+  openEdition(entry);
+  editionTarget.moving = true;
+  renderEditionHeading();
+  $("edition-link").value = entry.link ?? "";
+  for (const code of LANGS) $(`edition-label-${code}`).value = year ? EDITION_YEAR_LABEL[code].replace("{year}", year) : "";
+  $("edition-title-ja").value = titles.ja || titles.en;
+  // An English title that only repeats the Japanese one stays empty: the
+  // English site shows the Japanese title then (the dialog's own advice).
+  $("edition-title-en").value = titles.en && titles.en !== $("edition-title-ja").value ? titles.en : "";
+  updateEditionPreview();
+  // The current cover, at full size, as if it had been chosen in the dialog.
+  const session = editionSession;
+  const current = () => session === editionSession && $("edition-dialog").open;
+  try {
+    const response = await fetch(`/image/sidebar/${entry.id}?v=${encodeURIComponent(entry.image)}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const blob = await response.blob();
+    const file = new File([blob], entry.image.split("/").pop(), { type: blob.type });
+    // A cover chosen meanwhile wins.
+    if (current() && !editionImage) {
+      editionTarget.copiedCover = file;
+      setEditionImage(file);
+    }
+  } catch {
+    if (current() && !editionImage) showEditionError({ code: "cover-copy-failed" });
+  }
+}
+
 let submittingEdition = false;
 async function submitEdition(event) {
   event.preventDefault();
   if (submittingEdition) return;
-  const { entry, edition: editing } = editionTarget;
+  const { entry, edition: editing, moving, copiedCover } = editionTarget;
   const { edition: label, title } = editionTexts();
   const link = $("edition-link").value.trim();
   editionSubmitted = true;
@@ -847,12 +935,22 @@ async function submitEdition(event) {
     body.version = await editionVersion;
     const form = new FormData();
     form.append("edition", JSON.stringify(body));
-    if (image) form.append("image", image, image.name);
+    // The edition's id comes from its cover's file name: the copied cover is
+    // named after the book and the year in the label as saved (the server
+    // detects the format and sets the extension).
+    const year = /(\d{4})/.exec(`${label.ja} ${label.en}`)?.[1];
+    const copied = image && image === copiedCover;
+    if (image) form.append("image", image, copied ? `${entry.id}-${year || "previous"}.${image.name.split(".").pop()}` : image.name);
     const data = await queue(() => api("POST", "/api/sidebar/edition", form));
-    if (current()) $("edition-dialog").close();
+    const stillOpen = current();
+    if (stillOpen) $("edition-dialog").close();
     const name = inLang(data.saved.edition, lang).text;
-    toast(() => t(editing ? "toast.editionUpdated" : "toast.editionAdded", { name, id: entry.id }));
+    // "Now enter the new edition" only when its dialog opens next.
+    toast(() => t(editing ? "toast.editionUpdated" : moving && stillOpen ? "toast.editionMoved" : "toast.editionAdded", { name, id: entry.id }));
     await refresh();
+    // Moving the current edition: the book itself gets the new one next.
+    const book = moving && stillOpen && state.sidebar.entries.find((e) => e.id === entry.id);
+    if (book && !$("entry-dialog").open && !$("edition-dialog").open) openEntry(book);
   } catch (error) {
     if (current()) showEditionError(error);
     else toast(() => errorText(error), true);
