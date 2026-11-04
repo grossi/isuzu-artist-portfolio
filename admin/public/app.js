@@ -866,7 +866,9 @@ async function openMoveToEditions(entry) {
   // click doesn't silently add the same edition twice.
   const titles = { ja: titleFromDescription(entry.description.ja), en: titleFromDescription(entry.description.en) };
   const sameYear = (e) => Boolean(year) && LANGS.some((code) => e.edition[code].trim() === EDITION_YEAR_LABEL[code].replace("{year}", year));
-  const sameTitle = (e) => LANGS.some((code) => Boolean(titles[code]) && e.title[code].trim() === titles[code]);
+  // Either guess against either saved title: a guess in one language is
+  // saved in the other when its own is empty.
+  const sameTitle = (e) => LANGS.some((code) => LANGS.some((guess) => Boolean(titles[guess]) && e.title[code].trim() === titles[guess]));
   const moved = (entry.previousEditions ?? []).find((e) => (entry.link && e.link === entry.link) || sameYear(e) || sameTitle(e));
   if (moved && !confirm(t("edition.confirmMoveAgain", { id: entry.id, name: inLang(moved.edition, lang).text }))) return;
   openEdition(entry);
