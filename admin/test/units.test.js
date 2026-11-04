@@ -129,7 +129,10 @@ test("previous editions: validated with their entry", () => {
 test("the site's sidebar content is valid, with the 2018 edition under its book", () => {
   const content = sidebar.readContent(path.join(path.dirname(fileURLToPath(import.meta.url)), "../.."));
   const book = content.entries.find((entry) => entry.id === "isuzubook");
-  // Newer editions are added from the admin: only the 2018 one is pinned.
+  assert.ok(book, "the isuzubook entry");
+  // Newer editions are added from the admin, at the top: the 2018 one stays
+  // the oldest, last.
+  assert.equal(book.previousEditions.at(-1).id, "clip-studio-paint-pro-2018");
   assert.deepEqual(book.previousEditions.find((edition) => edition.id === "clip-studio-paint-pro-2018"), {
     id: "clip-studio-paint-pro-2018",
     image: "isuzubook-2018.jpg",
