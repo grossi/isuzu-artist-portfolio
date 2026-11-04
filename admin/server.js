@@ -91,17 +91,23 @@ async function state() {
   };
   try {
     await workspace.check({ duringJob: Boolean(jobs.busy()) });
-    const now = workspace.current();
     const [draft, history] = await Promise.all([workspace.draft(), workspace.history()]);
+    const restartNeeded = Boolean(startedCodeVersion) && (await codeVersion()) !== startedCodeVersion;
+    // The content and its version read together, after the awaits: an edit
+    // made meanwhile is in both or in neither (a browser compares them).
+    const now = workspace.current();
+    const sidebar = workspace.readSidebar();
     return {
       ...base,
+      version,
+      preview: preview && { ...preview, stale: preview.version !== version },
       gallery: now.gallery,
       carouselFiles: now.carouselFiles,
       carousel: now.carousel,
-      sidebar: workspace.readSidebar(),
+      sidebar,
       draft: { ...draft, message: commitMessage(draft) },
       history,
-      restartNeeded: Boolean(startedCodeVersion) && (await codeVersion()) !== startedCodeVersion,
+      restartNeeded,
     };
   } catch (error) {
     const { message, code, params } = describeError(error);
@@ -266,8 +272,11 @@ const routes = {
   },
 
   // Multipart: an "edition" JSON field ({ entryId, id?, link, title,
-  // edition, version }) and an optional "image" file (required for a new
-  // one). Like entries, only an edit needs the version it was opened at.
+  // edition, version, checkVersion? }) and an optional "image" file (required
+  // for a new one). Like entries, only an edit needs the version it was opened
+  // at, unless checkVersion asks for it: moving a book's current edition,
+  // which is saved along with the book and must not land on a draft changed
+  // since (nor twice, when a retry follows a lost answer).
   "POST /api/sidebar/edition": async (req, res) => {
     const saved = await withUpload(req, "sidebar", { maxFiles: 1, fieldNames: ["edition"] }, ({ files, fields }) => {
       let edition;
@@ -277,7 +286,7 @@ const routes = {
         throw new HttpError(400, "invalid-edition");
       }
       return {
-        seenVersion: edition?.id === undefined ? ANY_VERSION : edition.version,
+        seenVersion: edition?.id === undefined && edition?.checkVersion !== true ? ANY_VERSION : edition.version,
         apply: () => workspace.saveEdition(edition?.entryId, edition, files[0]),
       };
     });

@@ -11,6 +11,9 @@ A small web app, reachable only on the tailnet, for managing the site's content 
   Under each entry, its **previous editions** (過去バージョン): older editions of the book,
   shown on the site as a small cover, an edition label and a title, the whole row a link.
   Add (a cover, the ja/en edition label and title, a link), edit, reorder and remove them.
+  **Move the current edition here…** fills one in from the book itself; **Next** opens the
+  book for the new edition's cover, link and description, and **Save to draft** there saves
+  both, against the draft as it was when the move began (cancelling before that saves nothing).
 - **Preview** the real site built from the draft, then **Save** (commit) and **Deploy**.
 
 It is a plain Node server (`server.js`, `lib/`) with a build-free frontend (`public/`). It

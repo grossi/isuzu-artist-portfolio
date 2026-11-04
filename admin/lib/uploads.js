@@ -30,7 +30,8 @@ export function sanitizeStem(filename) {
 // jpg/png/webp and strips its metadata (lib/metadata.js). Text parts are only
 // accepted under the given field names.
 // Returns { files: [{ path, stem, extension, originalName }], fields }; on any
-// error the temp files are deleted and an HttpError is thrown.
+// error the temp files are removed (best effort, see removeTemp) and an
+// HttpError is thrown.
 export async function receiveUploads(req, { tempDir, maxBytes, maxFiles, fieldNames = [] }) {
   fs.mkdirSync(tempDir, { recursive: true });
   const files = [];
@@ -109,6 +110,15 @@ export async function receiveUploads(req, { tempDir, maxBytes, maxFiles, fieldNa
   }
 }
 
+// Best effort: it runs after the edit is saved (or after the error being
+// reported), so a file it can't remove (one still open on Windows) must not
+// turn the answer into an error. The spool is emptied at the next start.
 export function removeTemp(files) {
-  for (const file of files) fs.rmSync(file.path, { force: true });
+  for (const file of files) {
+    try {
+      fs.rmSync(file.path, { force: true });
+    } catch (error) {
+      console.warn(`Could not remove the temp upload ${file.path}: ${error.message}`);
+    }
+  }
 }
