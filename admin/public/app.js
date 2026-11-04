@@ -55,16 +55,20 @@ async function api(method, url, body) {
 let edits = Promise.resolve();
 let pendingEdits = 0; // queued or in flight: refreshes wait for them
 let latestVersion = 0; // the newest draft version any response has shown
+// The version a response returned (also each one of a queued call that
+// makes several edits).
+function noteVersion(version) {
+  if (typeof version !== "number") return;
+  latestVersion = Math.max(latestVersion, version);
+  // Each edit bumps the version by one: anything else means another tab
+  // edited in between, and the refresh will bring its changes.
+  if (state && version === state.version + 1) state.version = version;
+}
 function queue(send) {
   pendingEdits++;
   const next = edits.then(async () => {
     const result = await send();
-    if (typeof result?.version === "number") {
-      latestVersion = Math.max(latestVersion, result.version);
-      // Each edit bumps the version by one: anything else means another tab
-      // edited in between, and the refresh will bring its changes.
-      if (state && result.version === state.version + 1) state.version = result.version;
-    }
+    noteVersion(result?.version);
     return result;
   });
   edits = next.catch(() => {}).finally(() => {
@@ -526,6 +530,7 @@ async function removeEntry(entry) {
 let editing = null;
 let editingVersion = null; // the draft version the edited entry was read at
 let entryImage = null;
+let entryMove = null; // see openEntry
 
 const isImage = (file) => Boolean(file) && /^image\/(jpeg|png|webp)$/.test(file.type);
 
@@ -579,6 +584,11 @@ function validLink(link) {
 
 function renderEntryTitle() {
   $("entry-title").textContent = editing ? t("entryDialog.editTitle", { id: editing.id }) : t("entryDialog.addTitle");
+  // Moving the current edition: saved together with this dialog.
+  $("entry-move-hint").hidden = !entryMove;
+  $("entry-move-hint").textContent = entryMove
+    ? t(entryMove.saved ? "entryDialog.moveSavedHint" : "entryDialog.moveHint", { name: inLang(entryMove.body.edition, lang).text })
+    : "";
 }
 
 // error: an ApiError or a { code } of the client's own checks; null hides it.
@@ -594,9 +604,22 @@ function showEntryError(error) {
 let entrySession = 0;
 let editionSession = 0;
 
-function openEntry(entry = null) {
+// A move that failed may still have been saved (a dropped connection, an
+// error after the save): an edition added since the move began, with its
+// link and label, is it, so a retry doesn't add it twice.
+function movedEdition(move) {
+  const book = state.sidebar.entries.find((e) => e.id === move.body.entryId);
+  return (book?.previousEditions ?? []).find(
+    (e) => !move.before.includes(e.id) && e.link === move.body.link && LANGS.every((code) => e.edition[code] === move.body.edition[code].trim()));
+}
+
+// move: the book's current edition, held back by the move dialog to be saved
+// along with this one ({ body, image, imageName, before: the ids of the
+// editions it had then, saved: the edition once saved }).
+function openEntry(entry = null, move = null) {
   entrySession++;
   editing = entry;
+  entryMove = move;
   // After the edits already queued: the entry shown includes them.
   editingVersion = edits.then(() => state.version);
   entryImage = null;
@@ -623,6 +646,13 @@ async function submitEntry(event) {
     $("entry-drop").focus();
     return fail({ code: "entry-needs-image" });
   }
+  // A new edition has its own cover: saving the book unchanged would only
+  // repeat the edition just moved.
+  const move = entryMove;
+  if (move && !move.saved && !entryImage) {
+    $("entry-drop").focus();
+    return fail({ code: "move-needs-cover" });
+  }
   // Everything is read before waiting for queued edits: the dialog may be
   // closed and reopened on another entry meanwhile.
   submitting = true;
@@ -634,14 +664,45 @@ async function submitEntry(event) {
   const current = () => session === entrySession && $("entry-dialog").open;
   try {
     entry.version = await editingVersion;
-    const form = new FormData();
-    form.append("entry", JSON.stringify(entry));
-    if (image) form.append("image", image, image.name);
-    const data = await queue(() => api("POST", "/api/sidebar/entry", form));
+    // One queued call: no other edit of this tab comes between the two.
+    const data = await queue(async () => {
+      if (move) move.saved ??= movedEdition(move);
+      if (move && !move.saved) {
+        const form = new FormData();
+        form.append("edition", JSON.stringify(move.body));
+        form.append("image", move.image, move.imageName);
+        const moved = await api("POST", "/api/sidebar/edition", form);
+        move.saved = moved.saved;
+        noteVersion(moved.version);
+        // The book is based on the draft right after the move, unless another
+        // tab edited in between: then its own check stops it.
+        if (moved.version === entry.version + 1) entry.version = moved.version;
+        if (session === entrySession) editingVersion = Promise.resolve(entry.version);
+      }
+      const form = new FormData();
+      form.append("entry", JSON.stringify(entry));
+      if (image) form.append("image", image, image.name);
+      return api("POST", "/api/sidebar/entry", form);
+    });
     if (current()) $("entry-dialog").close();
-    toast(() => t(isEdit ? "toast.entryUpdated" : "toast.entryAdded", { id: data.saved.id }));
+    toast(() =>
+      move
+        ? t("toast.editionMoved", { name: inLang(move.saved.edition, lang).text, id: data.saved.id })
+        : t(isEdit ? "toast.entryUpdated" : "toast.entryAdded", { id: data.saved.id }));
     await refresh();
   } catch (error) {
+    // The move may have gone through: the refresh shows it, and the next try
+    // saves only the book (the hint then says so).
+    if (move) {
+      await edits;
+      await refresh();
+      if (!move.saved && (move.saved = movedEdition(move)) && session === entrySession) {
+        // Saved, though its answer was lost: the book is based on the draft
+        // right after it, unless another tab edited in between.
+        if (state.version === entry.version + 1) editingVersion = Promise.resolve(state.version);
+      }
+      if (current()) renderEntryTitle();
+    }
     if (current()) fail(error);
     else toast(() => errorText(error), true);
   } finally {
@@ -788,6 +849,8 @@ function renderEditionHeading() {
     ? t("editionDialog.editTitle", { name: inLang(edition.edition, lang).text, id: entry.id })
     : t(moving ? "editionDialog.moveTitle" : "editionDialog.addTitle", { id: entry.id });
   $("edition-move-hint").hidden = !moving;
+  // Moving saves nothing yet: the book's dialog comes next.
+  $("edition-submit").textContent = t(moving ? "editionDialog.next" : "entryDialog.submit");
 }
 
 let editionError = null;
@@ -924,33 +987,36 @@ async function submitEdition(event) {
   }
   // The field's own message already says what is wrong.
   if (!link || !validLink(link)) return $("edition-link").focus();
+  const body = { entryId: entry.id, id: editing?.id, link, title, edition: label };
+  const image = editionImage;
+  // The edition's id comes from its cover's file name: the copied cover is
+  // named after the book and the year in the label as saved (the server
+  // detects the format and sets the extension).
+  const year = /(\d{4})/.exec(`${label.ja} ${label.en}`)?.[1];
+  const imageName = image === copiedCover ? `${entry.id}-${year || "previous"}.${image.name.split(".").pop()}` : image?.name;
+  // Moving the current edition: nothing is saved yet. The book's dialog
+  // comes next and saves both, so cancelling either one changes nothing.
+  if (moving) {
+    $("edition-dialog").close();
+    const book = state.sidebar.entries.find((e) => e.id === entry.id) ?? entry;
+    openEntry(book, { body, image, imageName, before: (book.previousEditions ?? []).map((e) => e.id), saved: null });
+    return;
+  }
   // Everything is read before waiting for queued edits (see submitEntry).
   submittingEdition = true;
   $("edition-submit").disabled = true;
-  const body = { entryId: entry.id, id: editing?.id, link, title, edition: label };
-  const image = editionImage;
   const session = editionSession;
   const current = () => session === editionSession && $("edition-dialog").open;
   try {
     body.version = await editionVersion;
     const form = new FormData();
     form.append("edition", JSON.stringify(body));
-    // The edition's id comes from its cover's file name: the copied cover is
-    // named after the book and the year in the label as saved (the server
-    // detects the format and sets the extension).
-    const year = /(\d{4})/.exec(`${label.ja} ${label.en}`)?.[1];
-    const copied = image && image === copiedCover;
-    if (image) form.append("image", image, copied ? `${entry.id}-${year || "previous"}.${image.name.split(".").pop()}` : image.name);
+    if (image) form.append("image", image, imageName);
     const data = await queue(() => api("POST", "/api/sidebar/edition", form));
-    const stillOpen = current();
-    if (stillOpen) $("edition-dialog").close();
+    if (current()) $("edition-dialog").close();
     const name = inLang(data.saved.edition, lang).text;
-    // "Now enter the new edition" only when its dialog opens next.
-    toast(() => t(editing ? "toast.editionUpdated" : moving && stillOpen ? "toast.editionMoved" : "toast.editionAdded", { name, id: entry.id }));
+    toast(() => t(editing ? "toast.editionUpdated" : "toast.editionAdded", { name, id: entry.id }));
     await refresh();
-    // Moving the current edition: the book itself gets the new one next.
-    const book = moving && stillOpen && state.sidebar.entries.find((e) => e.id === entry.id);
-    if (book && !$("entry-dialog").open && !$("edition-dialog").open) openEntry(book);
   } catch (error) {
     if (current()) showEditionError(error);
     else toast(() => errorText(error), true);
