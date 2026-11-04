@@ -585,7 +585,7 @@ function validLink(link) {
 function renderEntryTitle() {
   $("entry-title").textContent = editing ? t("entryDialog.editTitle", { id: editing.id }) : t("entryDialog.addTitle");
   // Moving the current edition: saved together with this dialog.
-  $("entry-move-hint").hidden = !entryMove;
+  $("entry-move-hint").hidden = !entryMove || entryMove.gone;
   $("entry-move-hint").textContent = entryMove
     ? t(
         entryMove.stale
@@ -628,7 +628,8 @@ function movedEdition(move, sidebar) {
 // editions it had then, version: the draft version the move dialog was
 // opened at, sent: sent at least once, saved: the edition once saved, unsure:
 // sent, but whether it was saved couldn't be checked, stale: saved, but this
-// dialog can't save the book any more }).
+// dialog can't save the book any more, gone: the book was removed since, its
+// previous editions with it }).
 function openEntry(entry = null, move = null) {
   entrySession++;
   editing = entry;
@@ -756,13 +757,17 @@ async function submitEntry(event) {
       repeat = Boolean(move.saved) && !move.stale && error.code === "draft-changed";
     }
     // Moved, but the draft changed since (another tab, or this book's own
-    // save whose answer was lost) or the book is gone: this dialog can't save
-    // the book any more, so the hint says to reload and check instead of to
-    // try again.
-    if (bookFailed && ["draft-changed", "entry-gone"].includes(error.code)) move.stale = true;
+    // save whose answer was lost): this dialog can't save the book any more,
+    // so the hint says to reload and check instead of to try again, and says
+    // it alone (the error would guess at another tab).
+    if (bookFailed && error.code === "draft-changed") move.stale = true;
+    const quiet = repeat || (bookFailed && move.stale && error.code === "draft-changed");
+    // The book is gone, and its previous editions with it: only the error
+    // (reload the page) is left to say.
+    if (move?.saved && error.code === "entry-gone") move.stale = move.gone = true;
     if (move && current()) renderEntryTitle();
     if (move) refresh();
-    if (current()) fail(repeat ? null : error);
+    if (current()) fail(quiet ? null : error);
     else toast(() => errorText(error), true);
   } finally {
     submitting = false;
@@ -780,6 +785,12 @@ $("entry-form").addEventListener("submit", submitEntry);
 $("entry-cancel").addEventListener("click", () => $("entry-dialog").close());
 $("entry-dialog").addEventListener("cancel", (event) => {
   if (savingMove && savingMove === entryMove) event.preventDefault();
+});
+// A second Escape closes a dialog without a cancelable "cancel" (Chrome):
+// stopped before it asks. On the document: the disabled save button has
+// let go of the focus.
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && savingMove && savingMove === entryMove) event.preventDefault();
 });
 $("entry-picker").addEventListener("change", (e) => {
   setEntryImage(e.target.files[0]);
@@ -1066,7 +1077,7 @@ async function submitEdition(event) {
   if (moving) {
     $("edition-dialog").close();
     const book = state.sidebar.entries.find((e) => e.id === entry.id) ?? entry;
-    openEntry(book, { body, image, imageName, before: (book.previousEditions ?? []).map((e) => e.id), version: editionVersion, sent: false, saved: null, unsure: false, stale: false });
+    openEntry(book, { body, image, imageName, before: (book.previousEditions ?? []).map((e) => e.id), version: editionVersion, sent: false, saved: null, unsure: false, stale: false, gone: false });
     return;
   }
   // Everything is read before waiting for queued edits (see submitEntry).
