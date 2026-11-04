@@ -22,16 +22,22 @@ const useStyles = makeStyles()((theme) => ({
   //   side = max((W − 32px) / 3, 0.4·(H − 16px))
   // On phones it is the old 2×2 block: a 4:5 lead across both columns, the
   // two side works as ordinary tiles below it.
+  // The top block and the grid below it, one above the other.
+  works: {
+    display: "grid",
+    gap: 16,
+    [theme.breakpoints.down("sm")]: {
+      gap: 10,
+    },
+  },
   top: {
     display: "grid",
     gridTemplateColumns:
       "minmax(0, 1fr) max(calc((100% - 32px) / 3), calc(0.4 * ((100% - 9.6px) / (var(--lead-aspect) + 0.4) - 16px)))",
     gap: 16,
-    marginBottom: 16,
     [theme.breakpoints.down("sm")]: {
       gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
       gap: 10,
-      marginBottom: 10,
     },
   },
   lead: {
@@ -132,7 +138,9 @@ export default function Gallery({ className }: { className?: string }) {
   const featured = photos.length >= 3 ? photos.slice(0, 3) : [];
   const rest = photos.slice(featured.length);
   const lead = featured[0];
-  const leadAspect = lead && lead.width > 0 && lead.height > 0 ? lead.width / lead.height : 4 / 5;
+  // A size missing from gallery.json falls back to the tiles' 4:5.
+  const aspect = lead ? lead.width / lead.height : NaN;
+  const leadAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 4 / 5;
 
   const item = (photo: GalleryPhotoData, index: number, className: string) => (
     <div key={photo.src} role="listitem" className={className}>
@@ -153,7 +161,7 @@ export default function Gallery({ className }: { className?: string }) {
     <React.Fragment>
       <section className={className} aria-labelledby="home-works home-works-label">
         <SectionHeading id="home-works" title="Works" label={t("home.works")} size="large" />
-        <div aria-label={t("gallery.label")} role="list">
+        <div className={classes.works} aria-label={t("gallery.label")} role="list">
           {featured.length > 0 && (
             <div className={classes.top} style={{ "--lead-aspect": leadAspect } as React.CSSProperties}>
               {item(featured[0], 0, classes.lead)}
@@ -162,9 +170,11 @@ export default function Gallery({ className }: { className?: string }) {
               </div>
             </div>
           )}
-          <div className={classes.grid}>
-            {rest.map((photo, i) => item(photo, featured.length + i, classes.tile))}
-          </div>
+          {rest.length > 0 && (
+            <div className={classes.grid}>
+              {rest.map((photo, i) => item(photo, featured.length + i, classes.tile))}
+            </div>
+          )}
         </div>
       </section>
       <Dialog
