@@ -587,7 +587,7 @@ function renderEntryTitle() {
   // Moving the current edition: saved together with this dialog.
   $("entry-move-hint").hidden = !entryMove;
   $("entry-move-hint").textContent = entryMove
-    ? t(entryMove.saved ? "entryDialog.moveSavedHint" : "entryDialog.moveHint", { name: inLang(entryMove.body.edition, lang).text })
+    ? t(entryMove.stale ? "entryDialog.moveSavedReloadHint" : entryMove.saved ? "entryDialog.moveSavedHint" : "entryDialog.moveHint", { name: inLang(entryMove.body.edition, lang).text })
     : "";
 }
 
@@ -617,7 +617,8 @@ function movedEdition(move, sidebar) {
 
 // move: the book's current edition, held back by the move dialog to be saved
 // along with this one ({ body, image, imageName, before: the ids of the
-// editions it had then, saved: the edition once saved }).
+// editions it had then, sent: sent at least once, saved: the edition once
+// saved, stale: saved, but another tab changed the draft since }).
 function openEntry(entry = null, move = null) {
   entrySession++;
   editing = entry;
@@ -669,21 +670,22 @@ async function submitEntry(event) {
     // One queued call: no other edit of this tab comes between the two.
     const data = await queue(async () => {
       if (move && !move.saved) {
-        // The draft as it is now, not as last shown: a move saved by an
-        // earlier try whose answer was lost is in it. An edit from another tab
-        // since the book was opened stops both before either is saved (the
-        // server checks only the book's version, after the move).
+        // The draft as it is now, not as last shown. A move sent by an earlier
+        // try whose answer was lost is in it if it was saved. An edit from
+        // another tab since the book was opened stops both before either is
+        // saved (the server checks only the book's version, after the move).
         const now = await api("GET", "/api/state");
         if (!now.sidebar) throw new ApiError({ code: now.errorCode, params: now.errorParams, error: now.error }, "request-failed");
-        move.saved = movedEdition(move, now.sidebar) ?? null;
+        if (move.sent) move.saved = movedEdition(move, now.sidebar) ?? null;
+        if (!move.saved && now.version !== entry.version) throw new ApiError({ code: "draft-changed", error: t("error.draft-changed") });
         if (move.saved && now.version === entry.version + 1) entry.version = now.version;
-        else if (!move.saved && now.version !== entry.version) throw new ApiError({ code: "draft-changed", error: t("error.draft-changed") });
         if (move.saved && session === entrySession) editingVersion = Promise.resolve(entry.version);
       }
       if (move && !move.saved) {
         const form = new FormData();
         form.append("edition", JSON.stringify(move.body));
         form.append("image", move.image, move.imageName);
+        move.sent = true;
         const moved = await api("POST", "/api/sidebar/edition", form);
         move.saved = moved.saved;
         noteVersion(moved.version);
@@ -707,7 +709,7 @@ async function submitEntry(event) {
     // The move may have gone through: the hint then says so, and the next
     // try saves only the book. (That try checks the draft again itself: this
     // request fails too while the connection is down.)
-    if (move && !move.saved) {
+    if (move && move.sent && !move.saved) {
       await edits;
       const now = await api("GET", "/api/state").catch(() => null);
       if (now?.sidebar) move.saved = movedEdition(move, now.sidebar) ?? null;
@@ -715,6 +717,9 @@ async function submitEntry(event) {
       // right after it, unless another tab edited in between.
       if (move.saved && now.version === entry.version + 1 && session === entrySession) editingVersion = Promise.resolve(now.version);
     }
+    // Moved, but another tab changed the draft: this dialog can't save the
+    // book any more, so the hint says to reload instead of to try again.
+    if (move?.saved && error.code === "draft-changed") move.stale = true;
     if (move && current()) renderEntryTitle();
     if (move) refresh();
     if (current()) fail(error);

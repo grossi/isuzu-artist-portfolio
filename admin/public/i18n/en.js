@@ -133,6 +133,7 @@ export default {
   "entryDialog.editTitle": "Edit sidebar entry: {id}",
   "entryDialog.moveHint": "Enter the new edition's cover, link and description. \"Save to draft\" moves the current edition ({name}) to the previous editions and makes this book the new edition. Cancel saves neither.",
   "entryDialog.moveSavedHint": "The current edition ({name}) is already in the previous editions. Check the new edition and press \"Save to draft\" again.",
+  "entryDialog.moveSavedReloadHint": "The current edition ({name}) is already in the previous editions. The draft was changed elsewhere (another tab, for example), so this dialog can't save the book. Reload the page, then edit this book to make it the new edition.",
   "entryDialog.imageTitle": "Drop an image here or click to choose one",
   "entryDialog.imageHint": "Drop an image here\nor click to choose",
   "entryDialog.replaceHint": "Drop or click to replace",
