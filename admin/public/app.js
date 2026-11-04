@@ -751,6 +751,8 @@ let editionSubmitted = false; // after a first submit, an empty link is an error
 function setEditionImage(file) {
   if (!isImage(file)) return toast(() => t("toast.chooseImage"), true);
   editionImage = file;
+  // A cover that arrives after a submit asked for one answers it.
+  if (editionError?.code === "edition-needs-image") showEditionError(null);
   showDialogImage("edition", URL.createObjectURL(file));
   updateEditionPreview();
 }
@@ -833,17 +835,23 @@ function titleFromDescription(markdown) {
     .trim();
 }
 
-// The year of a gihyo.jp book page (…/book/2022/…) among the book's links.
+// The edition's year, from the first of the book's links with a year in its
+// path, such as the publisher's page (gihyo.jp/book/2026/…). None: no label.
 function editionYear(entry) {
   const links = [entry.link ?? "", entry.description.ja, entry.description.en].join("\n");
-  return /gihyo\.jp\/book\/(\d{4})\//.exec(links)?.[1] ?? "";
+  return /https?:\/\/[^\s)]*?\/((?:19|20)\d{2})\//.exec(links)?.[1] ?? "";
 }
 
 async function openMoveToEditions(entry) {
+  const year = editionYear(entry);
+  // Moved already (the book itself not updated yet): asked first, so a second
+  // click doesn't silently add the same edition twice.
+  const yearLabel = year && EDITION_YEAR_LABEL.ja.replace("{year}", year);
+  const moved = (entry.previousEditions ?? []).find((e) => (entry.link && e.link === entry.link) || (yearLabel && e.edition.ja === yearLabel));
+  if (moved && !confirm(t("edition.confirmMoveAgain", { id: entry.id, name: inLang(moved.edition, lang).text }))) return;
   openEdition(entry);
   editionTarget.moving = true;
   renderEditionHeading();
-  const year = editionYear(entry);
   const titles = { ja: titleFromDescription(entry.description.ja), en: titleFromDescription(entry.description.en) };
   $("edition-link").value = entry.link ?? "";
   for (const code of LANGS) $(`edition-label-${code}`).value = year ? EDITION_YEAR_LABEL[code].replace("{year}", year) : "";

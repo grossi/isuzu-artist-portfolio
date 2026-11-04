@@ -122,6 +122,7 @@ export default {
   "edition.addNamed": "{id} に過去のバージョンを追加",
   "edition.moveCurrent": "↓ 今の版を過去のバージョンへ移す…",
   "edition.moveCurrentNamed": "{id} の今の版を過去のバージョンへ移す",
+  "edition.confirmMoveAgain": "「{id}」の過去のバージョンには、同じリンクか版の {name} がすでにあります。もう一度移しますか？",
   "edition.moveUp": "{name} を上へ移動",
   "edition.moveDown": "{name} を下へ移動",
   "edition.edit": "{name} を編集",
