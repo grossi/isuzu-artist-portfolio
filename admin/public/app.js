@@ -605,12 +605,14 @@ let entrySession = 0;
 let editionSession = 0;
 
 // A move that failed may still have been saved (a dropped connection, an
-// error after the save): an edition added since the move began, with its
-// link and label, is it, so a retry doesn't add it twice.
-function movedEdition(move) {
-  const book = state.sidebar.entries.find((e) => e.id === move.body.entryId);
+// error after the save): an edition of sidebar added since the move began,
+// with its link, label and title as the server saves them (spaces, the
+// full-width one too, made one), is it, so a retry doesn't add it twice.
+function movedEdition(move, sidebar) {
+  const book = sidebar.entries.find((e) => e.id === move.body.entryId);
+  const same = (saved, sent) => LANGS.every((code) => saved[code] === sent[code].replace(/\s+/g, " ").trim());
   return (book?.previousEditions ?? []).find(
-    (e) => !move.before.includes(e.id) && e.link === move.body.link && LANGS.every((code) => e.edition[code] === move.body.edition[code].trim()));
+    (e) => !move.before.includes(e.id) && e.link === move.body.link && same(e.edition, move.body.edition) && same(e.title, move.body.title));
 }
 
 // move: the book's current edition, held back by the move dialog to be saved
@@ -666,7 +668,18 @@ async function submitEntry(event) {
     entry.version = await editingVersion;
     // One queued call: no other edit of this tab comes between the two.
     const data = await queue(async () => {
-      if (move) move.saved ??= movedEdition(move);
+      if (move && !move.saved) {
+        // The draft as it is now, not as last shown: a move saved by an
+        // earlier try whose answer was lost is in it. An edit from another tab
+        // since the book was opened stops both before either is saved (the
+        // server checks only the book's version, after the move).
+        const now = await api("GET", "/api/state");
+        if (!now.sidebar) throw new ApiError({ code: now.errorCode, params: now.errorParams, error: now.error }, "request-failed");
+        move.saved = movedEdition(move, now.sidebar) ?? null;
+        if (move.saved && now.version === entry.version + 1) entry.version = now.version;
+        else if (!move.saved && now.version !== entry.version) throw new ApiError({ code: "draft-changed", error: t("error.draft-changed") });
+        if (move.saved && session === entrySession) editingVersion = Promise.resolve(entry.version);
+      }
       if (move && !move.saved) {
         const form = new FormData();
         form.append("edition", JSON.stringify(move.body));
@@ -691,18 +704,19 @@ async function submitEntry(event) {
         : t(isEdit ? "toast.entryUpdated" : "toast.entryAdded", { id: data.saved.id }));
     await refresh();
   } catch (error) {
-    // The move may have gone through: the refresh shows it, and the next try
-    // saves only the book (the hint then says so).
-    if (move) {
+    // The move may have gone through: the hint then says so, and the next
+    // try saves only the book. (That try checks the draft again itself: this
+    // request fails too while the connection is down.)
+    if (move && !move.saved) {
       await edits;
-      await refresh();
-      if (!move.saved && (move.saved = movedEdition(move)) && session === entrySession) {
-        // Saved, though its answer was lost: the book is based on the draft
-        // right after it, unless another tab edited in between.
-        if (state.version === entry.version + 1) editingVersion = Promise.resolve(state.version);
-      }
-      if (current()) renderEntryTitle();
+      const now = await api("GET", "/api/state").catch(() => null);
+      if (now?.sidebar) move.saved = movedEdition(move, now.sidebar) ?? null;
+      // Saved, though its answer was lost: the book is based on the draft
+      // right after it, unless another tab edited in between.
+      if (move.saved && now.version === entry.version + 1 && session === entrySession) editingVersion = Promise.resolve(now.version);
     }
+    if (move && current()) renderEntryTitle();
+    if (move) refresh();
     if (current()) fail(error);
     else toast(() => errorText(error), true);
   } finally {
@@ -1116,7 +1130,11 @@ function showModal(dialog) {
   dialog.showModal();
 }
 for (const dialog of document.querySelectorAll("dialog")) {
-  dialog.addEventListener("close", () => document.querySelector(".top").append(langToggle));
+  // Unless the next dialog has it already: "close" fires after the edition
+  // dialog's 次へ has opened the book's.
+  dialog.addEventListener("close", () => {
+    if (langToggle.parentElement === dialog) document.querySelector(".top").append(langToggle);
+  });
 }
 
 // Redraws every text in place: the draft, dialogs and a running job are
