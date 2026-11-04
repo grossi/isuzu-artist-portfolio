@@ -846,9 +846,18 @@ function titleFromDescription(markdown) {
 // (gihyo.jp/book/2026/…) first, else the first link with a year in its path.
 // None: no label.
 function editionYear(entry) {
-  const links = [entry.link ?? "", entry.description.ja, entry.description.en].join("\n");
-  const year = "((?:19|20)\\d{2})(?=[/?#)\\s]|$)";
-  return (new RegExp(`https?://[^\\s)]*?/book/${year}`).exec(links) ?? new RegExp(`https?://[^\\s)]*?/${year}`).exec(links))?.[1] ?? "";
+  const text = [entry.link ?? "", entry.description.ja, entry.description.en].join("\n");
+  // Only the links' paths: a year in a query or fragment says nothing.
+  const pathOf = (url) => {
+    try {
+      return new URL(url).pathname;
+    } catch {
+      return "";
+    }
+  };
+  const paths = (text.match(/https?:\/\/[^\s)<>]+/g) ?? []).map(pathOf);
+  const find = (pattern) => paths.map((p) => pattern.exec(p)?.[1]).find(Boolean);
+  return find(/\/book\/((?:19|20)\d{2})(?:\/|$)/) ?? find(/\/((?:19|20)\d{2})(?:\/|$)/) ?? "";
 }
 
 async function openMoveToEditions(entry) {
