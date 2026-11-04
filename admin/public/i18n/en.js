@@ -122,7 +122,7 @@ export default {
   "edition.addNamed": "Add a previous edition to {id}",
   "edition.moveCurrent": "↓ Move the current edition here…",
   "edition.moveCurrentNamed": "Move the current edition of {id} to its previous editions",
-  "edition.confirmMoveAgain": "The previous editions of \"{id}\" already include {name}, with the same link or edition. Move the current edition again?",
+  "edition.confirmMoveAgain": "The previous editions of \"{id}\" already include {name}, with the same link, edition or title. Move the current edition again?",
   "edition.moveUp": "Move {name} up",
   "edition.moveDown": "Move {name} down",
   "edition.edit": "Edit {name}",

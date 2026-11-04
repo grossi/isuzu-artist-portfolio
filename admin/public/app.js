@@ -839,24 +839,27 @@ function titleFromDescription(markdown) {
     .trim();
 }
 
-// The edition's year, from the first of the book's links with a year in its
-// path, such as the publisher's page (gihyo.jp/book/2026/…). None: no label.
+// The edition's year, from the book's links: a publisher's book page
+// (gihyo.jp/book/2026/…) first, else the first link with a year in its path.
+// None: no label.
 function editionYear(entry) {
   const links = [entry.link ?? "", entry.description.ja, entry.description.en].join("\n");
-  return /https?:\/\/[^\s)]*?\/((?:19|20)\d{2})\//.exec(links)?.[1] ?? "";
+  const year = "((?:19|20)\\d{2})(?=[/?#)\\s]|$)";
+  return (new RegExp(`https?://[^\\s)]*?/book/${year}`).exec(links) ?? new RegExp(`https?://[^\\s)]*?/${year}`).exec(links))?.[1] ?? "";
 }
 
 async function openMoveToEditions(entry) {
   const year = editionYear(entry);
   // Moved already (the book itself not updated yet): asked first, so a second
   // click doesn't silently add the same edition twice.
+  const titles = { ja: titleFromDescription(entry.description.ja), en: titleFromDescription(entry.description.en) };
   const sameYear = (e) => Boolean(year) && LANGS.some((code) => e.edition[code].trim() === EDITION_YEAR_LABEL[code].replace("{year}", year));
-  const moved = (entry.previousEditions ?? []).find((e) => (entry.link && e.link === entry.link) || sameYear(e));
+  const sameTitle = (e) => LANGS.some((code) => Boolean(titles[code]) && e.title[code].trim() === titles[code]);
+  const moved = (entry.previousEditions ?? []).find((e) => (entry.link && e.link === entry.link) || sameYear(e) || sameTitle(e));
   if (moved && !confirm(t("edition.confirmMoveAgain", { id: entry.id, name: inLang(moved.edition, lang).text }))) return;
   openEdition(entry);
   editionTarget.moving = true;
   renderEditionHeading();
-  const titles = { ja: titleFromDescription(entry.description.ja), en: titleFromDescription(entry.description.en) };
   $("edition-link").value = entry.link ?? "";
   for (const code of LANGS) $(`edition-label-${code}`).value = year ? EDITION_YEAR_LABEL[code].replace("{year}", year) : "";
   $("edition-title-ja").value = titles.ja || titles.en;
