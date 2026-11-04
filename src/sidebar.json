@@ -6,13 +6,26 @@
   "entries": [
     {
       "id": "isuzubook",
-      "image": "isuzubook.webp",
-      "link": "https://www.amazon.co.jp/dp/429713134X",
+      "image": "sidebar/large/shoei.webp",
+      "link": "https://www.amazon.co.jp/dp/4297159872/",
       "description": {
-        "ja": "私が書いたデジタルイラストのハウツー本です。\n\n**プロが教える！ CLIP STUDIO PAINT PROの教科書 -増補改訂版-**\n\n- [Amazon](https://www.amazon.co.jp/dp/429713134X)\n- [その他の購入先](https://gihyo.jp/book/2022/978-4-297-13134-0)\n",
-        "en": "Check out my how-to book on digital illustration!\n\n**プロが教える！ CLIP STUDIO PAINT PROの教科書 -増補改訂版-**\n\n- [Amazon Japan](https://www.amazon.co.jp/dp/429713134X)\n- [Other retailers](https://gihyo.jp/book/2022/978-4-297-13134-0)\n"
+        "ja": "私が書いたデジタルイラストのハウツー本です。\n\n**プロが教える！CLIP STUDIO PAINT PROの教科書［改訂第3版］**\n\n- [Amazon](https://www.amazon.co.jp/dp/4297159872/)\n- [その他の購入先](https://gihyo.jp/book/2026/978-4-297-15987-0)\n",
+        "en": "Check out my how-to book on digital illustration!\n\n**プロが教える！CLIP STUDIO PAINT PROの教科書［改訂第3版］**\n\n- [Amazon Japan](https://www.amazon.co.jp/dp/4297159872/)\n- [Other retailers](https://gihyo.jp/book/2026/978-4-297-15987-0)\n"
       },
       "previousEditions": [
+        {
+          "id": "isuzubook-2022",
+          "image": "sidebar/small/isuzubook-2022.webp",
+          "link": "https://www.amazon.co.jp/dp/429713134X",
+          "title": {
+            "ja": "プロが教える！ CLIP STUDIO PAINT PROの教科書 -増補改訂版-",
+            "en": "プロが教える！ CLIP STUDIO PAINT PROの教科書 -増補改訂版-"
+          },
+          "edition": {
+            "ja": "2022年版",
+            "en": "2022 edition"
+          }
+        },
         {
           "id": "clip-studio-paint-pro-2018",
           "image": "isuzubook-2018.jpg",
