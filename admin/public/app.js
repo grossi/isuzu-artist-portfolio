@@ -618,7 +618,7 @@ function movedEdition(move, sidebar) {
 // move: the book's current edition, held back by the move dialog to be saved
 // along with this one ({ body, image, imageName, before: the ids of the
 // editions it had then, sent: sent at least once, saved: the edition once
-// saved, stale: saved, but another tab changed the draft since }).
+// saved, stale: saved, but the draft changed since }).
 function openEntry(entry = null, move = null) {
   entrySession++;
   editing = entry;
@@ -717,8 +717,9 @@ async function submitEntry(event) {
       // right after it, unless another tab edited in between.
       if (move.saved && now.version === entry.version + 1 && session === entrySession) editingVersion = Promise.resolve(now.version);
     }
-    // Moved, but another tab changed the draft: this dialog can't save the
-    // book any more, so the hint says to reload instead of to try again.
+    // Moved, but the draft changed since (another tab, or this book's own
+    // save whose answer was lost): this dialog can't save the book any more,
+    // so the hint says to reload and check instead of to try again.
     if (move?.saved && error.code === "draft-changed") move.stale = true;
     if (move && current()) renderEntryTitle();
     if (move) refresh();

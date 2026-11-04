@@ -42,7 +42,7 @@ test("every key the page and the server use exists", () => {
   const used = [
     ...[...html.matchAll(/data-i18n(?:-[a-z-]+)?="([^"]+)"/g)].map((m) => m[1]),
     // Any "namespace.key" literal in the page's script.
-    ...[...app.matchAll(/"([a-z]+)\.([\w-]+)"/g)].filter((m) => namespaces.has(m[1])).map((m) => `${m[1]}.${m[2]}`),
+    ...[...app.matchAll(/"([a-z][A-Za-z]*)\.([\w-]+)"/g)].filter((m) => namespaces.has(m[1])).map((m) => `${m[1]}.${m[2]}`),
     // Error codes the page makes up itself ({ code: "…" }).
     ...[...app.matchAll(/\bcode: "([\w-]+)"/g)].map((m) => `error.${m[1]}`),
     ...["ja", "en"].map((code) => `lang.${code}`),

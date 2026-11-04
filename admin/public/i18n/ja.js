@@ -133,7 +133,7 @@ export default {
   "entryDialog.editTitle": "サイドバーの項目を編集: {id}",
   "entryDialog.moveHint": "新しい版の表紙・リンク・説明を入れてください。「下書きに反映」を押すと、今の版（{name}）が過去のバージョンへ移り、この本が新しい版になります。キャンセルすると、どちらも保存されません。",
   "entryDialog.moveSavedHint": "今の版（{name}）は過去のバージョンへ移してあります。新しい版の内容を確かめて、もう一度「下書きに反映」を押してください。",
-  "entryDialog.moveSavedReloadHint": "今の版（{name}）は過去のバージョンへ移してあります。ほかのタブなどで下書きが更新されたため、この画面では本を保存できません。ページを再読み込みしてから、この本を編集して新しい版にしてください。",
+  "entryDialog.moveSavedReloadHint": "今の版（{name}）は過去のバージョンへ移してあります。この画面からは本を保存できなくなりました。ページを再読み込みして本を確かめ、まだ新しい版になっていなければ編集してください。",
   "entryDialog.imageTitle": "ここに画像をドロップするか、クリックして選んでください",
   "entryDialog.imageHint": "画像をドロップ\nまたはクリック",
   "entryDialog.replaceHint": "ドロップかクリックで差し替え",
