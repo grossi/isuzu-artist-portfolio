@@ -827,7 +827,7 @@ const EDITION_YEAR_LABEL = { ja: "{year}年版", en: "{year} edition" };
 // bold, else the first plain paragraph after the introduction. Lists (the
 // shop links) are never the title.
 function titleFromDescription(markdown) {
-  const paragraphs = markdown.split(/\n\s*\n/).map((p) => p.trim()).filter((p) => p && !/^[-*+]\s/.test(p));
+  const paragraphs = markdown.split(/\n\s*\n/).map((p) => p.trim()).filter((p) => p && !/^([-*+]|\d+[.)])\s/.test(p));
   const title =
     paragraphs.find((p) => /^\*\*.*\*\*$/s.test(p)) ?? paragraphs.find((p) => p.includes("**")) ?? paragraphs.slice(1)[0] ?? "";
   return title
