@@ -850,8 +850,8 @@ async function openMoveToEditions(entry) {
   const year = editionYear(entry);
   // Moved already (the book itself not updated yet): asked first, so a second
   // click doesn't silently add the same edition twice.
-  const yearLabel = year && EDITION_YEAR_LABEL.ja.replace("{year}", year);
-  const moved = (entry.previousEditions ?? []).find((e) => (entry.link && e.link === entry.link) || (yearLabel && e.edition.ja === yearLabel));
+  const sameYear = (e) => Boolean(year) && LANGS.some((code) => e.edition[code].trim() === EDITION_YEAR_LABEL[code].replace("{year}", year));
+  const moved = (entry.previousEditions ?? []).find((e) => (entry.link && e.link === entry.link) || sameYear(e));
   if (moved && !confirm(t("edition.confirmMoveAgain", { id: entry.id, name: inLang(moved.edition, lang).text }))) return;
   openEdition(entry);
   editionTarget.moving = true;

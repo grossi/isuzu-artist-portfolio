@@ -138,9 +138,11 @@ export default function Gallery({ className }: { className?: string }) {
   const featured = photos.length >= 3 ? photos.slice(0, 3) : [];
   const rest = photos.slice(featured.length);
   const lead = featured[0];
-  // A size missing from gallery.json falls back to the tiles' 4:5.
+  // A size missing from gallery.json falls back to the tiles' 4:5, and so
+  // does a shape beyond 1:4 or 4:1 (the works range from about 1:3.6 to
+  // 16:9): much wider and the side works would shrink to nothing.
   const aspect = lead ? lead.width / lead.height : NaN;
-  const leadAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 4 / 5;
+  const leadAspect = aspect >= 1 / 4 && aspect <= 4 ? aspect : 4 / 5;
 
   const item = (photo: GalleryPhotoData, index: number, className: string) => (
     <div key={photo.src} role="listitem" className={className}>
