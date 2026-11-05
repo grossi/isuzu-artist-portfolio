@@ -47,5 +47,12 @@
     "location": "carousel/9471185_p0.jpg",
     "locationLarge": "carousel/large/9471185_p0.webp",
     "focusY": 30
+  },
+  {
+    "name": "zzzzz (8)",
+    "extension": "jpg",
+    "location": "gallery/zzzzz (8).jpg",
+    "locationLarge": "gallery/large/zzzzz (8).webp",
+    "focusY": 30
   }
 ]
