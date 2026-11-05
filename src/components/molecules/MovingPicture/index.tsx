@@ -335,6 +335,11 @@ export default function MovingPicture({ scene: folder, active, onStillLoad, fall
       rendererRef.current?.renderer.dispose();
       rendererRef.current = null;
       setReady(false);
+      // Hands the context back too: a browser keeps only so many, and each
+      // visit to the home page makes a new canvas. (This effect only runs
+      // again on a new canvas, but for a dev hot reload, which then shows the
+      // still picture.)
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
     };
   }, [folder, stillDone, reducedMotion]);
 

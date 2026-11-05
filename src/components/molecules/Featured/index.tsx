@@ -340,7 +340,8 @@ function Showcase() {
   // The autoplay, by hand: each slide has its own time, counted from the
   // start of the change that brought it. Visitors who ask for less motion get
   // none (the dots still change the slides). If the carousel ignores a
-  // change (mid-swipe, or still moving), it's tried again a moment later.
+  // change (it is still sliding, say after a dot was clicked), it's tried
+  // again a moment later.
   React.useEffect(() => {
     // (Nothing to change with fewer than two slides: the admin allows none.)
     if (reducedMotion || showcaseSlides.length < 2 || (showcaseSlides[current]?.moving && !stillShown)) return;
