@@ -179,47 +179,73 @@ const useStyles = makeStyles()({
   },
 });
 
-// The showcase top (see hero.ts): whole pictures on black.
+// The showcase top (see hero.ts). The slides are as tall as the classic
+// ones; how the pictures fill them is movingPicture.fit:
+// "cover"  as the classic slides: the full width, cut at the top and bottom
+// "inset"  a little smaller: movingPicture.inset times the slide's height, so
+//          less is cut, with black at the sides and the pictures' sides faded
+//          into it
 const SHOWCASE_BLACK = "#141414";
-// The sides of each picture fade into the black over this width.
 const FEATHER = "min(56px, 4%)";
 const feather = `linear-gradient(to right, transparent, #000 ${FEATHER}, #000 calc(100% - ${FEATHER}), transparent)`;
+// Never larger than "cover" would make it: on a narrow window (a phone),
+// where "cover" already cuts the sides, the two are the same.
+const insetHeight = `min(calc(var(--hh) * ${movingPicture.inset}), max(var(--hh), calc(100vw / ${movingPicture.aspect})))`;
+
+// For comparing the two while they're reviewed: ?fit=cover or ?fit=inset.
+const fitParam = new URLSearchParams(window.location.search).get("fit");
+const fit: "cover" | "inset" = fitParam === "cover" || fitParam === "inset" ? fitParam : movingPicture.fit;
 
 const useShowcaseStyles = makeStyles()({
-  // As tall as the moving picture is at the page's width, and at most 80% of
-  // the window: the whole picture always shows.
-  wrap: {
-    "--hh": `min(80vh, calc(100vw / ${movingPicture.aspect}))`,
+  coverSlide: {
+    height: "var(--hh)",
+    position: "relative",
+    overflow: "hidden",
+    backgroundColor: "#222",
   },
-  hero: {
-    backgroundColor: SHOWCASE_BLACK,
+  coverPicture: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    objectPosition: "center",
   },
-  // Every picture is as tall as the slide. One narrower than the slide sits
-  // in the middle with black at its sides; one wider (a 16:9 picture on a
-  // narrow window) loses a little at both sides, never gets black bands
-  // above and below.
-  slide: {
+  // At least the slide's width and height, centred: cut like the pictures.
+  coverMoving: {
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    transform: "translate(-50%, -50%)",
+    width: `max(100%, calc(var(--hh) * ${movingPicture.aspect}))`,
+    aspectRatio: String(movingPicture.aspect),
+  },
+  insetSlide: {
     height: "var(--hh)",
     display: "flex",
     justifyContent: "center",
+    alignItems: "center",
     overflow: "hidden",
     backgroundColor: SHOWCASE_BLACK,
   },
-  picture: {
+  // Taller than the slide by the same share for every picture; one wider
+  // than the slide loses a little at both sides too.
+  insetPicture: {
     display: "block",
     flex: "none",
-    height: "100%",
+    height: insetHeight,
     width: "auto",
     maxWidth: "none",
     maskImage: feather,
     WebkitMaskImage: feather,
   },
-  moving: {
+  insetMoving: {
     flex: "none",
-    height: "100%",
+    height: insetHeight,
     aspectRatio: String(movingPicture.aspect),
     maskImage: feather,
     WebkitMaskImage: feather,
+  },
+  insetHero: {
+    backgroundColor: SHOWCASE_BLACK,
   },
 });
 
@@ -358,14 +384,14 @@ function Showcase() {
   };
 
   return (
-    <section className={cx(classes.wrap, own.wrap)} aria-label={t("hero.label")}>
+    <section className={classes.wrap} aria-label={t("hero.label")}>
       <div className={classes.water} aria-hidden="true">
         <svg viewBox="0 0 4320 160" fill="none" strokeLinecap="round">
           <path className={classes.wave} d={WAVE_PATH} stroke="#d2d2d2" strokeWidth={1.2} />
         </svg>
       </div>
       <div
-        className={cx(classes.hero, own.hero)}
+        className={cx(classes.hero, fit === "inset" && own.insetHero)}
         onMouseOver={(event) => {
           if ((event.target as Element).closest(".slick-dots")) {
             loadAllSlides();
@@ -378,11 +404,15 @@ function Showcase() {
         <Slider ref={sliderRef} {...settings}>
           {showcaseSlides.map((slide, index) => (
             <div key={index}>
-              <div className={own.slide}>
+              <div className={fit === "cover" ? own.coverSlide : own.insetSlide}>
                 {slide.moving ? (
-                  <MovingPicture className={own.moving} scene={`${import.meta.env.BASE_URL}${movingPicture.scene}`} active={current === index} />
+                  <MovingPicture
+                    className={fit === "cover" ? own.coverMoving : own.insetMoving}
+                    scene={`${import.meta.env.BASE_URL}${movingPicture.scene}`}
+                    active={current === index}
+                  />
                 ) : (
-                  loadedSlides.has(index) && <img className={own.picture} src={slide.src} alt="" />
+                  loadedSlides.has(index) && <img className={fit === "cover" ? own.coverPicture : own.insetPicture} src={slide.src} alt="" />
                 )}
               </div>
             </div>
