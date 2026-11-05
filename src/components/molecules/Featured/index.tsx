@@ -6,10 +6,13 @@ import carouselData from 'carousel.json';
 import LanguageSwitch from "components/molecules/LanguageSwitch";
 import { useLanguage } from "i18n/LanguageContext";
 import { displayFont } from "theme";
+import { heroStyle, movingPicture } from "hero";
+import MovingPicture from "components/molecules/MovingPicture";
 
 const paintings = carouselData.map(image => {
   return {
     src: `${import.meta.env.BASE_URL}${image.locationLarge}`,
+    location: image.locationLarge,
   };
 });
 
@@ -176,7 +179,56 @@ const useStyles = makeStyles()({
   },
 });
 
+// The showcase top (see hero.ts): whole pictures on black.
+const SHOWCASE_BLACK = "#141414";
+// The sides of each picture fade into the black over this width.
+const FEATHER = "min(56px, 4%)";
+const feather = `linear-gradient(to right, transparent, #000 ${FEATHER}, #000 calc(100% - ${FEATHER}), transparent)`;
+
+const useShowcaseStyles = makeStyles()({
+  // As tall as the moving picture is at the page's width, and at most 80% of
+  // the window: the whole picture always shows.
+  wrap: {
+    "--hh": `min(80vh, calc(100vw / ${movingPicture.aspect}))`,
+  },
+  hero: {
+    backgroundColor: SHOWCASE_BLACK,
+  },
+  // Every picture is as tall as the slide. One narrower than the slide sits
+  // in the middle with black at its sides; one wider (a 16:9 picture on a
+  // narrow window) loses a little at both sides, never gets black bands
+  // above and below.
+  slide: {
+    height: "var(--hh)",
+    display: "flex",
+    justifyContent: "center",
+    overflow: "hidden",
+    backgroundColor: SHOWCASE_BLACK,
+  },
+  picture: {
+    display: "block",
+    flex: "none",
+    height: "100%",
+    width: "auto",
+    maxWidth: "none",
+    maskImage: feather,
+    WebkitMaskImage: feather,
+  },
+  moving: {
+    flex: "none",
+    height: "100%",
+    aspectRatio: String(movingPicture.aspect),
+    maskImage: feather,
+    WebkitMaskImage: feather,
+  },
+});
+
 export default function Featured() {
+  return heroStyle === "showcase" ? <Showcase /> : <ClassicCarousel />;
+}
+
+// The slides as they were before the showcase, unchanged.
+function ClassicCarousel() {
   const { classes, cx } = useStyles();
   const { t } = useLanguage();
   // Slides whose image may be fetched. Only the first slide loads up front; the
@@ -243,6 +295,94 @@ export default function Featured() {
                     fetchPriority={index === 0 ? "high" : undefined}
                     onLoad={index === 0 ? () => loadSlides(nextIndex(0)) : undefined}
                   />
+                )}
+              </div>
+            </div>
+          ))}
+        </Slider>
+        <div className={classes.shade} />
+        <h1 className={cx(classes.wordmark, classes.wordmarkIn)}>isuZu</h1>
+      </div>
+      <div className={classes.below} aria-hidden="true">
+        <p className={cx(classes.wordmark, classes.wordmarkOut)}>isuZu</p>
+      </div>
+      <div className={classes.tail}>
+        <LanguageSwitch />
+      </div>
+    </section>
+  );
+}
+
+// The showcase: the moving picture first, then the carousel's pictures (but
+// the one it stands in for), each whole on black. Slides load as in the
+// classic carousel; the moving one shows for movingPicture.seconds, the
+// others for 3 s, as the classic autoplay did.
+type ShowcaseSlide = { moving: true } | { moving: false; src: string };
+const showcaseSlides: ShowcaseSlide[] = [
+  { moving: true },
+  ...paintings.filter((painting) => painting.location !== movingPicture.replaces).map((painting) => ({ moving: false as const, src: painting.src })),
+];
+const SLIDE_MS = 3000;
+
+function Showcase() {
+  const { classes, cx } = useStyles();
+  const { classes: own } = useShowcaseStyles();
+  const { t } = useLanguage();
+  const sliderRef = React.useRef<Slider>(null);
+  const [current, setCurrent] = React.useState(0);
+  const [loadedSlides, setLoadedSlides] = React.useState(() => new Set([0, 1]));
+  const loadSlides = React.useCallback((...indexes: number[]) => {
+    setLoadedSlides((slides) => (indexes.every((index) => slides.has(index)) ? slides : new Set([...Array.from(slides), ...indexes])));
+  }, []);
+  const nextIndex = (index: number) => (index + 1) % showcaseSlides.length;
+  const loadAllSlides = () => loadSlides(...showcaseSlides.map((_, index) => index));
+  const [reducedMotion] = React.useState(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
+
+  // The autoplay, by hand: each slide has its own time. Visitors who ask for
+  // less motion get none (the dots still change the slides).
+  React.useEffect(() => {
+    if (reducedMotion) return;
+    const timer = window.setTimeout(() => sliderRef.current?.slickNext(), showcaseSlides[current].moving ? movingPicture.seconds * 1000 : SLIDE_MS);
+    return () => window.clearTimeout(timer);
+  }, [current, reducedMotion]);
+
+  const settings = {
+    dots: true,
+    arrows: false,
+    infinite: true,
+    speed: 500,
+    slidesToShow: 1,
+    slidesToScroll: 1,
+    beforeChange: (_: number, next: number) => loadSlides(next, nextIndex(next)),
+    afterChange: (index: number) => setCurrent(index),
+  };
+
+  return (
+    <section className={cx(classes.wrap, own.wrap)} aria-label={t("hero.label")}>
+      <div className={classes.water} aria-hidden="true">
+        <svg viewBox="0 0 4320 160" fill="none" strokeLinecap="round">
+          <path className={classes.wave} d={WAVE_PATH} stroke="#d2d2d2" strokeWidth={1.2} />
+        </svg>
+      </div>
+      <div
+        className={cx(classes.hero, own.hero)}
+        onMouseOver={(event) => {
+          if ((event.target as Element).closest(".slick-dots")) {
+            loadAllSlides();
+          }
+        }}
+        onMouseDown={loadAllSlides}
+        onTouchStart={loadAllSlides}
+        onFocus={loadAllSlides}
+      >
+        <Slider ref={sliderRef} {...settings}>
+          {showcaseSlides.map((slide, index) => (
+            <div key={index}>
+              <div className={own.slide}>
+                {slide.moving ? (
+                  <MovingPicture className={own.moving} scene={`${import.meta.env.BASE_URL}${movingPicture.scene}`} active={current === index} />
+                ) : (
+                  loadedSlides.has(index) && <img className={own.picture} src={slide.src} alt="" />
                 )}
               </div>
             </div>
