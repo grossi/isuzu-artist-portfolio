@@ -27,7 +27,7 @@ const DEFAULT_FOCUS_Y = 30;
 const FOCUS_CHOICES = [15, 30, 50];
 // A slide as the order file names it: a file directly in public/carousel/ or
 // public/gallery/.
-const SLIDE_REF = /^(carousel|gallery)\/(?!\.\.?$)[^/\\]+$/;
+const SLIDE_REF = /^(carousel|gallery)\/(?!\.\.?$)[^/]+$/;
 
 const IMAGE_EXTENSIONS = ["jpg", "png", "webp"];
 

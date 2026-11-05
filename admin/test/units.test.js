@@ -103,7 +103,7 @@ test("a slide's new cut position is a carousel change; the default needs no entr
 
 test("carouselFocus: slides to whole numbers from 0 to 100, and optional", () => {
   assert.deepEqual(parseOrder('{"carousel":["carousel/a.png"]}'), { carousel: ["carousel/a.png"] });
-  assert.deepEqual(parseOrder('{"carouselFocus":{"carousel/a.png":15,"gallery/b (2).jpg":42}}').carouselFocus, { "carousel/a.png": 15, "gallery/b (2).jpg": 42 });
+  assert.deepEqual(parseOrder('{"carouselFocus":{"carousel/a.png":15,"gallery/b (2).jpg":42,"carousel/春 a\\\\b.png":50}}').carouselFocus, { "carousel/a.png": 15, "gallery/b (2).jpg": 42, "carousel/春 a\\b.png": 50 });
   for (const focus of ['[]', 'null', '"x"', '{"carousel/a.png":42.5}', '{"carousel/a.png":101}', '{"carousel/a.png":-1}', '{"carousel/a.png":"15"}',
     '{"__proto__":15}', '{"constructor":30}', '{"../../etc/passwd":30}', '{"carousel/a/b.png":30}', '{"carousel/..":30}', '{"public/carousel/a.png":30}']) {
     assert.throws(() => parseOrder(`{"carouselFocus":${focus}}`), /carouselFocus/, focus);
