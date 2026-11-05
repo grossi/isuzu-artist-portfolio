@@ -1,7 +1,9 @@
 // The top of the page (the slides under the isuZu wordmark).
 //
 // "showcase": the moving picture comes first and stays longer, then the
-//   slides as before, cut at movingPicture.focusY.
+//   slides as before, each cut at its own position (set in the admin). The
+//   moving picture shows only while the picture it stands in for
+//   (movingPicture.replaces) is one of the carousel's slides.
 // "classic": the slides as they were before (filling the width, cropped at
 //   the top and bottom), without the moving picture.
 //

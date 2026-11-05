@@ -333,13 +333,16 @@ function Showcase() {
   const nextIndex = (index: number) => (index + 1) % showcaseSlides.length;
   const loadAllSlides = () => loadSlides(...showcaseSlides.map((_, index) => index));
   const [reducedMotion] = React.useState(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
+  // Whether the moving picture's still has loaded: its time starts then, so
+  // a slow connection doesn't spend it on an empty slide.
+  const [stillShown, setStillShown] = React.useState(false);
 
   // The autoplay, by hand: each slide has its own time, counted from the
   // start of the change that brought it. Visitors who ask for less motion get
   // none (the dots still change the slides). If the carousel ignores a
-  // change (the visitor is mid-swipe), it's tried again a moment later.
+  // change (mid-swipe, or still moving), it's tried again a moment later.
   React.useEffect(() => {
-    if (reducedMotion) return;
+    if (reducedMotion || (showcaseSlides[current].moving && !stillShown)) return;
     let timer = 0;
     const next = () => {
       sliderRef.current?.slickNext();
@@ -347,7 +350,7 @@ function Showcase() {
     };
     timer = window.setTimeout(next, showsFor(current));
     return () => window.clearTimeout(timer);
-  }, [current, reducedMotion]);
+  }, [current, reducedMotion, stillShown]);
 
   const settings = {
     dots: true,
@@ -391,7 +394,10 @@ function Showcase() {
                     scene={`${import.meta.env.BASE_URL}${movingPicture.scene}`}
                     fallback={slide.src}
                     active={current === index}
-                    onStillLoad={index === 0 ? () => loadSlides(nextIndex(0)) : undefined}
+                    onStillLoad={() => {
+                      setStillShown(true);
+                      loadSlides(nextIndex(index));
+                    }}
                   />
                 ) : (
                   loadedSlides.has(index) && (

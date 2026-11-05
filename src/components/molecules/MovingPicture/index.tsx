@@ -130,30 +130,53 @@ const loadImage = (src: string) =>
 
 type Renderer = { draw: (time: number) => void; dispose: () => void };
 
-// Sets up WebGL for a loaded scene, or returns null when it can't: no WebGL,
-// only a software one (failIfMajorPerformanceCaveat: drawing the whole
-// picture every frame on the CPU would be slow), textures larger than the
-// device takes, or a lost context.
-function createRenderer(canvas: HTMLCanvasElement, scene: Scene, sheets: HTMLImageElement[], base: HTMLImageElement): Renderer | null {
-  const gl = canvas.getContext("webgl", { premultipliedAlpha: true, alpha: false, antialias: false, failIfMajorPerformanceCaveat: true });
-  if (!gl || gl.isContextLost()) return null;
-  const maxTexture = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
-  if ([base, ...sheets].some((img) => img.naturalWidth > maxTexture || img.naturalHeight > maxTexture)) return null;
+// The canvas's WebGL, or null without one. Not a software-only WebGL
+// (failIfMajorPerformanceCaveat): drawing the whole picture every frame on
+// the CPU would be slow, so those get the still picture.
+const getContext = (canvas: HTMLCanvasElement) =>
+  canvas.getContext("webgl", { premultipliedAlpha: true, alpha: false, antialias: false, failIfMajorPerformanceCaveat: true });
+
+// Whether the GPU takes textures as large as the scene's base and sheets
+// (some phones stop at 2048 px; the first sheet is about 4000 px tall).
+const fits = (gl: WebGLRenderingContext, scene: Scene) => {
+  const max = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
+  return [scene, ...scene.atlases].every((size) => size.width <= max && size.height <= max);
+};
+
+// Sets up WebGL for a loaded scene, or returns null when it can't (the
+// context is lost, a shader doesn't compile, the GPU refuses a texture).
+// Whatever it made is freed again on failure, and by dispose().
+function createRenderer(gl: WebGLRenderingContext, scene: Scene, sheets: HTMLImageElement[], base: HTMLImageElement): Renderer | null {
+  if (gl.isContextLost() || !fits(gl, scene)) return null;
+  const shaders: WebGLShader[] = [];
+  const textures: WebGLTexture[] = [];
+  const buffer = gl.createBuffer();
+  const program = gl.createProgram();
+  const free = () => {
+    textures.forEach((tex) => gl.deleteTexture(tex));
+    shaders.forEach((shader) => gl.deleteShader(shader));
+    gl.deleteProgram(program);
+    gl.deleteBuffer(buffer);
+  };
+  const fail = () => {
+    free();
+    return null;
+  };
   const compile = (type: number, source: string) => {
     const shader = gl.createShader(type);
     if (!shader) return null;
+    shaders.push(shader);
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
     return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null;
   };
   const vertex = compile(gl.VERTEX_SHADER, VERTEX);
   const fragment = compile(gl.FRAGMENT_SHADER, FRAGMENT);
-  const program = gl.createProgram();
-  if (!vertex || !fragment || !program) return null;
+  if (!vertex || !fragment || !program || !buffer) return fail();
   gl.attachShader(program, vertex);
   gl.attachShader(program, fragment);
   gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return fail();
   gl.useProgram(program);
   const u = (name: string) => gl.getUniformLocation(program, name);
   const U = {
@@ -168,7 +191,7 @@ function createRenderer(canvas: HTMLCanvasElement, scene: Scene, sheets: HTMLIma
     phase: u("uPhase"),
     time: u("uTime"),
   };
-  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
   const corner = gl.getAttribLocation(program, "aCorner");
   gl.enableVertexAttribArray(corner);
@@ -178,6 +201,7 @@ function createRenderer(canvas: HTMLCanvasElement, scene: Scene, sheets: HTMLIma
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
   const texture = (img: HTMLImageElement) => {
     const tex = gl.createTexture();
+    if (tex) textures.push(tex);
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -207,7 +231,7 @@ function createRenderer(canvas: HTMLCanvasElement, scene: Scene, sheets: HTMLIma
   };
 
   // Every piece must have reached the GPU (an out-of-memory phone may refuse).
-  if (gl.getError() !== gl.NO_ERROR) return null;
+  if (gl.getError() !== gl.NO_ERROR) return fail();
 
   return {
     draw: (time) => {
@@ -219,8 +243,7 @@ function createRenderer(canvas: HTMLCanvasElement, scene: Scene, sheets: HTMLIma
         drawPart(sheetTex[part.sheet], part, sheet.width, sheet.height, kind, part.amp ?? 0, part.period ?? 1, part.phase ?? 0);
       }
     },
-    // Frees the textures and the rest at once (the canvas goes with it).
-    dispose: () => gl.getExtension("WEBGL_lose_context")?.loseContext(),
+    dispose: free,
   };
 }
 
@@ -268,13 +291,16 @@ export default function MovingPicture({ scene: folder, active, onStillLoad, fall
   React.useEffect(() => {
     const canvas = canvasRef.current;
     if (!stillDone || !canvas || reducedMotion || rootRef.current?.closest(".slick-cloned")) return;
+    // Nothing to download without WebGL.
+    const gl = getContext(canvas);
+    if (!gl) return;
     let cancelled = false;
     let loaded: { scene: Scene; base: HTMLImageElement; sheets: HTMLImageElement[] } | null = null;
     const start = () => {
       if (cancelled || !loaded) return;
       canvas.width = loaded.scene.width;
       canvas.height = loaded.scene.height;
-      const renderer = createRenderer(canvas, loaded.scene, loaded.sheets, loaded.base);
+      const renderer = createRenderer(gl, loaded.scene, loaded.sheets, loaded.base);
       if (!renderer) return;
       rendererRef.current = { renderer, scene: loaded.scene };
       renderer.draw(0);
@@ -292,6 +318,7 @@ export default function MovingPicture({ scene: folder, active, onStillLoad, fall
     fetch(`${folder}scene.json`)
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
       .then((scene: Scene) => {
+        if (cancelled || !fits(gl, scene)) return;
         const url = (file: string) => `${folder}${file}${scene.version ? `?v=${encodeURIComponent(scene.version)}` : ""}`;
         return Promise.all([loadImage(url(scene.base)), ...scene.atlases.map((sheet) => loadImage(url(sheet.file)))]).then(([base, ...sheets]) => {
           loaded = { scene, base, sheets };
@@ -318,10 +345,14 @@ export default function MovingPicture({ scene: folder, active, onStillLoad, fall
   }, []);
 
   // The motion: only while the slide shows and is on screen. (A hidden tab
-  // gets no animation frames.)
+  // gets no animation frames.) The canvas shows only then too: a slide
+  // coming back (or the carousel's copy giving way to it after the last
+  // slide) shows the still picture, and the motion fades in over it, instead
+  // of a pose frozen when it last moved.
+  const moving = ready && active && onScreen;
   React.useEffect(() => {
     const current = rendererRef.current;
-    if (!ready || !active || !onScreen || !current) return;
+    if (!moving || !current) return;
     const { renderer, scene: s } = current;
     let frame = 0;
     const tick = (now: number) => {
@@ -330,7 +361,7 @@ export default function MovingPicture({ scene: folder, active, onStillLoad, fall
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [ready, active, onScreen]);
+  }, [moving]);
 
   return (
     <div ref={rootRef} className={cx(classes.root, className)} style={style}>
@@ -338,7 +369,7 @@ export default function MovingPicture({ scene: folder, active, onStillLoad, fall
       <img className={classes.layer} src={stillSrc} alt="" fetchPriority="high" onLoad={stillLoaded} onError={stillFailed} />
 
       {/* Sized to the scene once it has loaded; CSS scales it to the box. */}
-      <canvas ref={canvasRef} className={cx(classes.layer, classes.canvas, ready && classes.ready)} aria-hidden="true" />
+      <canvas ref={canvasRef} className={cx(classes.layer, classes.canvas, moving && classes.ready)} aria-hidden="true" />
     </div>
   );
 }
