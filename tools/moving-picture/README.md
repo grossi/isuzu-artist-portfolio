@@ -31,7 +31,14 @@ rest) and `reference.png` (the PSD's own composite) to compare it with.
 - `base.webp`: everything that never moves
 - `atlas*.webp`: the moving pieces, and the still pieces drawn over them, on
   one or two sheets
-- `scene.json`: the draw order and each piece's motion
+- `scene.json`: the draw order, each piece's motion, and `version`, a hash of
+  `base.webp` and the sheets
+
+The deploy caches images for a week and `scene.json` not at all, so the site
+loads the base and the sheets with `?v=<version>`: after a new export no
+browser mixes old sheets with the new scene. `still.webp` keeps its name (it
+loads before `scene.json`, for speed), so a returning visitor may see the old
+still picture for up to a week, until the new scene fades in over it.
 
 The motions repeat every 12 s of scene time, played 12/7 times as fast
 (`loop` and `speed` in `scene.json`).

@@ -6,6 +6,7 @@
 // - still.webp: the picture at rest, shown first and when motion is off;
 // - scene.json: the draw order, with each piece's place on its sheet.
 // Usage: node pack.mjs <extractOut> <webOut>
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { PNG } from "pngjs";
@@ -168,7 +169,13 @@ const parts = pieces.map((p) => {
   return type === "mover" ? { type, x, y, w, h, sheet: p.sheet, sx: p.sx, sy: p.sy, kind, amp, period, phase } : { type, x, y, w, h, sheet: p.sheet, sx: p.sx, sy: p.sy };
 });
 // loop: the motions repeat every `loop` seconds of scene time, played
-// `speed` times as fast.
-fs.writeFileSync(path.join(out, "scene.json"), JSON.stringify({ width: W, height: H, loop: 12, speed: 12 / 7, base: "base.webp", still: "still.webp", atlases, parts }));
+// `speed` times as fast. version: a hash of the base and the sheets. The site
+// loads them with ?v=<version>, so after a new export a browser never mixes
+// sheets it cached (images are cached for a week) with the new scene.json
+// (never cached).
+const hash = crypto.createHash("sha256");
+for (const file of ["base.webp", ...atlases.map((a) => a.file)]) hash.update(fs.readFileSync(path.join(out, file)));
+const version = hash.digest("hex").slice(0, 12);
+fs.writeFileSync(path.join(out, "scene.json"), JSON.stringify({ width: W, height: H, loop: 12, speed: 12 / 7, base: "base.webp", still: "still.webp", version, atlases, parts }));
 const size = fs.readdirSync(out).reduce((s, f) => s + fs.statSync(path.join(out, f)).size, 0);
 console.log(`${parts.length} parts on ${atlases.length} sheet(s) (${atlases.map((a) => `${a.width}x${a.height}`).join(", ")}), ${(size / 1e6).toFixed(2)} MB in all`);
