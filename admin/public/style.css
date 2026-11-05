@@ -299,7 +299,8 @@ dialog textarea { width: 100%; font: 13px ui-monospace, SFMono-Regular, Menlo, m
   .actions { order: 2; flex-basis: 100%; }
   .actions button, .actions .button { padding: 7px 10px; font-size: 13px; }
   .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-  .strip .tile { flex-basis: 120px; }
+  /* Wide enough for the Position menu's longest choice (the strip scrolls). */
+  .strip .tile { flex-basis: 150px; }
   .tile .meta { font-size: 11px; padding: 3px 5px 0; }
   .tile .controls button { font-size: 14px; }
   .entry { grid-template-columns: 80px minmax(0, 1fr); }
