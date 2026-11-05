@@ -216,9 +216,10 @@ type Props = {
   scene: string;
   active: boolean;
   className?: string;
+  style?: React.CSSProperties;
 };
 
-export default function MovingPicture({ scene: folder, active, className }: Props) {
+export default function MovingPicture({ scene: folder, active, className, style }: Props) {
   const { classes, cx } = useStyles();
   const rootRef = React.useRef<HTMLDivElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -287,7 +288,7 @@ export default function MovingPicture({ scene: folder, active, className }: Prop
   }, [ready, active, onScreen]);
 
   return (
-    <div ref={rootRef} className={cx(classes.root, className)}>
+    <div ref={rootRef} className={cx(classes.root, className)} style={style}>
       {/* The still picture, at once: every scene has one by this name. */}
       <img className={classes.layer} src={`${folder}still.webp`} alt="" fetchPriority="high" />
 

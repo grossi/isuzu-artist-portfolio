@@ -179,82 +179,33 @@ const useStyles = makeStyles()({
   },
 });
 
-// The showcase top (see hero.ts). The slides are as tall as the classic
-// ones; how the pictures fill them is movingPicture.fit:
-// "cover"  as the classic slides: the full width, cut at the top and bottom
-// "inset"  a little smaller: movingPicture.inset times the slide's height, so
-//          less is cut, with black at the sides and the pictures' sides faded
-//          into it
-const SHOWCASE_BLACK = "#141414";
-const FEATHER = "min(56px, 4%)";
-const feather = `linear-gradient(to right, transparent, #000 ${FEATHER}, #000 calc(100% - ${FEATHER}), transparent)`;
-// Never larger than "cover" would make it: on a narrow window (a phone),
-// where "cover" already cuts the sides, the two are the same.
-const insetHeight = `min(calc(var(--hh) * ${movingPicture.inset}), max(var(--hh), calc(100vw / ${movingPicture.aspect})))`;
-
-// For comparing while they're reviewed: ?fit=cover or ?fit=inset, and
-// ?y=0..100 for movingPicture.focusY.
-const params = new URLSearchParams(window.location.search);
-const fitParam = params.get("fit");
-const fit: "cover" | "inset" = fitParam === "cover" || fitParam === "inset" ? fitParam : movingPicture.fit;
-const yParam = Number(params.get("y"));
-const focusY = params.has("y") && yParam >= 0 && yParam <= 100 ? yParam : movingPicture.focusY;
-
+// The showcase top (see hero.ts): the classic slides, with the moving
+// picture first. Pictures fill the slide's width and are cut at the top and
+// bottom; focusY (0: keep the top, 100: keep the bottom) says where.
 const useShowcaseStyles = makeStyles()({
-  coverSlide: {
+  slide: {
     height: "var(--hh)",
     position: "relative",
     overflow: "hidden",
     backgroundColor: "#222",
   },
-  // focusY: which part of a picture cut at the top and bottom stays, from 0
-  // (its top) to 100 (its bottom), as object-position.
-  coverPicture: {
+  picture: {
     width: "100%",
     height: "100%",
     objectFit: "cover",
-    objectPosition: `50% ${focusY}%`,
   },
-  // At least the slide's width and height, cut like the pictures: the point
-  // focusY% down the picture sits focusY% down the slide.
-  coverMoving: {
+  // At least the slide's width and height, cut like the pictures.
+  moving: {
     position: "absolute",
     left: "50%",
-    top: `${focusY}%`,
-    transform: `translate(-50%, -${focusY}%)`,
     width: `max(100%, calc(var(--hh) * ${movingPicture.aspect}))`,
     aspectRatio: String(movingPicture.aspect),
   },
-  insetSlide: {
-    height: "var(--hh)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-    backgroundColor: SHOWCASE_BLACK,
-  },
-  // Taller than the slide by the same share for every picture; one wider
-  // than the slide loses a little at both sides too.
-  insetPicture: {
-    display: "block",
-    flex: "none",
-    height: insetHeight,
-    width: "auto",
-    maxWidth: "none",
-    maskImage: feather,
-    WebkitMaskImage: feather,
-  },
-  insetMoving: {
-    flex: "none",
-    height: insetHeight,
-    aspectRatio: String(movingPicture.aspect),
-    maskImage: feather,
-    WebkitMaskImage: feather,
-  },
-  insetHero: {
-    backgroundColor: SHOWCASE_BLACK,
-  },
 });
+
+// The point focusY% down a picture sits focusY% down the slide (what
+// object-position does for an <img>).
+const movingPlace = (focusY: number): React.CSSProperties => ({ top: `${focusY}%`, transform: `translate(-50%, -${focusY}%)` });
 
 export default function Featured() {
   return heroStyle === "showcase" ? <Showcase /> : <ClassicCarousel />;
@@ -398,7 +349,7 @@ function Showcase() {
         </svg>
       </div>
       <div
-        className={cx(classes.hero, fit === "inset" && own.insetHero)}
+        className={classes.hero}
         onMouseOver={(event) => {
           if ((event.target as Element).closest(".slick-dots")) {
             loadAllSlides();
@@ -411,15 +362,18 @@ function Showcase() {
         <Slider ref={sliderRef} {...settings}>
           {showcaseSlides.map((slide, index) => (
             <div key={index}>
-              <div className={fit === "cover" ? own.coverSlide : own.insetSlide}>
+              <div className={own.slide}>
                 {slide.moving ? (
                   <MovingPicture
-                    className={fit === "cover" ? own.coverMoving : own.insetMoving}
+                    className={own.moving}
+                    style={movingPlace(movingPicture.focusY)}
                     scene={`${import.meta.env.BASE_URL}${movingPicture.scene}`}
                     active={current === index}
                   />
                 ) : (
-                  loadedSlides.has(index) && <img className={fit === "cover" ? own.coverPicture : own.insetPicture} src={slide.src} alt="" />
+                  loadedSlides.has(index) && (
+                    <img className={own.picture} style={{ objectPosition: `50% ${movingPicture.focusY}%` }} src={slide.src} alt="" />
+                  )
                 )}
               </div>
             </div>
