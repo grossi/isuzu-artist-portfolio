@@ -10,6 +10,10 @@ import { displayFont } from "theme";
 const paintings = carouselData.map(image => {
   return {
     src: `${import.meta.env.BASE_URL}${image.locationLarge}`,
+    // Which part of the picture stays when the slide cuts its top and bottom
+    // (wide screens): from 0 (keep the top) to 100 (keep the bottom). Chosen
+    // per slide in the admin; see carouselFocus in src/utils/imageOrder.js.
+    focusY: image.focusY,
   };
 });
 
@@ -99,7 +103,8 @@ const useStyles = makeStyles()({
     width: "100%",
     height: "100%",
     objectFit: "cover",
-    objectPosition: "center",
+    // The vertical position is each slide's focusY (set inline).
+    objectPosition: "50% 50%",
   },
   // Keeps the white wordmark readable on light art
   shade: {
@@ -238,6 +243,7 @@ export default function Featured() {
                 {loadedSlides.has(index) && (
                   <img
                     className={classes.image}
+                    style={{ objectPosition: `50% ${painting.focusY}%` }}
                     src={painting.src}
                     alt=""
                     fetchPriority={index === 0 ? "high" : undefined}

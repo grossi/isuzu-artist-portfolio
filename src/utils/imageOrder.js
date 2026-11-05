@@ -19,8 +19,9 @@ const path = require("path");
 // "carouselFocus" (optional) says, per slide, where its picture is cut when
 // the slide is wider than the picture's shape: { "carousel/2024.png": 50 },
 // from 0 (keep the top) to 100 (keep the bottom). A slide without one uses
-// DEFAULT_FOCUS_Y (also the site's own default, movingPicture.focusY in
-// src/hero.ts). The admin offers FOCUS_CHOICES.
+// DEFAULT_FOCUS_Y. src/utils/loadImages.js writes each slide's value into
+// src/carousel.json as "focusY", which the home page slider (Featured) uses.
+// The admin offers FOCUS_CHOICES.
 const ORDER_FILE = "src/image-order.json";
 const DEFAULT_FOCUS_Y = 30;
 const FOCUS_CHOICES = [15, 30, 50];
