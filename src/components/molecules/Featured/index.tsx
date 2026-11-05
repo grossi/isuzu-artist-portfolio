@@ -342,9 +342,12 @@ function Showcase() {
   // none (the dots still change the slides). If the carousel ignores a
   // change (it is still sliding, say after a dot was clicked), it's tried
   // again a moment later.
+  // (Only the moving slide waits for its still: a still arriving while
+  // another slide shows doesn't restart that slide's time.)
+  const waiting = Boolean(showcaseSlides[current]?.moving && !stillShown);
   React.useEffect(() => {
     // (Nothing to change with fewer than two slides: the admin allows none.)
-    if (reducedMotion || showcaseSlides.length < 2 || (showcaseSlides[current]?.moving && !stillShown)) return;
+    if (reducedMotion || showcaseSlides.length < 2 || waiting) return;
     let timer = 0;
     const next = () => {
       sliderRef.current?.slickNext();
@@ -352,7 +355,7 @@ function Showcase() {
     };
     timer = window.setTimeout(next, showsFor(current));
     return () => window.clearTimeout(timer);
-  }, [current, reducedMotion, stillShown]);
+  }, [current, reducedMotion, waiting]);
 
   const settings = {
     dots: true,
