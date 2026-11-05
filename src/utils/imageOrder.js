@@ -15,7 +15,19 @@ const path = require("path");
 // files in public/carousel/ or in public/gallery/, which reuse the gallery's
 // large/ derivatives. Without the file, or without a key, the old behaviour
 // applies: the whole gallery in byte order, every image in public/carousel/.
+//
+// "carouselFocus" (optional) says, per slide, where its picture is cut when
+// the slide is wider than the picture's shape: { "carousel/2024.png": 50 },
+// from 0 (keep the top) to 100 (keep the bottom). A slide without one uses
+// DEFAULT_FOCUS_Y. src/utils/loadImages.js writes each slide's value into
+// src/carousel.json as "focusY", which the home page slider (Featured) uses.
+// The admin offers FOCUS_CHOICES.
 const ORDER_FILE = "src/image-order.json";
+const DEFAULT_FOCUS_Y = 30;
+const FOCUS_CHOICES = [15, 30, 50];
+// A slide as the order file names it: a file directly in public/carousel/ or
+// public/gallery/.
+const SLIDE_REF = /^(carousel|gallery)\/(?!\.\.?$)[^/]+$/;
 
 const IMAGE_EXTENSIONS = ["jpg", "png", "webp"];
 
@@ -41,7 +53,24 @@ function parseOrder(text) {
       throw new Error(`${ORDER_FILE}: "${key}" must be a list of file names`);
     }
   }
+  const focus = order.carouselFocus;
+  if (
+    focus !== undefined &&
+    !(
+      focus &&
+      typeof focus === "object" &&
+      !Array.isArray(focus) &&
+      Object.entries(focus).every(([ref, y]) => SLIDE_REF.test(ref) && Number.isInteger(y) && y >= 0 && y <= 100)
+    )
+  ) {
+    throw new Error(`${ORDER_FILE}: "carouselFocus" must map slides (carousel/… or gallery/…) to whole numbers from 0 to 100`);
+  }
   return order;
+}
+
+// Where a slide's picture is cut (see "carouselFocus" above).
+function focusOf(order, ref) {
+  return Object.hasOwn(order.carouselFocus ?? {}, ref) ? order.carouselFocus[ref] : DEFAULT_FOCUS_Y;
 }
 
 // Image files directly in dir, in byte order (directories such as small/ are
@@ -82,4 +111,4 @@ function orderCarousel(carouselFiles, galleryFiles, listed) {
   });
 }
 
-module.exports = { ORDER_FILE, IMAGE_EXTENSIONS, splitName, isImageFile, readOrder, parseOrder, listImages, orderGallery, orderCarousel };
+module.exports = { ORDER_FILE, IMAGE_EXTENSIONS, DEFAULT_FOCUS_Y, FOCUS_CHOICES, splitName, isImageFile, readOrder, parseOrder, focusOf, listImages, orderGallery, orderCarousel };

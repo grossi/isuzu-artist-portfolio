@@ -78,7 +78,8 @@ run from another checkout isn't known to the admin.
 ```json
 {
   "gallery": ["new-piece.png", "10000.png"],
-  "carousel": ["gallery/new-piece.png", "carousel/2024.png"]
+  "carousel": ["gallery/new-piece.png", "carousel/2024.png"],
+  "carouselFocus": { "carousel/2024.png": 50 }
 }
 ```
 
@@ -86,6 +87,14 @@ Listed gallery files come first, in that order, then any unlisted ones in byte o
 file added by hand still shows up. `carousel` is the complete list of slides. Without the
 file, the build behaves as before, and `src/gallery.json` and `src/carousel.json` are
 byte-identical.
+
+`carouselFocus` (optional) is where each slide's picture is cut when a wide screen cuts its
+top and bottom: a whole number from 0 (keep the top) to 100 (keep the bottom). The admin's
+「位置 / Position」 menu offers 15, 30 and 50, and only stores slides set away from the
+default, 30 (`DEFAULT_FOCUS_Y`). A slide taken out of the carousel forgets its position.
+The build writes each slide's value into `src/carousel.json` as `focusY`. A key that isn't
+`carousel/<file>` or `gallery/<file>`, or a value that isn't a whole number from 0 to 100,
+stops the build and the admin with an error.
 
 Gallery images used as slides are **referenced** (`gallery/<file>`), not copied. The
 carousel then uses the gallery's own `large/` derivative: no duplicate originals in git, no
