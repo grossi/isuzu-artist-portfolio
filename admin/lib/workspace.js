@@ -591,10 +591,11 @@ function focusMap(order, carousel) {
 }
 
 // An order's carouselFocus kept to its slides (a slide taken out forgets its
-// position), and left out when empty. carousel: the slides in effect.
+// position), in the carousel's order (so a change undone leaves the file as it
+// was), and left out when empty. carousel: the slides in effect.
 function withFocus(order, carousel) {
-  const slides = new Set(carousel);
-  const kept = Object.entries(order.carouselFocus ?? {}).filter(([ref]) => slides.has(ref));
+  const focus = order.carouselFocus ?? {};
+  const kept = carousel.filter((ref) => Object.hasOwn(focus, ref)).map((ref) => [ref, focus[ref]]);
   const { carouselFocus: _old, ...rest } = order;
   return kept.length ? { ...rest, carouselFocus: Object.fromEntries(kept) } : rest;
 }

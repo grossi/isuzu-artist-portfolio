@@ -109,6 +109,14 @@ test("a slide's cut position: one of the choices, the default not stored, forgot
   assert.throws(() => ws.setCarouselFocus({ ref: "gallery/a.png", focusY: 42 }), { code: "focus-invalid" });
   assert.throws(() => ws.setCarouselFocus({ ref: "gallery/a.png", focusY: "15" }), { code: "focus-invalid" });
 
+  // A change undone leaves the order file as it was: the draft is clean again.
+  ws.setCarouselFocus({ ref: "carousel/slide.png", focusY: 50 });
+  const before = fs.readFileSync(ws.file("src/image-order.json"), "utf8");
+  ws.setCarouselFocus({ ref: "gallery/a.png", focusY: 50 });
+  ws.setCarouselFocus({ ref: "gallery/a.png", focusY: 15 });
+  assert.equal(fs.readFileSync(ws.file("src/image-order.json"), "utf8"), before);
+  ws.setCarouselFocus({ ref: "carousel/slide.png", focusY: 30 });
+
   // Back to the default: no entry left.
   ws.setCarouselFocus({ ref: "gallery/a.png", focusY: 30 });
   assert.equal(ws.readOrder().carouselFocus, undefined);
