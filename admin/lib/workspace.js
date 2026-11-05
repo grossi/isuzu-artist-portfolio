@@ -8,11 +8,11 @@ import { run } from "./jobs.js";
 
 // The ordering rule shared with the site's build (src/utils/loadImages.js).
 const require = createRequire(import.meta.url);
-const { ORDER_FILE, splitName, isImageFile, parseOrder, listImages, orderGallery, orderCarousel } =
+const { ORDER_FILE, FOCUS_CHOICES, DEFAULT_FOCUS_Y, splitName, isImageFile, parseOrder, focusOf, listImages, orderGallery, orderCarousel } =
   require("../../src/utils/imageOrder.js");
 const sidebarRules = require("../../src/utils/sidebar.js");
 
-export { isImageFile };
+export { isImageFile, FOCUS_CHOICES };
 export const GALLERY_DIR = "public/gallery";
 export const CAROUSEL_DIR = "public/carousel";
 export const SIDEBAR_DIR = sidebarRules.SIDEBAR_DIR;
@@ -124,7 +124,8 @@ export class Workspace {
     const order = this.readOrder();
     const gallery = orderGallery(listImages(this.file(GALLERY_DIR)), order.gallery);
     const carouselFiles = listImages(this.file(CAROUSEL_DIR));
-    return { order, gallery, carouselFiles, carousel: orderCarousel(carouselFiles, gallery, order.carousel) };
+    const carousel = orderCarousel(carouselFiles, gallery, order.carousel);
+    return { order, gallery, carouselFiles, carousel, carouselFocus: focusMap(order, carousel) };
   }
 
   // The same, as committed in HEAD.
@@ -142,7 +143,8 @@ export class Workspace {
     const sidebar = await git(this.root, ["show", `HEAD:${SIDEBAR_FILE}`])
       .then((text) => sidebarRules.validateContent(JSON.parse(text)))
       .catch(() => sidebarRules.validateContent({ entries: [] }));
-    return { gallery, carousel: orderCarousel(await images(CAROUSEL_DIR), gallery, order.carousel), sidebar };
+    const carousel = orderCarousel(await images(CAROUSEL_DIR), gallery, order.carousel);
+    return { gallery, carousel, carouselFocus: focusMap(order, carousel), sidebar };
   }
 
   // git status entries: [{ code, file }]
@@ -229,7 +231,17 @@ export class Workspace {
     if (new Set(carousel).size !== carousel.length || !carousel.every((ref) => candidates.has(ref))) {
       throw new HttpError(400, "unknown-slide");
     }
-    this.writeOrder({ ...now.order, gallery, carousel });
+    this.writeOrder(withFocus({ ...now.order, gallery, carousel }, carousel));
+  }
+
+  // Where a slide's picture is cut: one of FOCUS_CHOICES. The default isn't
+  // stored, so the file only lists the slides set otherwise.
+  setCarouselFocus({ ref, focusY }) {
+    const now = this.current();
+    if (!now.carousel.includes(ref)) throw new HttpError(400, "unknown-slide");
+    if (!FOCUS_CHOICES.includes(focusY)) throw new HttpError(400, "focus-invalid");
+    const { [ref]: _previous, ...others } = now.order.carouselFocus ?? {};
+    this.writeOrder(withFocus({ ...now.order, carouselFocus: focusY === DEFAULT_FOCUS_Y ? others : { ...others, [ref]: focusY } }, now.carousel));
   }
 
   // uploads: [{ path, stem, extension }] validated temp files. They go to the
@@ -266,7 +278,7 @@ export class Workspace {
     fs.unlinkSync(this.file(GALLERY_DIR, file));
     const order = { ...now.order, gallery: now.gallery.filter((f) => f !== file) };
     if (order.carousel) order.carousel = order.carousel.filter((ref) => ref !== `gallery/${file}`);
-    this.writeOrder(order);
+    this.writeOrder(withFocus(order, now.carousel.filter((ref) => ref !== `gallery/${file}`)));
   }
 
   // ---- Sidebar entries (callers hold the lock) ---------------------------
@@ -573,6 +585,22 @@ export class Workspace {
   }
 }
 
+// Every slide's cut position (the default filled in).
+function focusMap(order, carousel) {
+  return Object.fromEntries(carousel.map((ref) => [ref, focusOf(order, ref)]));
+}
+
+// An order's carouselFocus kept to its slides (a slide taken out forgets its
+// position), and left out when empty. carousel: the slides in effect.
+function withFocus(order, carousel) {
+  const slides = new Set(carousel);
+  const kept = Object.entries(order.carouselFocus ?? {}).filter(([ref]) => slides.has(ref));
+  const { carouselFocus: _old, ...rest } = order;
+  return kept.length ? { ...rest, carouselFocus: Object.fromEntries(kept) } : rest;
+}
+
+const focusIn = (side, ref) => side.carouselFocus?.[ref] ?? DEFAULT_FOCUS_Y;
+
 // What a draft changes, for the UI and the commit message.
 export function describeChanges(head, now) {
   const added = now.gallery.filter((f) => !head.gallery.includes(f));
@@ -607,6 +635,10 @@ export function describeChanges(head, now) {
     slidesAdded,
     slidesRemoved,
     carouselReordered,
+    // Slides kept, with a new cut position: "ref: before → after".
+    slidesRefocused: now.carousel
+      .filter((ref) => head.carousel.includes(ref) && focusIn(head, ref) !== focusIn(now, ref))
+      .map((ref) => `${ref}: ${focusIn(head, ref)} → ${focusIn(now, ref)}`),
     entriesAdded: nowIds.filter((id) => !headIds.includes(id)),
     entriesRemoved: headIds.filter((id) => !nowIds.includes(id)),
     entriesEdited: nowIds.filter((id) => headIds.includes(id) && entry(head.sidebar, id) !== entry(now.sidebar, id)),
@@ -621,7 +653,7 @@ export function describeChanges(head, now) {
 }
 
 export function commitMessage(changes) {
-  const { added, removed, reordered, slidesAdded, slidesRemoved, carouselReordered } = changes;
+  const { added, removed, reordered, slidesAdded, slidesRemoved, carouselReordered, slidesRefocused = [] } = changes;
   const { entriesAdded, entriesRemoved, entriesEdited, entriesReordered, headingChanged } = changes;
   const { editionsAdded, editionsRemoved, editionsEdited, editionsReordered } = changes;
   const editionsChanged = editionsAdded.length || editionsRemoved.length || editionsEdited.length || editionsReordered.length;
@@ -630,7 +662,7 @@ export function commitMessage(changes) {
     added.length && `add ${plural(added.length, "illustration")}`,
     removed.length && `remove ${plural(removed.length, "illustration")}`,
     reordered && "reorder the gallery",
-    (slidesAdded.length || slidesRemoved.length || carouselReordered) && "update the carousel",
+    (slidesAdded.length || slidesRemoved.length || carouselReordered || slidesRefocused.length) && "update the carousel",
     (entriesAdded.length || entriesRemoved.length || entriesEdited.length || entriesReordered || headingChanged || editionsChanged) && "update the sidebar",
   ].filter(Boolean);
   const body = [
@@ -640,6 +672,7 @@ export function commitMessage(changes) {
     ...(slidesAdded.length ? ["Carousel slides added:", ...slidesAdded.map((r) => `- ${r}`)] : []),
     ...(slidesRemoved.length ? ["Carousel slides removed:", ...slidesRemoved.map((r) => `- ${r}`)] : []),
     ...(carouselReordered ? ["Carousel order changed."] : []),
+    ...(slidesRefocused.length ? ["Carousel slides cut elsewhere (0: keep the top, 100: the bottom):", ...slidesRefocused.map((r) => `- ${r}`)] : []),
     ...(entriesAdded.length ? ["Sidebar entries added:", ...entriesAdded.map((id) => `- ${id}`)] : []),
     ...(entriesEdited.length ? ["Sidebar entries edited:", ...entriesEdited.map((id) => `- ${id}`)] : []),
     ...(entriesRemoved.length ? ["Sidebar entries removed:", ...entriesRemoved.map((id) => `- ${id}`)] : []),

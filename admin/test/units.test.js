@@ -64,7 +64,7 @@ test("changes and commit message", () => {
   const head = { gallery: ["a.png", "b.png", "c.png"], carousel: ["carousel/x.png"], sidebar: noSidebar };
   const same = describeChanges(head, head);
   assert.deepEqual(same, {
-    added: [], removed: [], reordered: false, slidesAdded: [], slidesRemoved: [], carouselReordered: false,
+    added: [], removed: [], reordered: false, slidesAdded: [], slidesRemoved: [], carouselReordered: false, slidesRefocused: [],
     entriesAdded: [], entriesRemoved: [], entriesEdited: [], entriesReordered: false,
     editionsAdded: [], editionsRemoved: [], editionsEdited: [], editionsReordered: [], headingChanged: false,
   });
@@ -83,6 +83,21 @@ test("changes and commit message", () => {
       "Added to the gallery:\n- new.png\nGallery order changed.\n" +
       "Carousel slides added:\n- gallery/new.png\nCarousel slides removed:\n- carousel/x.png\n"
   );
+});
+
+test("a slide's new cut position is a carousel change; the default needs no entry", () => {
+  const noSidebar = { heading: { ja: "", en: "" }, entries: [] };
+  const head = { gallery: ["a.png"], carousel: ["carousel/x.png", "gallery/a.png"], carouselFocus: { "carousel/x.png": 30, "gallery/a.png": 50 }, sidebar: noSidebar };
+  // A manifest without positions (as tests and old drafts have) is all default.
+  assert.deepEqual(describeChanges({ ...head, carouselFocus: undefined }, { ...head, carouselFocus: { "carousel/x.png": 30, "gallery/a.png": 30 } }).slidesRefocused, []);
+  const changes = describeChanges(head, { ...head, carouselFocus: { "carousel/x.png": 15, "gallery/a.png": 50 } });
+  assert.deepEqual(changes.slidesRefocused, ["carousel/x.png: 30 → 15"]);
+  assert.equal(
+    commitMessage(changes),
+    "content: update the carousel\n\nCarousel slides cut elsewhere (0: keep the top, 100: the bottom):\n- carousel/x.png: 30 → 15\n"
+  );
+  // A slide that's new isn't "refocused": it's added.
+  assert.deepEqual(describeChanges({ ...head, carousel: ["carousel/x.png"] }, { ...head, carouselFocus: { "gallery/a.png": 15 } }).slidesRefocused, []);
 });
 
 test("previous editions are reported one by one, not as an edited entry", () => {
