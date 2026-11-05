@@ -266,7 +266,9 @@ export class Workspace {
       copied.forEach((file) => fs.rmSync(file, { force: true }));
       throw error;
     }
-    this.writeOrder({ ...now.order, gallery: [...names, ...now.gallery] });
+    // Positions of slides whose file is gone (deleted by hand) are dropped, so
+    // a new upload that takes the same name doesn't inherit one.
+    this.writeOrder(withFocus({ ...now.order, gallery: [...names, ...now.gallery] }, now.carousel));
     return names;
   }
 

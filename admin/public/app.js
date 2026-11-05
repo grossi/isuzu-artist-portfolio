@@ -1322,7 +1322,7 @@ function sortable(container, onSort, options = {}) {
       delay: 180,
       delayOnTouchOnly: true,
       touchStartThreshold: 6,
-      filter: "button, a, select",
+      filter: "button, a, select, label",
       preventOnFilter: false,
       onEnd: (e) => {
         if (e.oldIndex === e.newIndex) return;

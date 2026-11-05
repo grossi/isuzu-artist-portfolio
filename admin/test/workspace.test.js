@@ -120,6 +120,15 @@ test("a slide's cut position: one of the choices, the default not stored, forgot
   // Back to the default: no entry left.
   ws.setCarouselFocus({ ref: "gallery/a.png", focusY: 30 });
   assert.equal(ws.readOrder().carouselFocus, undefined);
+  // A slide's file deleted by hand: an upload taking its name starts afresh.
+  ws.setCarouselFocus({ ref: "gallery/a.png", focusY: 50 });
+  fs.renameSync(ws.file("public/gallery/a.png"), ws.file("a.png.aside"));
+  ws.addUploads([await upload("a", "white")]);
+  assert.equal(ws.current().carouselFocus["gallery/a.png"], 30);
+  fs.rmSync(ws.file("public/gallery/a.png"));
+  fs.renameSync(ws.file("a.png.aside"), ws.file("public/gallery/a.png"));
+  ws.setOrder({ gallery: ["a.png", "b.png", "c.jpg"], carousel: ["carousel/slide.png", "gallery/a.png"] });
+
   // Taken out of the carousel: its position goes with it.
   ws.setCarouselFocus({ ref: "gallery/a.png", focusY: 50 });
   ws.setOrder({ gallery: ["a.png", "b.png", "c.jpg"], carousel: ["carousel/slide.png"] });
