@@ -25,6 +25,7 @@ export const movingPicture: {
   seconds: number;
   fit: "cover" | "inset";
   inset: number;
+  focusY: number;
 } = {
   scene: "animated/10000/",
   replaces: "gallery/large/10000.webp",
@@ -32,4 +33,8 @@ export const movingPicture: {
   seconds: 10,
   fit: "cover",
   inset: 1.14,
+  // With "cover", which part of the pictures stays when the top and bottom
+  // are cut, from 0 (all of the top) to 100 (all of the bottom); 50 cuts
+  // both alike, as the classic slides do.
+  focusY: 30,
 };

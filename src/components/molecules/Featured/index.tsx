@@ -192,9 +192,13 @@ const feather = `linear-gradient(to right, transparent, #000 ${FEATHER}, #000 ca
 // where "cover" already cuts the sides, the two are the same.
 const insetHeight = `min(calc(var(--hh) * ${movingPicture.inset}), max(var(--hh), calc(100vw / ${movingPicture.aspect})))`;
 
-// For comparing the two while they're reviewed: ?fit=cover or ?fit=inset.
-const fitParam = new URLSearchParams(window.location.search).get("fit");
+// For comparing while they're reviewed: ?fit=cover or ?fit=inset, and
+// ?y=0..100 for movingPicture.focusY.
+const params = new URLSearchParams(window.location.search);
+const fitParam = params.get("fit");
 const fit: "cover" | "inset" = fitParam === "cover" || fitParam === "inset" ? fitParam : movingPicture.fit;
+const yParam = Number(params.get("y"));
+const focusY = params.has("y") && yParam >= 0 && yParam <= 100 ? yParam : movingPicture.focusY;
 
 const useShowcaseStyles = makeStyles()({
   coverSlide: {
@@ -203,18 +207,21 @@ const useShowcaseStyles = makeStyles()({
     overflow: "hidden",
     backgroundColor: "#222",
   },
+  // focusY: which part of a picture cut at the top and bottom stays, from 0
+  // (its top) to 100 (its bottom), as object-position.
   coverPicture: {
     width: "100%",
     height: "100%",
     objectFit: "cover",
-    objectPosition: "center",
+    objectPosition: `50% ${focusY}%`,
   },
-  // At least the slide's width and height, centred: cut like the pictures.
+  // At least the slide's width and height, cut like the pictures: the point
+  // focusY% down the picture sits focusY% down the slide.
   coverMoving: {
     position: "absolute",
     left: "50%",
-    top: "50%",
-    transform: "translate(-50%, -50%)",
+    top: `${focusY}%`,
+    transform: `translate(-50%, -${focusY}%)`,
     width: `max(100%, calc(var(--hh) * ${movingPicture.aspect}))`,
     aspectRatio: String(movingPicture.aspect),
   },
