@@ -342,7 +342,8 @@ function Showcase() {
   // none (the dots still change the slides). If the carousel ignores a
   // change (mid-swipe, or still moving), it's tried again a moment later.
   React.useEffect(() => {
-    if (reducedMotion || (showcaseSlides[current].moving && !stillShown)) return;
+    // (Nothing to change with fewer than two slides: the admin allows none.)
+    if (reducedMotion || showcaseSlides.length < 2 || (showcaseSlides[current]?.moving && !stillShown)) return;
     let timer = 0;
     const next = () => {
       sliderRef.current?.slickNext();

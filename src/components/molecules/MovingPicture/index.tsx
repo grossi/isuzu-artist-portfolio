@@ -318,7 +318,9 @@ export default function MovingPicture({ scene: folder, active, onStillLoad, fall
     fetch(`${folder}scene.json`)
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
       .then((scene: Scene) => {
-        if (cancelled || !fits(gl, scene)) return;
+        // (A context lost meanwhile can't say what fits: the pieces load
+        // anyway, and start() checks again once it's restored.)
+        if (cancelled || (!gl.isContextLost() && !fits(gl, scene))) return;
         const url = (file: string) => `${folder}${file}${scene.version ? `?v=${encodeURIComponent(scene.version)}` : ""}`;
         return Promise.all([loadImage(url(scene.base)), ...scene.atlases.map((sheet) => loadImage(url(sheet.file)))]).then(([base, ...sheets]) => {
           loaded = { scene, base, sheets };
