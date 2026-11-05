@@ -304,17 +304,21 @@ function ClassicCarousel() {
 }
 
 // The showcase: the moving picture first, then the carousel's pictures (but
-// the one it stands in for), each cut at its own focusY. Slides load as in
-// the classic carousel; the moving one shows for movingPicture.seconds, the
-// others for 3 s, as the classic autoplay did. The moving picture is cut
-// where the slide it stands in for is.
+// the one it stands in for), each cut at its own focusY. The moving picture
+// shows only while the picture it stands in for is one of the carousel's
+// slides (chosen in the admin), and is cut where that slide is. Slides load
+// as in the classic carousel; the moving one shows for movingPicture.seconds,
+// the others for 3 s, as the classic autoplay did.
 type ShowcaseSlide = { moving: boolean; src: string; focusY: number };
 const replaced = paintings.find((painting) => painting.location === movingPicture.replaces);
 const showcaseSlides: ShowcaseSlide[] = [
-  { moving: true, src: "", focusY: replaced?.focusY ?? movingPicture.focusY },
+  ...(replaced ? [{ moving: true, src: replaced.src, focusY: replaced.focusY ?? movingPicture.focusY }] : []),
   ...paintings.filter((painting) => painting !== replaced).map((painting) => ({ moving: false, src: painting.src, focusY: painting.focusY })),
 ];
-const SLIDE_MS = 3000;
+// react-slick's autoplay changed slides every 3 s (and 50 ms), counted from
+// the start of each change.
+const SLIDE_MS = 3050;
+const showsFor = (index: number) => (showcaseSlides[index].moving ? movingPicture.seconds * 1000 : SLIDE_MS);
 
 function Showcase() {
   const { classes, cx } = useStyles();
@@ -322,7 +326,7 @@ function Showcase() {
   const { t } = useLanguage();
   const sliderRef = React.useRef<Slider>(null);
   const [current, setCurrent] = React.useState(0);
-  const [loadedSlides, setLoadedSlides] = React.useState(() => new Set([0, 1]));
+  const [loadedSlides, setLoadedSlides] = React.useState(() => new Set([0]));
   const loadSlides = React.useCallback((...indexes: number[]) => {
     setLoadedSlides((slides) => (indexes.every((index) => slides.has(index)) ? slides : new Set([...Array.from(slides), ...indexes])));
   }, []);
@@ -330,11 +334,18 @@ function Showcase() {
   const loadAllSlides = () => loadSlides(...showcaseSlides.map((_, index) => index));
   const [reducedMotion] = React.useState(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
 
-  // The autoplay, by hand: each slide has its own time. Visitors who ask for
-  // less motion get none (the dots still change the slides).
+  // The autoplay, by hand: each slide has its own time, counted from the
+  // start of the change that brought it. Visitors who ask for less motion get
+  // none (the dots still change the slides). If the carousel ignores a
+  // change (the visitor is mid-swipe), it's tried again a moment later.
   React.useEffect(() => {
     if (reducedMotion) return;
-    const timer = window.setTimeout(() => sliderRef.current?.slickNext(), showcaseSlides[current].moving ? movingPicture.seconds * 1000 : SLIDE_MS);
+    let timer = 0;
+    const next = () => {
+      sliderRef.current?.slickNext();
+      timer = window.setTimeout(next, 1000);
+    };
+    timer = window.setTimeout(next, showsFor(current));
     return () => window.clearTimeout(timer);
   }, [current, reducedMotion]);
 
@@ -345,8 +356,10 @@ function Showcase() {
     speed: 500,
     slidesToShow: 1,
     slidesToScroll: 1,
-    beforeChange: (_: number, next: number) => loadSlides(next, nextIndex(next)),
-    afterChange: (index: number) => setCurrent(index),
+    beforeChange: (_: number, next: number) => {
+      loadSlides(next, nextIndex(next));
+      setCurrent(next);
+    },
   };
 
   return (
@@ -376,11 +389,20 @@ function Showcase() {
                     className={own.moving}
                     style={movingPlace(slide.focusY)}
                     scene={`${import.meta.env.BASE_URL}${movingPicture.scene}`}
+                    fallback={slide.src}
                     active={current === index}
+                    onStillLoad={index === 0 ? () => loadSlides(nextIndex(0)) : undefined}
                   />
                 ) : (
                   loadedSlides.has(index) && (
-                    <img className={own.picture} style={{ objectPosition: `50% ${slide.focusY}%` }} src={slide.src} alt="" />
+                    <img
+                      className={own.picture}
+                      style={{ objectPosition: `50% ${slide.focusY}%` }}
+                      src={slide.src}
+                      alt=""
+                      fetchPriority={index === 0 ? "high" : undefined}
+                      onLoad={index === 0 ? () => loadSlides(nextIndex(0)) : undefined}
+                    />
                   )
                 )}
               </div>

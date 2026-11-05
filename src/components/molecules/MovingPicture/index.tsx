@@ -37,6 +37,9 @@ type Scene = {
   loop: number;
   speed: number;
   base: string;
+  // A hash of the base and the sheets, so a new export is never mixed with
+  // cached old sheets.
+  version?: string;
   atlases: { file: string; width: number; height: number }[];
   parts: Part[];
 };
@@ -127,10 +130,15 @@ const loadImage = (src: string) =>
 
 type Renderer = { draw: (time: number) => void; dispose: () => void };
 
-// Sets up WebGL for a loaded scene, or returns null when it can't.
+// Sets up WebGL for a loaded scene, or returns null when it can't: no WebGL,
+// only a software one (failIfMajorPerformanceCaveat: drawing the whole
+// picture every frame on the CPU would be slow), textures larger than the
+// device takes, or a lost context.
 function createRenderer(canvas: HTMLCanvasElement, scene: Scene, sheets: HTMLImageElement[], base: HTMLImageElement): Renderer | null {
-  const gl = canvas.getContext("webgl", { premultipliedAlpha: true, alpha: false, antialias: false });
-  if (!gl) return null;
+  const gl = canvas.getContext("webgl", { premultipliedAlpha: true, alpha: false, antialias: false, failIfMajorPerformanceCaveat: true });
+  if (!gl || gl.isContextLost()) return null;
+  const maxTexture = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
+  if ([base, ...sheets].some((img) => img.naturalWidth > maxTexture || img.naturalHeight > maxTexture)) return null;
   const compile = (type: number, source: string) => {
     const shader = gl.createShader(type);
     if (!shader) return null;
@@ -180,7 +188,9 @@ function createRenderer(canvas: HTMLCanvasElement, scene: Scene, sheets: HTMLIma
   };
   const baseTex = texture(base);
   const sheetTex = sheets.map(texture);
-  gl.viewport(0, 0, scene.width, scene.height);
+  // The browser may give a smaller drawing buffer than asked for; the
+  // picture is scaled to whatever it is.
+  gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
   gl.uniform2f(U.scene, scene.width, scene.height);
 
   const drawPart = (tex: WebGLTexture | null, part: Pick<Part, "x" | "y" | "w" | "h" | "sx" | "sy">, sheetW: number, sheetH: number, kind: number, amp: number, period: number, phase: number) => {
@@ -196,6 +206,9 @@ function createRenderer(canvas: HTMLCanvasElement, scene: Scene, sheets: HTMLIma
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   };
 
+  // Every piece must have reached the GPU (an out-of-memory phone may refuse).
+  if (gl.getError() !== gl.NO_ERROR) return null;
+
   return {
     draw: (time) => {
       gl.uniform1f(U.time, time);
@@ -206,6 +219,7 @@ function createRenderer(canvas: HTMLCanvasElement, scene: Scene, sheets: HTMLIma
         drawPart(sheetTex[part.sheet], part, sheet.width, sheet.height, kind, part.amp ?? 0, part.period ?? 1, part.phase ?? 0);
       }
     },
+    // Frees the textures and the rest at once (the canvas goes with it).
     dispose: () => gl.getExtension("WEBGL_lose_context")?.loseContext(),
   };
 }
@@ -215,54 +229,85 @@ type Props = {
   // aspect) is the caller's.
   scene: string;
   active: boolean;
+  // Called once the still picture has loaded (or failed), so the caller can
+  // start fetching what comes next.
+  onStillLoad?: () => void;
+  // Shown instead if the still picture can't be loaded.
+  fallback?: string;
   className?: string;
   style?: React.CSSProperties;
 };
 
-export default function MovingPicture({ scene: folder, active, className, style }: Props) {
+export default function MovingPicture({ scene: folder, active, onStillLoad, fallback, className, style }: Props) {
   const { classes, cx } = useStyles();
   const rootRef = React.useRef<HTMLDivElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const rendererRef = React.useRef<{ renderer: Renderer; scene: Scene } | null>(null);
-  const [scene, setScene] = React.useState<Scene | null>(null);
+  const [stillSrc, setStillSrc] = React.useState(`${folder}still.webp`);
+  const [stillDone, setStillDone] = React.useState(false);
   const [ready, setReady] = React.useState(false);
   const [onScreen, setOnScreen] = React.useState(true);
   const [reducedMotion] = React.useState(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
+  const stillLoaded = () => {
+    if (stillDone) return;
+    setStillDone(true);
+    onStillLoad?.();
+  };
+  const stillFailed = () => {
+    if (fallback && stillSrc !== fallback) {
+      setStillSrc(fallback);
+      return;
+    }
+    stillLoaded();
+  };
 
-  React.useEffect(() => {
-    let cancelled = false;
-    fetch(`${folder}scene.json`)
-      .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
-      .then((data: Scene) => !cancelled && setScene(data))
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [folder]);
-
-  // The pieces and WebGL: not for visitors who asked for less motion, nor for
-  // a copy of the slide made by the carousel (it never shows long).
+  // The pieces and WebGL, once the still picture is in (it is what shows
+  // first, so it gets the bandwidth). Not for visitors who asked for less
+  // motion, nor for a copy of the slide made by the carousel (it never shows
+  // long). Whatever fails, the still picture stays.
   React.useEffect(() => {
     const canvas = canvasRef.current;
-    if (!scene || !canvas || reducedMotion || rootRef.current?.closest(".slick-cloned")) return;
+    if (!stillDone || !canvas || reducedMotion || rootRef.current?.closest(".slick-cloned")) return;
     let cancelled = false;
-    Promise.all([loadImage(`${folder}${scene.base}`), ...scene.atlases.map((sheet) => loadImage(`${folder}${sheet.file}`))])
-      .then(([base, ...sheets]) => {
-        if (cancelled) return;
-        const renderer = createRenderer(canvas, scene, sheets, base);
-        if (!renderer) return;
-        rendererRef.current = { renderer, scene };
-        renderer.draw(0);
-        setReady(true);
+    let loaded: { scene: Scene; base: HTMLImageElement; sheets: HTMLImageElement[] } | null = null;
+    const start = () => {
+      if (cancelled || !loaded) return;
+      canvas.width = loaded.scene.width;
+      canvas.height = loaded.scene.height;
+      const renderer = createRenderer(canvas, loaded.scene, loaded.sheets, loaded.base);
+      if (!renderer) return;
+      rendererRef.current = { renderer, scene: loaded.scene };
+      renderer.draw(0);
+      setReady(true);
+    };
+    // A lost context (the GPU reset, or the browser reclaimed it) shows the
+    // still picture again until it's restored.
+    const lost = (event: Event) => {
+      event.preventDefault();
+      rendererRef.current = null;
+      setReady(false);
+    };
+    canvas.addEventListener("webglcontextlost", lost);
+    canvas.addEventListener("webglcontextrestored", start);
+    fetch(`${folder}scene.json`)
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
+      .then((scene: Scene) => {
+        const url = (file: string) => `${folder}${file}${scene.version ? `?v=${encodeURIComponent(scene.version)}` : ""}`;
+        return Promise.all([loadImage(url(scene.base)), ...scene.atlases.map((sheet) => loadImage(url(sheet.file)))]).then(([base, ...sheets]) => {
+          loaded = { scene, base, sheets };
+          start();
+        });
       })
       .catch(() => {});
     return () => {
       cancelled = true;
+      canvas.removeEventListener("webglcontextlost", lost);
+      canvas.removeEventListener("webglcontextrestored", start);
       rendererRef.current?.renderer.dispose();
       rendererRef.current = null;
       setReady(false);
     };
-  }, [folder, scene, reducedMotion]);
+  }, [folder, stillDone, reducedMotion]);
 
   React.useEffect(() => {
     const root = rootRef.current;
@@ -290,15 +335,10 @@ export default function MovingPicture({ scene: folder, active, className, style 
   return (
     <div ref={rootRef} className={cx(classes.root, className)} style={style}>
       {/* The still picture, at once: every scene has one by this name. */}
-      <img className={classes.layer} src={`${folder}still.webp`} alt="" fetchPriority="high" />
+      <img className={classes.layer} src={stillSrc} alt="" fetchPriority="high" onLoad={stillLoaded} onError={stillFailed} />
 
-      <canvas
-        ref={canvasRef}
-        className={cx(classes.layer, classes.canvas, ready && classes.ready)}
-        width={scene?.width ?? 1}
-        height={scene?.height ?? 1}
-        aria-hidden="true"
-      />
+      {/* Sized to the scene once it has loaded; CSS scales it to the box. */}
+      <canvas ref={canvasRef} className={cx(classes.layer, classes.canvas, ready && classes.ready)} aria-hidden="true" />
     </div>
   );
 }
