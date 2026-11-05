@@ -1,6 +1,6 @@
 const fs = require("fs");
 const sharp = require('sharp');
-const { readOrder, listImages, orderGallery, orderCarousel, splitName } = require('./imageOrder');
+const { readOrder, listImages, orderGallery, orderCarousel, splitName, focusOf } = require('./imageOrder');
 const sidebar = require('./sidebar');
 const { assertNoSymlinks } = require('./symlinks');
 
@@ -121,6 +121,8 @@ async function main() {
       extension,
       location: ref,
       locationLarge: `${folder}/large/${name}.webp`,
+      // Where the slide cuts the picture, from 0 (keep the top) to 100.
+      focusY: focusOf(order, ref),
     }
   });
 

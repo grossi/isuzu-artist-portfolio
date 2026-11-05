@@ -17,8 +17,8 @@ export const movingPicture = {
   replaces: "gallery/large/10000.webp",
   aspect: 2047 / 1447,
   seconds: 10,
-  // Which part of the slides' pictures stays when their top and bottom are
-  // cut (on a computer; phones cut the sides): from 0 (all of the top) to
-  // 100 (all of the bottom). 50 cuts both alike, as the classic slides do.
+  // Where the moving picture is cut when the slide it stands in for has no
+  // position of its own (each slide's is chosen in the admin, carouselFocus
+  // in src/utils/imageOrder.js): from 0 (keep the top) to 100.
   focusY: 30,
 };

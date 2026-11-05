@@ -10,6 +10,7 @@ import { commitMessage, describeChanges } from "../lib/workspace.js";
 
 const require = createRequire(import.meta.url);
 const sidebar = require("../../src/utils/sidebar.js");
+const { parseOrder } = require("../../src/utils/imageOrder.js");
 
 test("only loopback and tailnet addresses can be bound", () => {
   for (const host of ["127.0.0.1", "::1", "localhost", "100.101.102.103", "100.64.0.1", "fd7a:115c:a1e0::1"]) {
@@ -64,7 +65,7 @@ test("changes and commit message", () => {
   const head = { gallery: ["a.png", "b.png", "c.png"], carousel: ["carousel/x.png"], sidebar: noSidebar };
   const same = describeChanges(head, head);
   assert.deepEqual(same, {
-    added: [], removed: [], reordered: false, slidesAdded: [], slidesRemoved: [], carouselReordered: false,
+    added: [], removed: [], reordered: false, slidesAdded: [], slidesRemoved: [], carouselReordered: false, slidesRefocused: [],
     entriesAdded: [], entriesRemoved: [], entriesEdited: [], entriesReordered: false,
     editionsAdded: [], editionsRemoved: [], editionsEdited: [], editionsReordered: [], headingChanged: false,
   });
@@ -83,6 +84,30 @@ test("changes and commit message", () => {
       "Added to the gallery:\n- new.png\nGallery order changed.\n" +
       "Carousel slides added:\n- gallery/new.png\nCarousel slides removed:\n- carousel/x.png\n"
   );
+});
+
+test("a slide's new cut position is a carousel change; the default needs no entry", () => {
+  const noSidebar = { heading: { ja: "", en: "" }, entries: [] };
+  const head = { gallery: ["a.png"], carousel: ["carousel/x.png", "gallery/a.png"], carouselFocus: { "carousel/x.png": 30, "gallery/a.png": 50 }, sidebar: noSidebar };
+  // A manifest without positions (as tests and old drafts have) is all default.
+  assert.deepEqual(describeChanges({ ...head, carouselFocus: undefined }, { ...head, carouselFocus: { "carousel/x.png": 30, "gallery/a.png": 30 } }).slidesRefocused, []);
+  const changes = describeChanges(head, { ...head, carouselFocus: { "carousel/x.png": 15, "gallery/a.png": 50 } });
+  assert.deepEqual(changes.slidesRefocused, ["carousel/x.png: 30 → 15"]);
+  assert.equal(
+    commitMessage(changes),
+    "content: update the carousel\n\nCarousel slides cut elsewhere (0: keep the top, 100: the bottom):\n- carousel/x.png: 30 → 15\n"
+  );
+  // A slide that's new isn't "refocused": it's added.
+  assert.deepEqual(describeChanges({ ...head, carousel: ["carousel/x.png"] }, { ...head, carouselFocus: { "gallery/a.png": 15 } }).slidesRefocused, []);
+});
+
+test("carouselFocus: slides to whole numbers from 0 to 100, and optional", () => {
+  assert.deepEqual(parseOrder('{"carousel":["carousel/a.png"]}'), { carousel: ["carousel/a.png"] });
+  assert.deepEqual(parseOrder('{"carouselFocus":{"carousel/a.png":15,"gallery/b (2).jpg":42,"carousel/春 a\\\\b.png":50}}').carouselFocus, { "carousel/a.png": 15, "gallery/b (2).jpg": 42, "carousel/春 a\\b.png": 50 });
+  for (const focus of ['[]', 'null', '"x"', '{"carousel/a.png":42.5}', '{"carousel/a.png":101}', '{"carousel/a.png":-1}', '{"carousel/a.png":"15"}',
+    '{"__proto__":15}', '{"constructor":30}', '{"../../etc/passwd":30}', '{"carousel/a/b.png":30}', '{"carousel/..":30}', '{"public/carousel/a.png":30}']) {
+    assert.throws(() => parseOrder(`{"carouselFocus":${focus}}`), /carouselFocus/, focus);
+  }
 });
 
 test("previous editions are reported one by one, not as an edited entry", () => {

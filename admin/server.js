@@ -8,7 +8,7 @@ import { Jobs, summary } from "./lib/jobs.js";
 import { contentType, sendFile, serveStatic } from "./lib/static.js";
 import { thumbnail } from "./lib/thumbs.js";
 import { receiveUploads, removeTemp } from "./lib/uploads.js";
-import { CAROUSEL_DIR, GALLERY_DIR, Workspace, commitMessage, git, isImageFile } from "./lib/workspace.js";
+import { CAROUSEL_DIR, DEFAULT_FOCUS_Y, FOCUS_CHOICES, GALLERY_DIR, Workspace, commitMessage, git, isImageFile } from "./lib/workspace.js";
 import { matchLang, translate } from "./public/i18n/translate.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -104,6 +104,9 @@ async function state() {
       gallery: now.gallery,
       carouselFiles: now.carouselFiles,
       carousel: now.carousel,
+      carouselFocus: now.carouselFocus,
+      focusChoices: FOCUS_CHOICES,
+      focusDefault: DEFAULT_FOCUS_Y,
       sidebar,
       draft: { ...draft, message: commitMessage(draft) },
       history,
@@ -231,6 +234,13 @@ const routes = {
   "PUT /api/order": async (req, res) => {
     const body = await readJson(req);
     await mutate("reorder", body.version, () => workspace.setOrder(body));
+    json(res, 200, { version });
+  },
+
+  // { ref, focusY, version }: where a slide's picture is cut.
+  "PUT /api/carousel/focus": async (req, res) => {
+    const body = await readJson(req);
+    await mutate("reorder", body.version, () => workspace.setCarouselFocus(body));
     json(res, 200, { version });
   },
 

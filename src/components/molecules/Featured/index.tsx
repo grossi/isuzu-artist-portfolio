@@ -13,6 +13,10 @@ const paintings = carouselData.map(image => {
   return {
     src: `${import.meta.env.BASE_URL}${image.locationLarge}`,
     location: image.locationLarge,
+    // Which part of the picture stays when the slide cuts its top and bottom
+    // (wide screens): from 0 (keep the top) to 100 (keep the bottom). Chosen
+    // per slide in the admin; see carouselFocus in src/utils/imageOrder.js.
+    focusY: image.focusY,
   };
 });
 
@@ -102,7 +106,8 @@ const useStyles = makeStyles()({
     width: "100%",
     height: "100%",
     objectFit: "cover",
-    objectPosition: "center",
+    // The vertical position is each slide's focusY (set inline).
+    objectPosition: "50% 50%",
   },
   // Keeps the white wordmark readable on light art
   shade: {
@@ -274,6 +279,7 @@ function ClassicCarousel() {
                 {loadedSlides.has(index) && (
                   <img
                     className={classes.image}
+                    style={{ objectPosition: `50% ${painting.focusY}%` }}
                     src={painting.src}
                     alt=""
                     fetchPriority={index === 0 ? "high" : undefined}
@@ -298,13 +304,15 @@ function ClassicCarousel() {
 }
 
 // The showcase: the moving picture first, then the carousel's pictures (but
-// the one it stands in for), each whole on black. Slides load as in the
-// classic carousel; the moving one shows for movingPicture.seconds, the
-// others for 3 s, as the classic autoplay did.
-type ShowcaseSlide = { moving: true } | { moving: false; src: string };
+// the one it stands in for), each cut at its own focusY. Slides load as in
+// the classic carousel; the moving one shows for movingPicture.seconds, the
+// others for 3 s, as the classic autoplay did. The moving picture is cut
+// where the slide it stands in for is.
+type ShowcaseSlide = { moving: boolean; src: string; focusY: number };
+const replaced = paintings.find((painting) => painting.location === movingPicture.replaces);
 const showcaseSlides: ShowcaseSlide[] = [
-  { moving: true },
-  ...paintings.filter((painting) => painting.location !== movingPicture.replaces).map((painting) => ({ moving: false as const, src: painting.src })),
+  { moving: true, src: "", focusY: replaced?.focusY ?? movingPicture.focusY },
+  ...paintings.filter((painting) => painting !== replaced).map((painting) => ({ moving: false, src: painting.src, focusY: painting.focusY })),
 ];
 const SLIDE_MS = 3000;
 
@@ -366,13 +374,13 @@ function Showcase() {
                 {slide.moving ? (
                   <MovingPicture
                     className={own.moving}
-                    style={movingPlace(movingPicture.focusY)}
+                    style={movingPlace(slide.focusY)}
                     scene={`${import.meta.env.BASE_URL}${movingPicture.scene}`}
                     active={current === index}
                   />
                 ) : (
                   loadedSlides.has(index) && (
-                    <img className={own.picture} style={{ objectPosition: `50% ${movingPicture.focusY}%` }} src={slide.src} alt="" />
+                    <img className={own.picture} style={{ objectPosition: `50% ${slide.focusY}%` }} src={slide.src} alt="" />
                   )
                 )}
               </div>

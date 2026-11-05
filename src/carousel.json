@@ -3,42 +3,49 @@
     "name": "21Year_of_the_Bull_isuZu",
     "extension": "png",
     "location": "carousel/21Year_of_the_Bull_isuZu.png",
-    "locationLarge": "carousel/large/21Year_of_the_Bull_isuZu.webp"
+    "locationLarge": "carousel/large/21Year_of_the_Bull_isuZu.webp",
+    "focusY": 30
   },
   {
     "name": "2024",
     "extension": "png",
     "location": "carousel/2024.png",
-    "locationLarge": "carousel/large/2024.webp"
+    "locationLarge": "carousel/large/2024.webp",
+    "focusY": 30
   },
   {
     "name": "30147",
     "extension": "jpg",
     "location": "carousel/30147.jpg",
-    "locationLarge": "carousel/large/30147.webp"
+    "locationLarge": "carousel/large/30147.webp",
+    "focusY": 30
   },
   {
     "name": "10000",
     "extension": "png",
     "location": "gallery/10000.png",
-    "locationLarge": "gallery/large/10000.webp"
+    "locationLarge": "gallery/large/10000.webp",
+    "focusY": 30
   },
   {
     "name": "640995_p0",
     "extension": "jpg",
     "location": "carousel/640995_p0.jpg",
-    "locationLarge": "carousel/large/640995_p0.webp"
+    "locationLarge": "carousel/large/640995_p0.webp",
+    "focusY": 30
   },
   {
     "name": "8091035_p0",
     "extension": "jpg",
     "location": "carousel/8091035_p0.jpg",
-    "locationLarge": "carousel/large/8091035_p0.webp"
+    "locationLarge": "carousel/large/8091035_p0.webp",
+    "focusY": 30
   },
   {
     "name": "9471185_p0",
     "extension": "jpg",
     "location": "carousel/9471185_p0.jpg",
-    "locationLarge": "carousel/large/9471185_p0.webp"
+    "locationLarge": "carousel/large/9471185_p0.webp",
+    "focusY": 30
   }
 ]

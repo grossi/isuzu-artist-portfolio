@@ -228,6 +228,15 @@ async function saveOrder(gallery, carousel, focus) {
   await act(edit("PUT", "/api/order", { gallery, carousel }));
 }
 
+// Where a slide's picture is cut on a computer (see carouselFocus in
+// src/utils/imageOrder.js).
+async function saveFocus(ref, focusY) {
+  pendingFocus = `slide:${ref}:focus`;
+  state.carouselFocus = { ...state.carouselFocus, [ref]: focusY };
+  render();
+  await act(edit("PUT", "/api/carousel/focus", { ref, focusY }));
+}
+
 function toggleSlide(ref) {
   const carousel = state.carousel.includes(ref) ? state.carousel.filter((r) => r !== ref) : [...state.carousel, ref];
   saveOrder(state.gallery, carousel, `${ref}:star`);
@@ -299,6 +308,7 @@ function renderStatus() {
     draft.slidesAdded.length && t("change.slidesAdded", { list: list(draft.slidesAdded) }),
     draft.slidesRemoved.length && t("change.slidesRemoved", { list: list(draft.slidesRemoved) }),
     draft.carouselReordered && t("change.carouselReordered"),
+    draft.slidesRefocused?.length && t("change.slidesRefocused", { list: list(draft.slidesRefocused) }),
     draft.entriesAdded.length && t("change.entriesAdded", { list: list(draft.entriesAdded) }),
     draft.entriesEdited.length && t("change.entriesEdited", { list: list(draft.entriesEdited) }),
     draft.entriesRemoved.length && t("change.entriesRemoved", { list: list(draft.entriesRemoved) }),
@@ -404,13 +414,34 @@ function slideTile(ref, index) {
   const { gallery, carousel } = state;
   const last = carousel.length - 1;
   const moveTo = (to, key) => () => saveOrder(gallery, move(carousel, ref, to), `slide:${ref}:${key}`);
+  // A slide just added (shown before the server answers) has the default.
+  const focusY = state.carouselFocus?.[ref] ?? state.focusDefault;
   return el("div", { class: "tile", "data-id": ref },
     el("img", { class: "thumb", src: thumb(ref), alt: ref, loading: "lazy", draggable: "false" }),
     el("div", { class: "meta" }, el("span", { class: "index" }, `${index + 1}`), el("span", { class: "name", title: ref }, ref)),
     el("div", { class: "controls" },
       controlButton("‹", t("slide.moveEarlier", { ref }), moveTo(index - 1, "up"), index === 0, `slide:${ref}:up`),
       controlButton("›", t("slide.moveLater", { ref }), moveTo(index + 1, "down"), index === last, `slide:${ref}:down`),
-      controlButton("✕", t("slide.remove", { ref }), () => toggleSlide(ref), false, `slide:${ref}:remove`)));
+      controlButton("✕", t("slide.remove", { ref }), () => toggleSlide(ref), false, `slide:${ref}:remove`)),
+    el("label", { class: "focus", title: t("slide.focusHint") },
+      el("span", {}, t("slide.focus")),
+      el("select", {
+        "aria-label": t("slide.focusNamed", { ref }),
+        "data-key": `slide:${ref}:focus`,
+        disabled: busy(),
+        onchange: (event) => saveFocus(ref, Number(event.target.value)),
+      }, focusOptions(focusY))));
+}
+
+// The menu's choices, plus the slide's own value when the order file was
+// edited by hand to one the menu doesn't offer (so the menu shows the truth).
+function focusOptions(focusY) {
+  const choices = state.focusChoices ?? [];
+  const options = choices.map((y) => el("option", { value: String(y), selected: y === focusY }, t(`slide.focus${y}`)));
+  if (typeof focusY === "number" && !choices.includes(focusY)) {
+    options.push(el("option", { value: String(focusY), selected: true, disabled: true }, t("slide.focusOther", { value: focusY })));
+  }
+  return options;
 }
 
 // ☆ / ★: adds the image to the carousel, or takes it out.
@@ -439,14 +470,18 @@ function extraTile(file) {
 function renderGrid() {
   if (!state.gallery) return;
   renderSidebar();
+  const held = document.activeElement;
+  const heldKey = ["gallery", "carousel", "extras"].some((id) => $(id).contains(held)) ? held.getAttribute("data-key") : null;
   $("gallery").replaceChildren(...state.gallery.map(galleryTile));
   $("carousel").replaceChildren(...state.carousel.map(slideTile));
   $("carousel-empty").hidden = state.carousel.length > 0;
   $("extras").replaceChildren(...state.carouselFiles.map(extraTile));
-  if (pendingFocus) {
-    // Keep keyboard focus on the button that was used (or its neighbour).
-    const target = document.querySelector(`[data-key="${CSS.escape(pendingFocus)}"]:not(:disabled)`);
-    target?.focus({ preventScroll: false });
+  // Keep keyboard focus on the control that was used (or its neighbour), and
+  // on the one that had it across a later re-render (the refresh after an edit).
+  const key = pendingFocus ?? heldKey;
+  if (key) {
+    const target = document.querySelector(`[data-key="${CSS.escape(key)}"]:not(:disabled)`);
+    target?.focus({ preventScroll: !pendingFocus });
     pendingFocus = null;
   }
 }
@@ -1288,7 +1323,7 @@ function sortable(container, onSort, options = {}) {
       delay: 180,
       delayOnTouchOnly: true,
       touchStartThreshold: 6,
-      filter: "button, a",
+      filter: "button, a, select, label",
       preventOnFilter: false,
       onEnd: (e) => {
         if (e.oldIndex === e.newIndex) return;

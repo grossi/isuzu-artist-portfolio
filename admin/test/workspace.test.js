@@ -96,6 +96,45 @@ test("uploads go first with unique names; order and carousel are validated", asy
   assert.ok(!fs.existsSync(ws.file("public/gallery/new.png")));
 });
 
+test("a slide's cut position: one of the choices, the default not stored, forgotten when the slide goes", async () => {
+  await ws.check();
+  assert.deepEqual(ws.current().carouselFocus, { "carousel/slide.png": 30 });
+  ws.setOrder({ gallery: ["a.png", "b.png", "c.jpg"], carousel: ["carousel/slide.png", "gallery/a.png"] });
+  ws.setCarouselFocus({ ref: "gallery/a.png", focusY: 15 });
+  assert.deepEqual(ws.current().carouselFocus, { "carousel/slide.png": 30, "gallery/a.png": 15 });
+  assert.deepEqual(ws.readOrder().carouselFocus, { "gallery/a.png": 15 });
+  assert.deepEqual((await ws.draft()).slidesRefocused, [], "a new slide is added, not refocused");
+
+  assert.throws(() => ws.setCarouselFocus({ ref: "gallery/b.png", focusY: 15 }), { code: "unknown-slide" });
+  assert.throws(() => ws.setCarouselFocus({ ref: "gallery/a.png", focusY: 42 }), { code: "focus-invalid" });
+  assert.throws(() => ws.setCarouselFocus({ ref: "gallery/a.png", focusY: "15" }), { code: "focus-invalid" });
+
+  // A change undone leaves the order file as it was: the draft is clean again.
+  ws.setCarouselFocus({ ref: "carousel/slide.png", focusY: 50 });
+  const before = fs.readFileSync(ws.file("src/image-order.json"), "utf8");
+  ws.setCarouselFocus({ ref: "gallery/a.png", focusY: 50 });
+  ws.setCarouselFocus({ ref: "gallery/a.png", focusY: 15 });
+  assert.equal(fs.readFileSync(ws.file("src/image-order.json"), "utf8"), before);
+  ws.setCarouselFocus({ ref: "carousel/slide.png", focusY: 30 });
+
+  // Back to the default: no entry left.
+  ws.setCarouselFocus({ ref: "gallery/a.png", focusY: 30 });
+  assert.equal(ws.readOrder().carouselFocus, undefined);
+  // A slide's file deleted by hand: an upload taking its name starts afresh.
+  ws.setCarouselFocus({ ref: "gallery/a.png", focusY: 50 });
+  fs.renameSync(ws.file("public/gallery/a.png"), ws.file("a.png.aside"));
+  ws.addUploads([await upload("a", "white")]);
+  assert.equal(ws.current().carouselFocus["gallery/a.png"], 30);
+  fs.rmSync(ws.file("public/gallery/a.png"));
+  fs.renameSync(ws.file("a.png.aside"), ws.file("public/gallery/a.png"));
+  ws.setOrder({ gallery: ["a.png", "b.png", "c.jpg"], carousel: ["carousel/slide.png", "gallery/a.png"] });
+
+  // Taken out of the carousel: its position goes with it.
+  ws.setCarouselFocus({ ref: "gallery/a.png", focusY: 50 });
+  ws.setOrder({ gallery: ["a.png", "b.png", "c.jpg"], carousel: ["carousel/slide.png"] });
+  assert.equal(ws.readOrder().carouselFocus, undefined);
+});
+
 test("discard resets uploads and the order file but keeps ignored files", async () => {
   ws.addUploads([await upload("new", "white")]);
   fs.mkdirSync(ws.file("public/gallery/small"));
