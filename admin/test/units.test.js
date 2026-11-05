@@ -10,6 +10,7 @@ import { commitMessage, describeChanges } from "../lib/workspace.js";
 
 const require = createRequire(import.meta.url);
 const sidebar = require("../../src/utils/sidebar.js");
+const { parseOrder } = require("../../src/utils/imageOrder.js");
 
 test("only loopback and tailnet addresses can be bound", () => {
   for (const host of ["127.0.0.1", "::1", "localhost", "100.101.102.103", "100.64.0.1", "fd7a:115c:a1e0::1"]) {
@@ -98,6 +99,15 @@ test("a slide's new cut position is a carousel change; the default needs no entr
   );
   // A slide that's new isn't "refocused": it's added.
   assert.deepEqual(describeChanges({ ...head, carousel: ["carousel/x.png"] }, { ...head, carouselFocus: { "gallery/a.png": 15 } }).slidesRefocused, []);
+});
+
+test("carouselFocus: slides to whole numbers from 0 to 100, and optional", () => {
+  assert.deepEqual(parseOrder('{"carousel":["carousel/a.png"]}'), { carousel: ["carousel/a.png"] });
+  assert.deepEqual(parseOrder('{"carouselFocus":{"carousel/a.png":15,"gallery/b (2).jpg":42}}').carouselFocus, { "carousel/a.png": 15, "gallery/b (2).jpg": 42 });
+  for (const focus of ['[]', 'null', '"x"', '{"carousel/a.png":42.5}', '{"carousel/a.png":101}', '{"carousel/a.png":-1}', '{"carousel/a.png":"15"}',
+    '{"__proto__":15}', '{"constructor":30}', '{"../../etc/passwd":30}', '{"carousel/a/b.png":30}', '{"carousel/..":30}', '{"public/carousel/a.png":30}']) {
+    assert.throws(() => parseOrder(`{"carouselFocus":${focus}}`), /carouselFocus/, focus);
+  }
 });
 
 test("previous editions are reported one by one, not as an edited entry", () => {

@@ -429,7 +429,18 @@ function slideTile(ref, index) {
         "data-key": `slide:${ref}:focus`,
         disabled: busy(),
         onchange: (event) => saveFocus(ref, Number(event.target.value)),
-      }, (state.focusChoices ?? []).map((y) => el("option", { value: String(y), selected: y === focusY }, t(`slide.focus${y}`))))));
+      }, focusOptions(focusY))));
+}
+
+// The menu's choices, plus the slide's own value when the order file was
+// edited by hand to one the menu doesn't offer (so the menu shows the truth).
+function focusOptions(focusY) {
+  const choices = state.focusChoices ?? [];
+  const options = choices.map((y) => el("option", { value: String(y), selected: y === focusY }, t(`slide.focus${y}`)));
+  if (typeof focusY === "number" && !choices.includes(focusY)) {
+    options.push(el("option", { value: String(focusY), selected: true, disabled: true }, t("slide.focusOther", { value: focusY })));
+  }
+  return options;
 }
 
 // ☆ / ★: adds the image to the carousel, or takes it out.
@@ -458,14 +469,18 @@ function extraTile(file) {
 function renderGrid() {
   if (!state.gallery) return;
   renderSidebar();
+  const held = document.activeElement;
+  const heldKey = ["gallery", "carousel", "extras"].some((id) => $(id).contains(held)) ? held.getAttribute("data-key") : null;
   $("gallery").replaceChildren(...state.gallery.map(galleryTile));
   $("carousel").replaceChildren(...state.carousel.map(slideTile));
   $("carousel-empty").hidden = state.carousel.length > 0;
   $("extras").replaceChildren(...state.carouselFiles.map(extraTile));
-  if (pendingFocus) {
-    // Keep keyboard focus on the button that was used (or its neighbour).
-    const target = document.querySelector(`[data-key="${CSS.escape(pendingFocus)}"]:not(:disabled)`);
-    target?.focus({ preventScroll: false });
+  // Keep keyboard focus on the control that was used (or its neighbour), and
+  // on the one that had it across a later re-render (the refresh after an edit).
+  const key = pendingFocus ?? heldKey;
+  if (key) {
+    const target = document.querySelector(`[data-key="${CSS.escape(key)}"]:not(:disabled)`);
+    target?.focus({ preventScroll: !pendingFocus });
     pendingFocus = null;
   }
 }

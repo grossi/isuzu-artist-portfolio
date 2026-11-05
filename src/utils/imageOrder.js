@@ -25,6 +25,9 @@ const path = require("path");
 const ORDER_FILE = "src/image-order.json";
 const DEFAULT_FOCUS_Y = 30;
 const FOCUS_CHOICES = [15, 30, 50];
+// A slide as the order file names it: a file directly in public/carousel/ or
+// public/gallery/.
+const SLIDE_REF = /^(carousel|gallery)\/(?!\.\.?$)[^/\\]+$/;
 
 const IMAGE_EXTENSIONS = ["jpg", "png", "webp"];
 
@@ -53,9 +56,14 @@ function parseOrder(text) {
   const focus = order.carouselFocus;
   if (
     focus !== undefined &&
-    !(focus && typeof focus === "object" && !Array.isArray(focus) && Object.values(focus).every((y) => Number.isInteger(y) && y >= 0 && y <= 100))
+    !(
+      focus &&
+      typeof focus === "object" &&
+      !Array.isArray(focus) &&
+      Object.entries(focus).every(([ref, y]) => SLIDE_REF.test(ref) && Number.isInteger(y) && y >= 0 && y <= 100)
+    )
   ) {
-    throw new Error(`${ORDER_FILE}: "carouselFocus" must map slides to whole numbers from 0 to 100`);
+    throw new Error(`${ORDER_FILE}: "carouselFocus" must map slides (carousel/… or gallery/…) to whole numbers from 0 to 100`);
   }
   return order;
 }

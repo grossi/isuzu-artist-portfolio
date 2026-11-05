@@ -106,6 +106,7 @@ export default {
   "slide.focus15": "Near the top",
   "slide.focus30": "A little high (usual)",
   "slide.focus50": "Middle",
+  "slide.focusOther": "Other ({value}%)",
 
   "sidebar.headingJa": "Heading (日本語)",
   "sidebar.headingEn": "Heading (English)",

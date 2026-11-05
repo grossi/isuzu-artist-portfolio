@@ -106,6 +106,7 @@ export default {
   "slide.focus15": "上寄り",
   "slide.focus30": "少し上（ふつう）",
   "slide.focus50": "真ん中",
+  "slide.focusOther": "その他（{value}%）",
 
   "sidebar.headingJa": "見出し（日本語）",
   "sidebar.headingEn": "見出し（英語）",
