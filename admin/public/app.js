@@ -414,7 +414,8 @@ function slideTile(ref, index) {
   const { gallery, carousel } = state;
   const last = carousel.length - 1;
   const moveTo = (to, key) => () => saveOrder(gallery, move(carousel, ref, to), `slide:${ref}:${key}`);
-  const focusY = state.carouselFocus?.[ref];
+  // A slide just added (shown before the server answers) has the default.
+  const focusY = state.carouselFocus?.[ref] ?? state.focusDefault;
   return el("div", { class: "tile", "data-id": ref },
     el("img", { class: "thumb", src: thumb(ref), alt: ref, loading: "lazy", draggable: "false" }),
     el("div", { class: "meta" }, el("span", { class: "index" }, `${index + 1}`), el("span", { class: "name", title: ref }, ref)),

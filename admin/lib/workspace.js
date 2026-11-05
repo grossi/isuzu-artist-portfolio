@@ -12,7 +12,7 @@ const { ORDER_FILE, FOCUS_CHOICES, DEFAULT_FOCUS_Y, splitName, isImageFile, pars
   require("../../src/utils/imageOrder.js");
 const sidebarRules = require("../../src/utils/sidebar.js");
 
-export { isImageFile, FOCUS_CHOICES };
+export { isImageFile, FOCUS_CHOICES, DEFAULT_FOCUS_Y };
 export const GALLERY_DIR = "public/gallery";
 export const CAROUSEL_DIR = "public/carousel";
 export const SIDEBAR_DIR = sidebarRules.SIDEBAR_DIR;
