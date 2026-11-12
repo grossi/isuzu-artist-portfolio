@@ -30,7 +30,9 @@ function errorText({ code, params = {}, message }) {
   if (!code || !t.has(`error.${code}`)) return message;
   // The lock holder is a job kind: name it in this language too.
   if (params.kind && !t.has(`kind.${params.kind}`)) return message;
-  const shown = params.kind ? { ...params, kind: t(`kind.${params.kind}`) } : params;
+  const shown = params.kind ? { ...params, kind: t(`kind.${params.kind}`) } : { ...params };
+  // An error that wraps another (causeCode, causeParams; cause: its English text).
+  if (params.causeCode) shown.cause = errorText({ code: params.causeCode, params: params.causeParams, message: params.cause });
   return t(`error.${code}`, shown);
 }
 
@@ -291,7 +293,7 @@ function render() {
   $("discard").disabled = Boolean(state.busy) || !(state.draft?.dirty || state.error);
   const banner = state.error
     ? [errorText({ code: state.errorCode, params: state.errorParams, message: state.error })]
-    : state.restartNeeded ? rich("banner.restart") : null;
+    : state.restartNeeded ? rich(state.depsChanged ? "banner.restartDeps" : "banner.restart") : null;
   $("error").hidden = !banner;
   $("error").replaceChildren(...(banner ?? []));
   document.body.classList.toggle("locked", locked);
@@ -344,8 +346,38 @@ function renderStatus() {
         ? el("div", {}, `${short(history.deployed.sha)} ${history.deployed.subject}`, el("div", { class: "muted" }, t("status.deployedAt", { ago: ago(history.deployed.at) })))
         : el("div", { class: "muted" }, t("status.notDeployedYet")),
       history.deployed?.diverged ? el("div", { class: "muted" }, t("status.diverged")) : null),
+    mainCard(),
   ];
   $("status").replaceChildren(...cards);
+}
+
+// What was merged on GitHub's main since the workspace last took it in (code
+// PRs: Deploy and Update bring them in), and the Update button.
+function mainCard() {
+  const { history, mainCheck, draft } = state;
+  const behind = history.behind;
+  const changes = behind?.changes ?? [];
+  const check = mainCheck.checking
+    ? t("status.checking")
+    : mainCheck.error
+      ? t("status.checkFailed", { error: errorText(mainCheck.error), ago: ago(mainCheck.at) })
+      : mainCheck.at ? t("status.checkedAt", { ago: ago(mainCheck.at) }) : t("status.notChecked");
+  return el("div", { class: `card ${behind?.count ? "main" : "idle"}` },
+    el("h3", {}, t("status.main")),
+    !behind
+      ? el("div", { class: "muted" }, t("status.noUpstream"))
+      : behind.count
+        ? [
+            el("div", {}, t("status.behind", { n: behind.count })),
+            el("ul", {}, changes.slice(0, 6).map((c) => el("li", {}, c.pr ? `#${c.pr} ${c.title}` : `${short(c.sha)} ${c.title}`)),
+              changes.length > 6 ? el("li", {}, t("status.more", { n: changes.length - 6 })) : null),
+            el("div", { class: "card-actions" },
+              el("button", { type: "button", id: "update", class: "primary", onclick: update, disabled: busy() || draft.dirty }, t("actions.update"))),
+            el("div", { class: "muted" }, t(draft.dirty ? "status.updateNeedsSave" : "status.updateHint")),
+          ]
+        : el("div", { class: "muted" }, t("status.upToDate")),
+    el("div", { class: "muted" }, check, " ",
+      el("button", { type: "button", class: "link", onclick: checkMain, disabled: mainCheck.checking || Boolean(state.busy) }, t("status.checkNow"))));
 }
 
 // The public site (ADMIN_SITE_URL), in a new tab.
@@ -361,11 +393,12 @@ function renderJob() {
   const name = label(`job.${job.kind}`, job.kind);
   $("job-title").textContent =
     job.status === "running" ? t("job.running", { name })
+    : job.status === "succeeded" && job.kind === "update" && job.result && !job.result.updated ? t("job.updateNothing", { ago: ago(job.finishedAt) })
     : job.status === "succeeded" ? t("job.succeeded", { name, ago: ago(job.finishedAt) })
     : t("job.failed", { name, error: errorText({ code: job.errorCode, params: job.errorParams, message: job.error }) });
   $("job-step").textContent = job.status === "running" && job.step ? label(`step.${job.step.code}`, job.step.code, job.step.params) : "";
   const links = [];
-  if (job.kind === "preview" && job.status === "succeeded") links.push(el("a", { href: previewUrl(), target: "isuzu-preview" }, t("common.openPreview")));
+  if ((job.kind === "preview" || (job.kind === "update" && job.result?.updated)) && job.status === "succeeded") links.push(el("a", { href: previewUrl(), target: "isuzu-preview" }, t("common.openPreview")));
   if (job.kind === "deploy" && job.status === "succeeded") {
     links.push(liveLink("common.openLiveSite"), el("span", { class: "muted" }, t("job.liveDelay")));
   }
@@ -1213,6 +1246,21 @@ $("deploy-dialog").addEventListener("close", () => {
   if ($("deploy-dialog").returnValue === "deploy") act(api("POST", "/api/deploy"));
 });
 
+// Takes in what was merged on main (never pushes), then rebuilds the preview.
+function update() {
+  // An edit still on its way (a heading committed by this click's blur) would
+  // be refused once the workspace moves: let it land and show as unsaved first.
+  if (pendingEdits > 0 || state.draft.dirty) return toast(() => t("status.updateNeedsSave"), true);
+  act(api("POST", "/api/update"));
+}
+
+// Fetches main now; a "state" event brings the result.
+function checkMain() {
+  if (state?.mainCheck) state.mainCheck.checking = true;
+  renderStatus();
+  api("POST", "/api/main/check").catch((error) => toast(() => errorText(error), true)).finally(refresh);
+}
+
 function discard() {
   if (!confirm(t("confirm.discard"))) return;
   act(edit("POST", "/api/discard", {}), () => t("toast.discarded"));
@@ -1340,5 +1388,7 @@ window.addEventListener("DOMContentLoaded", () => {
   sortable($("entries"), (order) => saveSidebar(state.sidebar.heading, order), { handle: ".entry-handle" });
   refresh();
   events();
+  // Each page load asks for a fresh look at main.
+  api("POST", "/api/main/check").catch(() => {});
   setInterval(() => state && renderStatus(), 60000); // keep the "… ago" labels fresh
 });

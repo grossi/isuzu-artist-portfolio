@@ -3,7 +3,7 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { promisify } from "node:util";
-import { AdminError, HttpError } from "./errors.js";
+import { AdminError, HttpError, describeError } from "./errors.js";
 import { run } from "./jobs.js";
 
 // The ordering rule shared with the site's build (src/utils/loadImages.js).
@@ -64,6 +64,8 @@ export class Workspace {
     this.deployedFile = path.join(config.stateDir, "deployed.json");
     // Present while the admin's own rebase runs (see recover()).
     this.rebaseMarker = path.join(config.stateDir, "rebasing");
+    this.fetching = null; // the fetch of main running, if any
+    this.lastFetch = { at: null, error: null };
   }
 
   file(...parts) {
@@ -207,8 +209,59 @@ export class Workspace {
       // null: since the last deploy.
       notDeployedBase: deployed && !deployed.diverged ? null : upstream,
       notPushed: hasUpstream ? (await this.commits(`${upstream}..HEAD`)).length : null,
-      behind: hasUpstream ? (await this.commits(`HEAD..${upstream}`)).length : null,
+      behind: hasUpstream ? await this.behind(upstream) : null,
     };
+  }
+
+  // What main has and the workspace doesn't, as of the last fetch: how many
+  // commits, and one change per line of main's own history (a merged PR by its
+  // title, any other commit by its subject).
+  async behind(upstream) {
+    const count = Number((await git(this.root, ["rev-list", "--count", `HEAD..${upstream}`])).trim());
+    if (!count) return { count, changes: [] };
+    const out = await git(this.root, ["log", "--first-parent", "-z", "--format=%H%x1f%s%x1f%b", `HEAD..${upstream}`, "--"]);
+    const changes = out.split("\0").filter(Boolean).map((record) => {
+      const [sha, subject, body = ""] = record.split("\x1f");
+      // GitHub's merge commit: the subject names the PR, the body's first line is its title.
+      const pr = /^Merge pull request #(\d+) from /.exec(subject);
+      const title = pr && body.split("\n").find((line) => line.trim());
+      return { sha, title: title ? title.trim() : subject, pr: pr ? Number(pr[1]) : null };
+    });
+    return { count, changes };
+  }
+
+  // The last fetch of main, for "checked … ago": { at, error, checking }.
+  mainCheck() {
+    return { ...this.lastFetch, checking: Boolean(this.fetching) };
+  }
+
+  // Fetches main. One fetch at a time: the periodic check, the page's and a
+  // job's would otherwise fight over the remote-tracking ref's lock. log: a
+  // job's (its output streams there); without one, a quiet background check.
+  async fetchMain(log) {
+    const { remote, branch } = this.config;
+    while (this.fetching) await this.fetching.catch(() => {});
+    // No auto-gc: a background fetch may run beside a draft edit.
+    const args = ["fetch", "--quiet", "--no-auto-gc", remote, branch];
+    const fetching = log ? runGit(this.root, args, log, { timeoutMs: NETWORK_TIMEOUT }) : git(this.root, args);
+    this.fetching = fetching;
+    try {
+      await fetching;
+      this.lastFetch = { at: new Date().toISOString(), error: null };
+    } catch (error) {
+      // git's own words ("fatal: unable to access …"), else the error.
+      const lines = String(error.stderr ?? "").split("\n").map((line) => line.trim()).filter(Boolean);
+      const detail = (lines.find((line) => /^(fatal|error):/.test(line)) ?? lines[0] ?? describeError(error).message).replace(/^(fatal|error):\s*/, "");
+      this.lastFetch = { at: new Date().toISOString(), error: { code: "fetch-failed", params: { detail: detail.slice(0, 300) } } };
+      throw error;
+    } finally {
+      if (this.fetching === fetching) this.fetching = null;
+    }
+  }
+
+  // The background check: joins a fetch already running, never throws.
+  checkMain() {
+    return (this.fetching ?? this.fetchMain()).catch(() => {});
   }
 
   // ---- Draft edits (callers hold the lock) -------------------------------
@@ -493,18 +546,32 @@ export class Workspace {
     await runGit(this.root, ["commit", "--quiet", "-m", message, "--only", "--", ...known], log);
   }
 
-  async deploy(log) {
-    const { remote, branch, deployCommand } = this.config;
-    const upstream = `${remote}/${branch}`;
+  // Deploy and Update work on saved commits only.
+  async assertSaved() {
     const status = await this.status();
     if (status.length) {
       const files = `${status.slice(0, 5).map((e) => e.file).join(", ")}${status.length > 5 ? ", …" : ""}`;
       throw new AdminError("unsaved-changes", { files });
     }
+  }
+
+  // Regenerates the manifests and commits them if they changed. After a
+  // rebase, that replaces main's version taken in a manifest conflict.
+  async regenerateManifests(log) {
+    await this.install(log);
+    log("== Regenerating the manifests");
+    await this.buildImages(log);
+    await this.commitContent(log, "content: regenerate image manifests");
+  }
+
+  async deploy(log) {
+    const { remote, branch, deployCommand } = this.config;
+    const upstream = `${remote}/${branch}`;
+    await this.assertSaved();
 
     log("== Fetching");
     step(log, "fetch");
-    await runGit(this.root, ["fetch", "--quiet", remote, branch], log, { timeoutMs: NETWORK_TIMEOUT });
+    await this.fetchMain(log);
     if (!(await gitOk(this.root, ["merge-base", "--is-ancestor", upstream, "HEAD"]))) {
       log(`== Rebasing the saved commits onto ${upstream}`);
       step(log, "rebase");
@@ -514,10 +581,7 @@ export class Workspace {
     // Every time, not only after a rebase in this run: a rebase whose deploy
     // failed later leaves manifests from the conflict resolution behind.
     // Nothing is committed when they are already right.
-    await this.install(log);
-    log("== Regenerating the manifests");
-    await this.buildImages(log);
-    await this.commitContent(log, "content: regenerate image manifests");
+    await this.regenerateManifests(log);
 
     const head = (await git(this.root, ["rev-parse", "HEAD"])).trim();
     if (head !== (await git(this.root, ["rev-parse", upstream])).trim()) {
@@ -543,9 +607,51 @@ export class Workspace {
     return deployed;
   }
 
+  // Brings in what was merged on main (code PRs), so the preview shows it
+  // before a deploy: the saved commits are rebased on top, the manifests
+  // regenerated as Deploy does. Never pushes. When anything fails, the
+  // workspace is put back exactly as it was.
+  async update(log) {
+    const { remote, branch } = this.config;
+    const upstream = `${remote}/${branch}`;
+    await this.assertSaved();
+
+    log("== Fetching");
+    step(log, "fetch");
+    await this.fetchMain(log);
+    if (await gitOk(this.root, ["merge-base", "--is-ancestor", upstream, "HEAD"])) {
+      log(`✓ Already up to date with ${upstream}`);
+      return { updated: false };
+    }
+    const before = (await git(this.root, ["rev-parse", "HEAD"])).trim();
+    const { count } = await this.behind(upstream);
+
+    log(`== Rebasing the saved commits onto ${upstream}`);
+    step(log, "rebase");
+    try {
+      await this.rebase(upstream, log);
+    } catch (error) {
+      // rebase() has aborted: HEAD and the files are as they were.
+      throw error.code === "rebase-conflict" ? new AdminError("update-conflict", error.params) : new AdminError("update-failed");
+    }
+    try {
+      await this.regenerateManifests(log);
+    } catch (error) {
+      log(`== Putting the workspace back at ${before.slice(0, 7)}`);
+      await git(this.root, ["reset", "--hard", "--quiet", before]);
+      // assertSaved(): nothing untracked was there before.
+      await git(this.root, ["clean", "-d", "--force", "--quiet"]);
+      const { message, code, params } = describeError(error);
+      throw new AdminError("update-reverted", { cause: message, causeCode: code, causeParams: params });
+    }
+    const head = (await git(this.root, ["rev-parse", "HEAD"])).trim();
+    log(`✓ Updated: ${count} commit${count === 1 ? "" : "s"} from ${upstream}, the saved ones on top (nothing pushed)`);
+    return { updated: true, from: before, to: head, count };
+  }
+
   // Conflicts in the generated manifests alone are expected (every Save
-  // commits them) and resolved with main's version, since the deploy
-  // regenerates them right after. Any other conflict aborts the rebase.
+  // commits them) and resolved with main's version, since Deploy and Update
+  // regenerate them right after (regenerateManifests). Any other conflict aborts the rebase.
   async rebase(upstream, log) {
     fs.writeFileSync(this.rebaseMarker, upstream);
     try {
