@@ -15,6 +15,9 @@ A small web app, reachable only on the tailnet, for managing the site's content 
   book for the new edition's cover, link and description, and **Save to draft** there saves
   both, against the draft as it was when the move began (cancelling before that saves nothing).
 - **Preview** the real site built from the draft, then **Save** (commit) and **Deploy**.
+- **Update from main**: take in what was merged on GitHub (code PRs) and rebuild the preview,
+  so a merged change can be seen before it goes live. The 「GitHub の main」 card says what
+  main has that the admin doesn't yet.
 
 It is a plain Node server (`server.js`, `lib/`) with a build-free frontend (`public/`). It
 has its own `package.json` and is outside the site's bundle, `tsc` and lint scope.
@@ -52,6 +55,7 @@ always on `main`. It never touches another checkout.
 | **Preview** | `yarn install`, `yarn build-images` and `vite build` of the draft into the state dir, swapped in when the build succeeds. The preview server (second port) serves that build as the real site, with the same SPA fallback as CloudFront. The tab shows a "building" page and reloads itself until the build is done. |
 | **Save** | `yarn build-images` (to regenerate `src/*.json`), then a commit on `main` of the content paths only: the originals, the two source files and the generated manifests. The `small/`/`large/` derivatives are gitignored and never committed. |
 | **Deploy** | Refuses while anything in the workspace is unsaved. Then `git fetch`, `git rebase origin/main` if `main` moved (and regenerates and commits the manifests if they changed), `git push origin HEAD:main` (never forced), and the deploy command (`yarn deploy`: the full `yarn build`, then `scripts/push-s3.sh`). The log streams to the page. |
+| **Update from main** | Refuses while anything in the workspace is unsaved. Then `git fetch`, `git rebase origin/main` (the saved, unpushed commits stay on top), regenerates and commits the manifests as Deploy does, and rebuilds the preview. It **never pushes**: only Deploy does. With nothing new on main it does nothing. |
 
 Content commits go straight to `main` on GitHub, by design: no PR.
 
@@ -61,6 +65,19 @@ To recover, in the workspace: `git rebase origin/main`, resolve, `yarn build-ima
 `git add` the manifests, `git rebase --continue`, then press Deploy again. A rejected push
 (someone pushed meanwhile) deploys nothing either; pressing Deploy again fetches and rebases.
 
+Update from main handles conflicts the same way (manifest-only conflicts take main's version
+and are regenerated; any other conflict aborts), and goes further when something fails: a
+failed regeneration after the rebase resets the workspace to where it was, so a failed update
+leaves the saved commits and files as they were (ignored files such as `node_modules/` may be
+newer; every job redoes them) and nothing is pushed. If even the abort or the reset fails, the
+page says so: a rebase left in progress shows the usual banner (Discard or a restart aborts it),
+and a failed reset names the commit the workspace was at: in the workspace,
+`git reset --hard <that commit>` then `git clean -d --force` puts it back (Discard draft would
+only reset to the rebased commit). Only a
+failed preview build keeps the update (the message says so): the workspace is updated and the
+old preview stays, marked out of date. A conflict that keeps coming back is resolved by hand
+as above, then Update again.
+
 **One global lock** covers every edit, build, save and deploy. A second operation while one
 runs gets "Busy" (HTTP 409) instead of waiting, and the UI disables its buttons. Every edit
 also carries the draft version it was based on, so a stale browser tab can't overwrite newer
@@ -68,8 +85,12 @@ changes.
 
 The status cards show the **draft** (unsaved changes, and whether the preview is up to date),
 commits **saved but not deployed** (since the last deploy from this admin; before the first
-one, since `origin/main`), and what is **live**: the last commit this admin deployed. A deploy
-run from another checkout isn't known to the admin.
+one, since `origin/main`), what is **live**: the last commit this admin deployed (a deploy
+run from another checkout isn't known to the admin), and **GitHub's main**: the commits on
+`origin/main` the workspace doesn't have, one line per merged PR (its title) or other commit
+(its subject), with the Update button and when main was last checked. The admin fetches main
+every 10 minutes, when a page loads and on 「今すぐ確認 / Check now」, in the background and
+outside the lock (one fetch at a time, none while a job runs), so it never holds up an edit.
 
 ## Data formats
 
@@ -219,9 +240,11 @@ journalctl --user -u isuzu-admin -f      # logs
 systemctl --user restart isuzu-admin     # after editing the env file or pulling admin changes
 ```
 
-The service runs the admin code from the workspace itself, so a deploy that brings a newer
-`admin/` from `main` takes effect on the next restart. If `admin/package.json` changed, run
-`yarn --cwd ~/isuzu-admin/workspace/admin install --frozen-lockfile` first.
+The service runs the admin code from the workspace itself, so a deploy or an Update from main
+that brings a newer `admin/` takes effect on the next restart; the page then shows a banner
+(the admin never restarts itself). If `admin/package.json` or `admin/yarn.lock` changed too,
+the banner says so: run `yarn --cwd ~/isuzu-admin/workspace/admin install --frozen-lockfile`
+first.
 
 ### Settings (`~/.config/isuzu-admin/env`)
 

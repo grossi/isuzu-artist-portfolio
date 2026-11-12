@@ -3,7 +3,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "./lib/config.js";
-import { HttpError, describeError } from "./lib/errors.js";
+import { HttpError, describeError, wrapError } from "./lib/errors.js";
 import { Jobs, summary } from "./lib/jobs.js";
 import { contentType, sendFile, serveStatic } from "./lib/static.js";
 import { thumbnail } from "./lib/thumbs.js";
@@ -73,6 +73,10 @@ const codeVersion = () =>
   git(config.workspace, ["rev-parse", `HEAD:${adminPath}`, "HEAD:src/utils/imageOrder.js", "HEAD:src/utils/sidebar.js"])
     .then((out) => out.trim(), () => null);
 const startedCodeVersion = runsFromWorkspace ? await codeVersion() : null;
+// The admin's dependencies: when they change, a restart needs a yarn install first.
+const depsVersion = () =>
+  git(config.workspace, ["rev-parse", `HEAD:${adminPath}/package.json`, `HEAD:${adminPath}/yarn.lock`]).then((out) => out.trim(), () => null);
+const startedDepsVersion = runsFromWorkspace ? await depsVersion() : null;
 if (config.allowedUsers.size && config.host !== "127.0.0.1" && config.host !== "::1" && config.host !== "localhost") {
   console.warn("ADMIN_ALLOWED_USERS only means something behind tailscale serve: on a tailnet address any peer can send Tailscale-User-Login");
 }
@@ -93,6 +97,7 @@ async function state() {
     await workspace.check({ duringJob: Boolean(jobs.busy()) });
     const [draft, history] = await Promise.all([workspace.draft(), workspace.history()]);
     const restartNeeded = Boolean(startedCodeVersion) && (await codeVersion()) !== startedCodeVersion;
+    const depsChanged = Boolean(startedDepsVersion) && (await depsVersion()) !== startedDepsVersion;
     // The content and its version read together, after the awaits: an edit
     // made meanwhile is in both or in neither (a browser compares them).
     const now = workspace.current();
@@ -110,7 +115,9 @@ async function state() {
       sidebar,
       draft: { ...draft, message: commitMessage(draft) },
       history,
+      mainCheck: workspace.mainCheck(),
       restartNeeded,
+      depsChanged,
     };
   } catch (error) {
     const { message, code, params } = describeError(error);
@@ -120,6 +127,53 @@ async function state() {
 
 function edited() {
   version++;
+}
+
+// Fetches main in the background (every few minutes, and when a page asks),
+// so the page can say what was merged since. Not while a job runs: it fetches
+// for itself, and a fetch must not move origin/main under its rebase.
+// A check asked for while a job runs is made when it ends.
+const MAIN_CHECK_INTERVAL = 10 * 60 * 1000;
+let mainCheckPending = false;
+function checkMain() {
+  if (jobs.current) {
+    mainCheckPending = true;
+    return;
+  }
+  mainCheckPending = false;
+  const done = workspace.checkMain();
+  jobs.emit("state", {});
+  done.then(() => jobs.emit("state", {}));
+}
+jobs.subscribe((event, job) => {
+  if (event === "job" && job.status !== "running" && mainCheckPending) checkMain();
+});
+setInterval(checkMain, MAIN_CHECK_INTERVAL).unref();
+checkMain();
+
+// Runs a job step that may move the workspace's HEAD (a rebase): if the files
+// changed, stale tabs get a 409 and the preview is out of date.
+async function movingTree(fn) {
+  const tree = await workspace.tree();
+  try {
+    return await fn();
+  } finally {
+    if ((await workspace.tree()) !== tree) edited();
+  }
+}
+
+// Builds the preview of the draft at this version, aside, and swaps it in:
+// a failed build keeps the last preview.
+async function buildPreview(log, built, options) {
+  const next = `${previewDir}.next`;
+  const old = `${previewDir}.old`;
+  await workspace.preview(log, next, options);
+  fs.rmSync(old, { recursive: true, force: true });
+  if (fs.existsSync(previewDir)) fs.renameSync(previewDir, old);
+  fs.renameSync(next, previewDir);
+  fs.rmSync(old, { recursive: true, force: true });
+  preview = { version: built, builtAt: new Date().toISOString() };
+  log("✓ Preview ready");
 }
 
 // ---- Request guards ----------------------------------------------------
@@ -324,17 +378,26 @@ const routes = {
 
   "POST /api/preview": async (req, res) => {
     const built = version;
-    json(res, 202, startJob("preview", async (log) => {
-      // Built aside and swapped in, so a failed build keeps the last preview.
-      const next = `${previewDir}.next`;
-      const old = `${previewDir}.old`;
-      await workspace.preview(log, next);
-      fs.rmSync(old, { recursive: true, force: true });
-      if (fs.existsSync(previewDir)) fs.renameSync(previewDir, old);
-      fs.renameSync(next, previewDir);
-      fs.rmSync(old, { recursive: true, force: true });
-      preview = { version: built, builtAt: new Date().toISOString() };
-      log("✓ Preview ready");
+    json(res, 202, startJob("preview", (log) => buildPreview(log, built)));
+  },
+
+  // Fetches main now; the page hears the result as a "state" event.
+  "POST /api/main/check": async (req, res) => {
+    checkMain();
+    json(res, 202, {});
+  },
+
+  // Rebases the saved commits onto main (never pushes), then rebuilds the
+  // preview, so what was merged can be seen before a deploy.
+  "POST /api/update": async (req, res) => {
+    json(res, 202, startJob("update", async (log) => {
+      const result = await movingTree(() => workspace.update(log));
+      if (!result.updated) return result;
+      // update() has just run install and build-images.
+      await buildPreview(log, version, { prepared: true }).catch((error) => {
+        throw wrapError("update-preview-failed", error);
+      });
+      return result;
     }));
   },
 
@@ -345,15 +408,8 @@ const routes = {
   },
 
   "POST /api/deploy": async (req, res) => {
-    json(res, 202, startJob("deploy", async (log) => {
-      // A rebase onto a newer main changes the files the preview was built from.
-      const tree = await workspace.tree();
-      try {
-        return await workspace.deploy(log);
-      } finally {
-        if ((await workspace.tree()) !== tree) edited();
-      }
-    }));
+    // A rebase onto a newer main changes the files the preview was built from.
+    json(res, 202, startJob("deploy", (log) => movingTree(() => workspace.deploy(log))));
   },
 };
 
@@ -457,7 +513,7 @@ function handlePreview(req, res) {
   assertAllowed(req);
   // Page loads (not assets) wait while a build replaces the files.
   const pageLoad = req.method === "GET" && (req.headers.accept || "").includes("text/html");
-  const waiting = jobs.busy() === "preview" ? "previewPage.building" : !preview ? "previewPage.none" : null;
+  const waiting = ["preview", "update"].includes(jobs.busy()) ? "previewPage.building" : !preview ? "previewPage.none" : null;
   if (pageLoad && waiting) {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
     return res.end(WAIT_PAGE(pageLang(req), waiting));

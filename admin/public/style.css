@@ -8,6 +8,7 @@
   --draft: #b26a00;
   --saved: #1565c0;
   --live: #2e7d32;
+  --main: #6a1b9a;
   --bad: #c62828;
   --radius: 10px;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -95,6 +96,10 @@ button.link { border: 0; background: none; color: var(--accent); padding: 0; }
 .card.saved h3 { color: var(--saved); }
 .card.live { border-left-color: var(--live); }
 .card.live h3 { color: var(--live); }
+.card.main { border-left-color: var(--main); }
+.card.main h3 { color: var(--main); }
+.card-actions { margin: 8px 0 4px; }
+.card button.link { font-size: inherit; }
 .card.idle h3 { color: var(--muted); }
 
 .banner { margin-top: 12px; padding: 10px 12px; border-radius: var(--radius); font-size: 14px; }

@@ -278,6 +278,24 @@ test("an interrupted rebase: the admin's own is aborted at startup, one by hand 
   await ws.check();
 });
 
+test("Discard clears a marker left by a failed abort, so a later rebase by hand is kept at startup", async () => {
+  fs.writeFileSync(path.join(other, "src/image-order.json"), '{ "gallery": ["c.jpg"] }\n');
+  sh(other, "add", ".");
+  sh(other, "commit", "--quiet", "-m", "upstream order");
+  sh(other, "push", "--quiet", "origin", "main");
+  ws.writeOrder({ gallery: ["b.png"] });
+  await ws.save(log, "content: local order");
+  sh(ws.root, "fetch", "--quiet");
+  assert.throws(() => sh(ws.root, "rebase", "origin/main"));
+  fs.writeFileSync(ws.rebaseMarker, "origin/main"); // as after an abort that failed
+  await ws.discard();
+  assert.ok(!fs.existsSync(ws.rebaseMarker));
+  assert.throws(() => sh(ws.root, "rebase", "origin/main")); // by hand now
+  await ws.recover();
+  assert.equal(await ws.rebaseInProgress(), true, "not the admin's: kept");
+  await ws.discard();
+});
+
 test("a deploy retried after a failure past the rebase still regenerates the manifests", async () => {
   fs.writeFileSync(path.join(other, "README.md"), "upstream\n");
   sh(other, "add", ".");
@@ -313,6 +331,148 @@ test("a failing deploy command is reported and not recorded", async () => {
   ws.config.deployCommand = ["node", "-e", "process.exit(3)"];
   await assert.rejects(ws.deploy(log), { code: "command-exit", params: { command: "node -e", code: 3 } });
   assert.equal(ws.readDeployed(), null);
+});
+
+// A commit on main from elsewhere ("other"): a PR merged on GitHub.
+function mergePr(number, title, file, text) {
+  sh(other, "pull", "--quiet", "origin", "main");
+  sh(other, "checkout", "--quiet", "-b", `pr-${number}`);
+  fs.mkdirSync(path.dirname(path.join(other, file)), { recursive: true });
+  fs.writeFileSync(path.join(other, file), text);
+  sh(other, "add", ".");
+  sh(other, "commit", "--quiet", "-m", `${title} (the branch's commit)`);
+  sh(other, "checkout", "--quiet", "main");
+  sh(other, "merge", "--quiet", "--no-ff", "-m", `Merge pull request #${number} from someone/pr-${number}\n\n${title}`, `pr-${number}`);
+  sh(other, "push", "--quiet", "origin", "main");
+}
+
+test("the check of main lists merged PRs by title, other commits by subject", async () => {
+  mergePr(33, "Profile (English): one sentence less", "src/about.en.md", "about\n");
+  fs.writeFileSync(path.join(other, "README.md"), "direct\n");
+  sh(other, "add", "README.md");
+  sh(other, "commit", "--quiet", "-m", "A direct commit");
+  sh(other, "push", "--quiet", "origin", "main");
+  ws.addUploads([await upload("new", "white")]);
+  await ws.save(log, "content: add new.png");
+
+  assert.deepEqual(ws.mainCheck(), { at: null, error: null, checking: false });
+  assert.equal((await ws.history()).behind.count, 0, "not fetched yet");
+  await ws.checkMain();
+  assert.equal(ws.mainCheck().error, null);
+  assert.ok(ws.mainCheck().at);
+  const { behind, notPushed } = await ws.history();
+  assert.equal(notPushed, 1);
+  assert.equal(behind.count, 3, "the merge, its branch's commit and the direct one");
+  assert.deepEqual(behind.changes.map(({ title, pr }) => [title, pr]), [["A direct commit", null], ["Profile (English): one sentence less", 33]]);
+
+  // Fetches don't overlap: a second check joins the first.
+  const [a, b] = [ws.checkMain(), ws.checkMain()];
+  assert.equal(ws.mainCheck().checking, true);
+  await Promise.all([a, b]);
+  assert.equal(ws.mainCheck().checking, false);
+
+  // A job's failed fetch: its coded error (git's words are in its log).
+  ws.config.remote = "nowhere";
+  await assert.rejects(ws.update(log), { code: "command-exit" });
+  assert.deepEqual(ws.mainCheck().error, { code: "command-exit", params: { command: "git fetch", code: 128 } });
+  ws.config.remote = "origin";
+
+  // A failed fetch is recorded with git's own words, and never throws.
+  sh(ws.root, "remote", "set-url", "origin", path.join(tmp, "nowhere.git"));
+  await ws.checkMain();
+  assert.equal(ws.mainCheck().error.code, "fetch-failed");
+  assert.match(ws.mainCheck().error.params.detail, /nowhere\.git|does not appear|not a git repository/i);
+});
+
+test("update rebases the saved commits onto main, regenerates the manifests and never pushes", async () => {
+  mergePr(33, "Profile (English)", "src/about.en.md", "about\n");
+  ws.addUploads([await upload("new", "white")]);
+  await ws.save(log, "content: add new.png");
+  const mainBefore = sh(origin, "rev-parse", "main");
+  ws.buildImages = async () => fs.writeFileSync(ws.file("src/gallery.json"), '["regenerated"]\n');
+
+  const result = await ws.update(log);
+  assert.equal(result.updated, true);
+  assert.equal(result.count, 2);
+  assert.equal(sh(origin, "rev-parse", "main"), mainBefore, "nothing pushed");
+  assert.equal(sh(ws.root, "log", "--first-parent", "--format=%s", "-3"),
+    "content: regenerate image manifests\ncontent: add new.png\nMerge pull request #33 from someone/pr-33");
+  assert.ok(fs.existsSync(ws.file("src/about.en.md")));
+  const history = await ws.history();
+  assert.equal(history.behind.count, 0);
+  assert.equal(history.notPushed, 2);
+  assert.equal((await ws.draft()).dirty, false);
+
+  // Nothing new on main: a no-op.
+  const head = sh(ws.root, "rev-parse", "HEAD");
+  assert.deepEqual(await ws.update(log), { updated: false });
+  assert.equal(sh(ws.root, "rev-parse", "HEAD"), head);
+  assert.equal(sh(origin, "rev-parse", "main"), mainBefore);
+});
+
+test("update refuses unsaved changes", async () => {
+  mergePr(33, "Profile (English)", "src/about.en.md", "about\n");
+  ws.addUploads([await upload("new", "white")]);
+  const head = sh(ws.root, "rev-parse", "HEAD");
+  await assert.rejects(ws.update(log), { code: "unsaved-changes" });
+  assert.equal(sh(ws.root, "rev-parse", "HEAD"), head);
+  assert.ok(fs.existsSync(ws.file("public/gallery/new.png")));
+});
+
+test("update: a conflict only in generated manifests takes main's version, then regenerates", async () => {
+  fs.writeFileSync(path.join(other, "src/gallery.json"), '["upstream"]\n');
+  sh(other, "commit", "--quiet", "-am", "upstream manifest");
+  sh(other, "push", "--quiet", "origin", "main");
+  ws.addUploads([await upload("new", "white")]);
+  fs.writeFileSync(ws.file("src/gallery.json"), '["local"]\n');
+  await ws.save(log, "content: add new.png");
+  ws.buildImages = async () => fs.writeFileSync(ws.file("src/gallery.json"), '["regenerated"]\n');
+
+  await ws.update(log);
+  assert.ok(logs.some((line) => line.startsWith("Conflict only in generated manifests")));
+  assert.equal(sh(ws.root, "log", "--format=%s", "-3"), "content: regenerate image manifests\ncontent: add new.png\nupstream manifest");
+  assert.equal(fs.readFileSync(ws.file("src/gallery.json"), "utf-8"), '["regenerated"]\n');
+  assert.equal(sh(origin, "log", "-1", "--format=%s", "main"), "upstream manifest", "nothing pushed");
+});
+
+test("update: any other conflict aborts and leaves the workspace exactly as it was", async () => {
+  fs.writeFileSync(path.join(other, "src/image-order.json"), '{ "gallery": ["c.jpg"] }\n');
+  sh(other, "add", ".");
+  sh(other, "commit", "--quiet", "-m", "upstream order");
+  sh(other, "push", "--quiet", "origin", "main");
+  ws.writeOrder({ gallery: ["b.png"] });
+  await ws.save(log, "content: local order");
+  const before = sh(ws.root, "rev-parse", "HEAD");
+
+  await assert.rejects(ws.update(log), {
+    code: "update-conflict",
+    params: { files: "src/image-order.json" },
+    message: /^Couldn.t update from main \(conflicts in src\/image-order.json\).*as it was.*Nothing was pushed. See admin\/README.md/,
+  });
+  assert.equal(sh(ws.root, "rev-parse", "HEAD"), before);
+  assert.equal(await ws.rebaseInProgress(), false);
+  assert.ok(!fs.existsSync(ws.rebaseMarker));
+  assert.equal((await ws.draft()).dirty, false);
+  await ws.check();
+});
+
+test("update: a failure after the rebase puts the workspace back", async () => {
+  mergePr(33, "Profile (English)", "src/about.en.md", "about\n");
+  ws.addUploads([await upload("new", "white")]);
+  await ws.save(log, "content: add new.png");
+  const before = sh(ws.root, "rev-parse", "HEAD");
+  ws.buildImages = async () => {
+    fs.writeFileSync(ws.file("src/gallery.json"), '["half-written"]\n');
+    fs.writeFileSync(ws.file("src/new-manifest.json"), "{}\n");
+    throw new Error("build-images failed");
+  };
+
+  await assert.rejects(ws.update(log), { code: "update-reverted", params: { cause: "Unexpected error: build-images failed", causeCode: "unexpected", causeParams: { detail: "build-images failed" } } });
+  assert.equal(sh(ws.root, "rev-parse", "HEAD"), before);
+  assert.equal((await ws.draft()).dirty, false);
+  assert.ok(!fs.existsSync(ws.file("src/about.en.md")));
+  assert.ok(!fs.existsSync(ws.file("src/new-manifest.json")));
+  assert.equal((await ws.history()).behind.count, 2, "main is still to be taken in");
 });
 
 test("a workspace off main is refused", async () => {
