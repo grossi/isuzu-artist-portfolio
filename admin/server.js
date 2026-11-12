@@ -3,7 +3,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "./lib/config.js";
-import { AdminError, HttpError, describeError } from "./lib/errors.js";
+import { HttpError, describeError, wrapError } from "./lib/errors.js";
 import { Jobs, summary } from "./lib/jobs.js";
 import { contentType, sendFile, serveStatic } from "./lib/static.js";
 import { thumbnail } from "./lib/thumbs.js";
@@ -132,22 +132,42 @@ function edited() {
 // Fetches main in the background (every few minutes, and when a page asks),
 // so the page can say what was merged since. Not while a job runs: it fetches
 // for itself, and a fetch must not move origin/main under its rebase.
+// A check asked for while a job runs is made when it ends.
 const MAIN_CHECK_INTERVAL = 10 * 60 * 1000;
+let mainCheckPending = false;
 function checkMain() {
-  if (jobs.current || workspace.fetching) return;
+  if (jobs.current) {
+    mainCheckPending = true;
+    return;
+  }
+  mainCheckPending = false;
   const done = workspace.checkMain();
   jobs.emit("state", {});
   done.then(() => jobs.emit("state", {}));
 }
+jobs.subscribe((event, job) => {
+  if (event === "job" && job.status !== "running" && mainCheckPending) checkMain();
+});
 setInterval(checkMain, MAIN_CHECK_INTERVAL).unref();
 checkMain();
 
+// Runs a job step that may move the workspace's HEAD (a rebase): if the files
+// changed, stale tabs get a 409 and the preview is out of date.
+async function movingTree(fn) {
+  const tree = await workspace.tree();
+  try {
+    return await fn();
+  } finally {
+    if ((await workspace.tree()) !== tree) edited();
+  }
+}
+
 // Builds the preview of the draft at this version, aside, and swaps it in:
 // a failed build keeps the last preview.
-async function buildPreview(log, built) {
+async function buildPreview(log, built, options) {
   const next = `${previewDir}.next`;
   const old = `${previewDir}.old`;
-  await workspace.preview(log, next);
+  await workspace.preview(log, next, options);
   fs.rmSync(old, { recursive: true, force: true });
   if (fs.existsSync(previewDir)) fs.renameSync(previewDir, old);
   fs.renameSync(next, previewDir);
@@ -371,21 +391,12 @@ const routes = {
   // preview, so what was merged can be seen before a deploy.
   "POST /api/update": async (req, res) => {
     json(res, 202, startJob("update", async (log) => {
-      const tree = await workspace.tree();
-      let result;
-      try {
-        result = await workspace.update(log);
-      } finally {
-        // The draft's files changed: stale tabs get a 409, the preview is out of date.
-        if ((await workspace.tree()) !== tree) edited();
-      }
+      const result = await movingTree(() => workspace.update(log));
       if (!result.updated) return result;
-      try {
-        await buildPreview(log, version);
-      } catch (error) {
-        const { message, code, params } = describeError(error);
-        throw new AdminError("update-preview-failed", { cause: message, causeCode: code, causeParams: params });
-      }
+      // update() has just run install and build-images.
+      await buildPreview(log, version, { prepared: true }).catch((error) => {
+        throw wrapError("update-preview-failed", error);
+      });
       return result;
     }));
   },
@@ -397,15 +408,8 @@ const routes = {
   },
 
   "POST /api/deploy": async (req, res) => {
-    json(res, 202, startJob("deploy", async (log) => {
-      // A rebase onto a newer main changes the files the preview was built from.
-      const tree = await workspace.tree();
-      try {
-        return await workspace.deploy(log);
-      } finally {
-        if ((await workspace.tree()) !== tree) edited();
-      }
-    }));
+    // A rebase onto a newer main changes the files the preview was built from.
+    json(res, 202, startJob("deploy", (log) => movingTree(() => workspace.deploy(log))));
   },
 };
 

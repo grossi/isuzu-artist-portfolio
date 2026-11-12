@@ -353,6 +353,12 @@ test("the check of main lists merged PRs by title, other commits by subject", as
   await Promise.all([a, b]);
   assert.equal(ws.mainCheck().checking, false);
 
+  // A job's failed fetch: its coded error (git's words are in its log).
+  ws.config.remote = "nowhere";
+  await assert.rejects(ws.update(log), { code: "command-exit" });
+  assert.deepEqual(ws.mainCheck().error, { code: "command-exit", params: { command: "git fetch", code: 128 } });
+  ws.config.remote = "origin";
+
   // A failed fetch is recorded with git's own words, and never throws.
   sh(ws.root, "remote", "set-url", "origin", path.join(tmp, "nowhere.git"));
   await ws.checkMain();

@@ -55,7 +55,6 @@ always on `main`. It never touches another checkout.
 | **Preview** | `yarn install`, `yarn build-images` and `vite build` of the draft into the state dir, swapped in when the build succeeds. The preview server (second port) serves that build as the real site, with the same SPA fallback as CloudFront. The tab shows a "building" page and reloads itself until the build is done. |
 | **Save** | `yarn build-images` (to regenerate `src/*.json`), then a commit on `main` of the content paths only: the originals, the two source files and the generated manifests. The `small/`/`large/` derivatives are gitignored and never committed. |
 | **Deploy** | Refuses while anything in the workspace is unsaved. Then `git fetch`, `git rebase origin/main` if `main` moved (and regenerates and commits the manifests if they changed), `git push origin HEAD:main` (never forced), and the deploy command (`yarn deploy`: the full `yarn build`, then `scripts/push-s3.sh`). The log streams to the page. |
-
 | **Update from main** | Refuses while anything in the workspace is unsaved. Then `git fetch`, `git rebase origin/main` (the saved, unpushed commits stay on top), regenerates and commits the manifests as Deploy does, and rebuilds the preview. It **never pushes**: only Deploy does. With nothing new on main it does nothing. |
 
 Content commits go straight to `main` on GitHub, by design: no PR.
@@ -69,7 +68,9 @@ To recover, in the workspace: `git rebase origin/main`, resolve, `yarn build-ima
 Update from main handles conflicts the same way (manifest-only conflicts take main's version
 and are regenerated; any other conflict aborts), and goes further when something fails: a
 failed regeneration after the rebase resets the workspace to where it was, so a failed update
-always leaves the saved commits and files exactly as they were and nothing is pushed. Only a
+leaves the saved commits and files as they were (ignored files such as `node_modules/` may be
+newer; every job redoes them) and nothing is pushed. If even the abort or the reset fails, the
+page says so: a rebase left in progress shows the usual banner (Discard or a restart aborts it). Only a
 failed preview build keeps the update (the message says so): the workspace is updated and the
 old preview stays, marked out of date. A conflict that keeps coming back is resolved by hand
 as above, then Update again.

@@ -19,6 +19,13 @@ export class HttpError extends AdminError {
   }
 }
 
+// An error that reports another as its cause: its English text, and its code
+// and parameters for the browser to show it in its own language.
+export function wrapError(code, cause) {
+  const { message, code: causeCode, params: causeParams } = describeError(cause);
+  return new AdminError(code, { cause: message, causeCode, causeParams });
+}
+
 // { message, code, params } for any error: unexpected ones keep their text
 // as a parameter.
 export function describeError(error) {

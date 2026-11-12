@@ -3,7 +3,7 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { promisify } from "node:util";
-import { AdminError, HttpError, describeError } from "./errors.js";
+import { AdminError, HttpError, describeError, wrapError } from "./errors.js";
 import { run } from "./jobs.js";
 
 // The ordering rule shared with the site's build (src/utils/loadImages.js).
@@ -249,10 +249,12 @@ export class Workspace {
       await fetching;
       this.lastFetch = { at: new Date().toISOString(), error: null };
     } catch (error) {
-      // git's own words ("fatal: unable to access …"), else the error.
+      // A job's fetch: its coded error (git's output is in the job's log).
+      // Otherwise git's own words ("fatal: unable to access …").
       const lines = String(error.stderr ?? "").split("\n").map((line) => line.trim()).filter(Boolean);
       const detail = (lines.find((line) => /^(fatal|error):/.test(line)) ?? lines[0] ?? describeError(error).message).replace(/^(fatal|error):\s*/, "");
-      this.lastFetch = { at: new Date().toISOString(), error: { code: "fetch-failed", params: { detail: detail.slice(0, 300) } } };
+      const shown = error instanceof AdminError ? { code: error.code, params: error.params } : { code: "fetch-failed", params: { detail: detail.slice(0, 300) } };
+      this.lastFetch = { at: new Date().toISOString(), error: shown };
       throw error;
     } finally {
       if (this.fetching === fetching) this.fetching = null;
@@ -508,9 +510,12 @@ export class Workspace {
     await run("yarn", ["build-images"], { cwd: this.root, log });
   }
 
-  async preview(log, outDir) {
-    await this.install(log);
-    await this.buildImages(log);
+  // prepared: install and build-images just ran (Update).
+  async preview(log, outDir, { prepared = false } = {}) {
+    if (!prepared) {
+      await this.install(log);
+      await this.buildImages(log);
+    }
     step(log, "build");
     await run(this.file("node_modules/.bin/vite"), ["build", "--outDir", outDir, "--emptyOutDir"], { cwd: this.root, log });
   }
@@ -610,7 +615,8 @@ export class Workspace {
   // Brings in what was merged on main (code PRs), so the preview shows it
   // before a deploy: the saved commits are rebased on top, the manifests
   // regenerated as Deploy does. Never pushes. When anything fails, the
-  // workspace is put back exactly as it was.
+  // saved commits and the files are put back as they were (ignored files,
+  // such as node_modules and the webp derivatives, are redone by every job).
   async update(log) {
     const { remote, branch } = this.config;
     const upstream = `${remote}/${branch}`;
@@ -624,25 +630,31 @@ export class Workspace {
       return { updated: false };
     }
     const before = (await git(this.root, ["rev-parse", "HEAD"])).trim();
-    const { count } = await this.behind(upstream);
+    const count = Number((await git(this.root, ["rev-list", "--count", `HEAD..${upstream}`])).trim());
 
     log(`== Rebasing the saved commits onto ${upstream}`);
     step(log, "rebase");
     try {
       await this.rebase(upstream, log);
     } catch (error) {
-      // rebase() has aborted: HEAD and the files are as they were.
+      // rebase() has aborted, unless the abort failed too: then the page
+      // says a rebase is in progress, and Discard (or a restart) aborts it.
+      if (await this.rebaseInProgress()) throw new AdminError("rebase-in-progress");
       throw error.code === "rebase-conflict" ? new AdminError("update-conflict", error.params) : new AdminError("update-failed");
     }
     try {
       await this.regenerateManifests(log);
     } catch (error) {
       log(`== Putting the workspace back at ${before.slice(0, 7)}`);
-      await git(this.root, ["reset", "--hard", "--quiet", before]);
-      // assertSaved(): nothing untracked was there before.
-      await git(this.root, ["clean", "-d", "--force", "--quiet"]);
-      const { message, code, params } = describeError(error);
-      throw new AdminError("update-reverted", { cause: message, causeCode: code, causeParams: params });
+      try {
+        await git(this.root, ["reset", "--hard", "--quiet", before]);
+        // assertSaved(): nothing untracked was there before.
+        await git(this.root, ["clean", "-d", "--force", "--quiet"]);
+      } catch (resetError) {
+        log(`✗ ${resetError.message}`);
+        throw new AdminError("update-revert-failed", { sha: before.slice(0, 7) });
+      }
+      throw wrapError("update-reverted", error);
     }
     const head = (await git(this.root, ["rev-parse", "HEAD"])).trim();
     log(`✓ Updated: ${count} commit${count === 1 ? "" : "s"} from ${upstream}, the saved ones on top (nothing pushed)`);
@@ -654,6 +666,7 @@ export class Workspace {
   // regenerate them right after (regenerateManifests). Any other conflict aborts the rebase.
   async rebase(upstream, log) {
     fs.writeFileSync(this.rebaseMarker, upstream);
+    let aborted = true; // or finished
     try {
       let args = ["rebase", upstream];
       for (;;) {
@@ -666,11 +679,12 @@ export class Workspace {
         }
       }
     } catch (error) {
-      await runGit(this.root, ["rebase", "--abort"], log).catch(() => {});
+      // A failed abort keeps the marker: a restart's recover() tries again.
+      aborted = await runGit(this.root, ["rebase", "--abort"], log).then(() => true, () => false);
       // Both messages say nothing was pushed or deployed.
       throw error.code === "rebase-conflict" ? error : new AdminError("rebase-failed");
     } finally {
-      fs.rmSync(this.rebaseMarker, { force: true });
+      if (aborted) fs.rmSync(this.rebaseMarker, { force: true });
     }
   }
 

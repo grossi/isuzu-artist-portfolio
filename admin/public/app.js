@@ -395,6 +395,8 @@ function renderJob() {
     job.status === "running" ? t("job.running", { name })
     : job.status === "succeeded" && job.kind === "update" && job.result && !job.result.updated ? t("job.updateNothing", { ago: ago(job.finishedAt) })
     : job.status === "succeeded" ? t("job.succeeded", { name, ago: ago(job.finishedAt) })
+    // Updated, but no preview: not "update failed".
+    : job.errorCode === "update-preview-failed" ? `✗ ${errorText({ code: job.errorCode, params: job.errorParams, message: job.error })}`
     : t("job.failed", { name, error: errorText({ code: job.errorCode, params: job.errorParams, message: job.error }) });
   $("job-step").textContent = job.status === "running" && job.step ? label(`step.${job.step.code}`, job.step.code, job.step.params) : "";
   const links = [];
@@ -1248,8 +1250,10 @@ $("deploy-dialog").addEventListener("close", () => {
 
 // Takes in what was merged on main (never pushes), then rebuilds the preview.
 function update() {
-  // An edit still on its way (a heading committed by this click's blur) would
-  // be refused once the workspace moves: let it land and show as unsaved first.
+  // An edit still on its way (a heading committed by this click's blur, or by
+  // this one where a tap doesn't move the focus) would be refused once the
+  // workspace moves: let it land and show as unsaved first.
+  document.activeElement?.blur();
   if (pendingEdits > 0 || state.draft.dirty) return toast(() => t("status.updateNeedsSave"), true);
   act(api("POST", "/api/update"));
 }

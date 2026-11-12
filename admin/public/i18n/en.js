@@ -297,6 +297,7 @@ export default {
   "error.update-conflict": "Couldn't update from main (conflicts in {files}). The update was undone: the workspace is as it was, saved changes included. Nothing was pushed. See admin/README.md to resolve it.",
   "error.update-failed": "Couldn't update from main (see the log). The update was undone: the workspace is as it was, saved changes included. Nothing was pushed.",
   "error.update-reverted": "A step after taking in main failed ({cause}), so the update was undone: the workspace is as it was. Nothing was pushed.",
+  "error.update-revert-failed": "A step after taking in main failed, and undoing the update failed too. Check the workspace (it was at {sha} before; see admin/README.md). Nothing was pushed.",
   "error.update-preview-failed": "Updated from main, but the preview build failed ({cause}). Nothing was pushed.",
   "error.command-exit": "{command} failed (exit code {code})",
   "error.command-signal": "{command} failed ({signal})",
