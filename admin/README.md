@@ -70,7 +70,10 @@ and are regenerated; any other conflict aborts), and goes further when something
 failed regeneration after the rebase resets the workspace to where it was, so a failed update
 leaves the saved commits and files as they were (ignored files such as `node_modules/` may be
 newer; every job redoes them) and nothing is pushed. If even the abort or the reset fails, the
-page says so: a rebase left in progress shows the usual banner (Discard or a restart aborts it). Only a
+page says so: a rebase left in progress shows the usual banner (Discard or a restart aborts it),
+and a failed reset names the commit the workspace was at: in the workspace,
+`git reset --hard <that commit>` then `git clean -d --force` puts it back (Discard draft would
+only reset to the rebased commit). Only a
 failed preview build keeps the update (the message says so): the workspace is updated and the
 old preview stays, marked out of date. A conflict that keeps coming back is resolved by hand
 as above, then Update again.

@@ -493,6 +493,8 @@ export class Workspace {
 
   async discard() {
     if (await this.rebaseInProgress()) await git(this.root, ["rebase", "--abort"]);
+    // Aborted (or none): a marker left by a failed abort must not later abort one started by hand.
+    fs.rmSync(this.rebaseMarker, { force: true });
     await git(this.root, ["reset", "--hard", "--quiet", "HEAD"]);
     // Untracked files only; ignored ones (node_modules, build, derivatives) stay.
     await git(this.root, ["clean", "-d", "--force", "--quiet"]);
@@ -679,8 +681,10 @@ export class Workspace {
         }
       }
     } catch (error) {
-      // A failed abort keeps the marker: a restart's recover() tries again.
-      aborted = await runGit(this.root, ["rebase", "--abort"], log).then(() => true, () => false);
+      // A rebase still in progress after the abort keeps the marker: a
+      // restart's recover() tries again. (A rebase that never started has
+      // nothing to abort.)
+      aborted = await runGit(this.root, ["rebase", "--abort"], log).then(() => true, async () => !(await this.rebaseInProgress().catch(() => true)));
       // Both messages say nothing was pushed or deployed.
       throw error.code === "rebase-conflict" ? error : new AdminError("rebase-failed");
     } finally {

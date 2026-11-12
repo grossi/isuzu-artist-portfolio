@@ -278,6 +278,24 @@ test("an interrupted rebase: the admin's own is aborted at startup, one by hand 
   await ws.check();
 });
 
+test("Discard clears a marker left by a failed abort, so a later rebase by hand is kept at startup", async () => {
+  fs.writeFileSync(path.join(other, "src/image-order.json"), '{ "gallery": ["c.jpg"] }\n');
+  sh(other, "add", ".");
+  sh(other, "commit", "--quiet", "-m", "upstream order");
+  sh(other, "push", "--quiet", "origin", "main");
+  ws.writeOrder({ gallery: ["b.png"] });
+  await ws.save(log, "content: local order");
+  sh(ws.root, "fetch", "--quiet");
+  assert.throws(() => sh(ws.root, "rebase", "origin/main"));
+  fs.writeFileSync(ws.rebaseMarker, "origin/main"); // as after an abort that failed
+  await ws.discard();
+  assert.ok(!fs.existsSync(ws.rebaseMarker));
+  assert.throws(() => sh(ws.root, "rebase", "origin/main")); // by hand now
+  await ws.recover();
+  assert.equal(await ws.rebaseInProgress(), true, "not the admin's: kept");
+  await ws.discard();
+});
+
 test("a deploy retried after a failure past the rebase still regenerates the manifests", async () => {
   fs.writeFileSync(path.join(other, "README.md"), "upstream\n");
   sh(other, "add", ".");
