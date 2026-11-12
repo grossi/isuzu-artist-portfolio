@@ -1,1 +1,1 @@
-I'm available for illustration work. Please get in touch through the links below.
+Hello, I'm isuZu! I'm available for illustration work. Please get in touch through the links below.
