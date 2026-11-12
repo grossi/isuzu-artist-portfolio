@@ -294,7 +294,7 @@ export default {
   "error.rebase-conflict": "リベースに失敗しました（{files} で競合）。作業コピーで手動で解決してください（admin/README.md を参照）。送信も公開もされておらず、保存済みのコミットは変わっていません。",
   "error.rebase-failed": "リベースに失敗しました。作業コピーで手動で解決してください（admin/README.md を参照）。送信も公開もされておらず、保存済みのコミットは変わっていません。",
   "error.fetch-failed": "GitHub から取得できませんでした（{detail}）",
-  "error.update-conflict": "main から更新できませんでした（{files} で競合）。更新は取り消したので、作業コピーは元のままです（保存済みの変更もそのまま）。GitHub には何も送信していません。",
+  "error.update-conflict": "main から更新できませんでした（{files} で競合）。更新は取り消したので、作業コピーは元のままです（保存済みの変更もそのまま）。GitHub には何も送信していません。解決方法は admin/README.md をご覧ください。",
   "error.update-failed": "main から更新できませんでした（詳しくはログをご覧ください）。更新は取り消したので、作業コピーは元のままです（保存済みの変更もそのまま）。GitHub には何も送信していません。",
   "error.update-reverted": "main を取り込んだあとの処理に失敗したため（{cause}）、更新を取り消しました。作業コピーは元のままです。GitHub には何も送信していません。",
   "error.update-preview-failed": "main からの更新はできましたが、プレビューの作成に失敗しました（{cause}）。GitHub には何も送信していません。",

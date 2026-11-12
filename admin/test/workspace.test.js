@@ -423,7 +423,7 @@ test("update: any other conflict aborts and leaves the workspace exactly as it w
   await assert.rejects(ws.update(log), {
     code: "update-conflict",
     params: { files: "src/image-order.json" },
-    message: /^Couldn't update from main \(conflicts in src\/image-order.json\).*as it was.*Nothing was pushed/,
+    message: /^Couldn.t update from main \(conflicts in src\/image-order.json\).*as it was.*Nothing was pushed. See admin\/README.md/,
   });
   assert.equal(sh(ws.root, "rev-parse", "HEAD"), before);
   assert.equal(await ws.rebaseInProgress(), false);

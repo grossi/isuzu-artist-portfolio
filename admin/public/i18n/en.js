@@ -294,7 +294,7 @@ export default {
   "error.rebase-conflict": "Rebase failed (conflicts in {files}): resolve it in the workspace by hand (see admin/README.md). Nothing was pushed or deployed and the saved commits are unchanged.",
   "error.rebase-failed": "Rebase failed: resolve it in the workspace by hand (see admin/README.md). Nothing was pushed or deployed and the saved commits are unchanged.",
   "error.fetch-failed": "Couldn't fetch from GitHub ({detail})",
-  "error.update-conflict": "Couldn't update from main (conflicts in {files}). The update was undone: the workspace is as it was, saved changes included. Nothing was pushed.",
+  "error.update-conflict": "Couldn't update from main (conflicts in {files}). The update was undone: the workspace is as it was, saved changes included. Nothing was pushed. See admin/README.md to resolve it.",
   "error.update-failed": "Couldn't update from main (see the log). The update was undone: the workspace is as it was, saved changes included. Nothing was pushed.",
   "error.update-reverted": "A step after taking in main failed ({cause}), so the update was undone: the workspace is as it was. Nothing was pushed.",
   "error.update-preview-failed": "Updated from main, but the preview build failed ({cause}). Nothing was pushed.",
